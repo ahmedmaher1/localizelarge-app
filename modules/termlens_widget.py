@@ -1563,7 +1563,7 @@ class TermLensWidget(QWidget):
         self._btn_help.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_help.setToolTip(
             "Open help for TermLens (F1)\n\n"
-            "Opens https://docs.supervertaler.com/workbench/termbases/termlens/\n"
+            "Opens https://localizelarge.com/docs\n"
             "in your browser."
         )
         self._btn_help.setFocusPolicy(Qt.FocusPolicy.NoFocus)

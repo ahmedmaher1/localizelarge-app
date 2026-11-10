@@ -22,7 +22,7 @@ from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QApplication
 
 
-DOCS_BASE_URL = "https://docs.supervertaler.com"
+DOCS_BASE_URL = "https://localizelarge.com/docs"
 
 # Property key stored on widgets to identify their help topic
 _HELP_TOPIC_PROPERTY = "_help_topic"
@@ -249,18 +249,11 @@ def set_topic(widget, topic: str):
 
 
 def open_help(topic: str = None):
-    """Open the documentation page for the given topic."""
-    if topic:
-        # Defensive: any consumer that hands us a full URL (legacy
-        # behaviour from when the Trados site was separate) is passed
-        # through unchanged.
-        if topic.startswith("http"):
-            url = topic
-        else:
-            # lstrip only — preserve trailing slashes from the Topics
-            # constants so Astro serves the page directly instead of
-            # issuing a 301 redirect to the slash-terminated form.
-            url = f"{DOCS_BASE_URL}/{topic.lstrip('/')}"
-    else:
-        url = DOCS_BASE_URL
+    """Open the documentation in the default browser.
+
+    Localize Large v1 has one documentation address. The per-panel topics of
+    the base app are kept on the widgets but all open the same page until the
+    site has a page for each. The app itself makes no request.
+    """
+    url = DOCS_BASE_URL
     QDesktopServices.openUrl(QUrl(url))
