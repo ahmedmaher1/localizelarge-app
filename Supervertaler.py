@@ -64281,6 +64281,34 @@ def _install_log_hooks():
         pass
 
 
+def _ll_leave(exit_code) -> None:
+    """End the process once the window has closed and its clean-up has run.
+
+    Letting Python tear the interpreter down after a Qt application has run
+    destroys Qt objects in no particular order, which now and then crashes
+    the process on its way out (seen on Windows as an access violation and on
+    Linux as a segmentation fault). Nothing useful happens in that teardown,
+    so: run the registered exit handlers (this stops the sidecar if it is
+    still up), flush the logs, and leave.
+    """
+    import atexit
+    import logging
+    try:
+        atexit._run_exitfuncs()
+    except Exception:
+        pass
+    try:
+        logging.shutdown()
+    except Exception:
+        pass
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except Exception:
+            pass
+    os._exit(int(exit_code or 0))
+
+
 def main():
     """Application entry point"""
     # Redirect stdout/stderr to a rolling log file FIRST – so even crashes
@@ -64509,7 +64537,8 @@ def main():
     if _smoke_ms.isdigit():
         QTimer.singleShot(int(_smoke_ms), window.close)
 
-    sys.exit(app.exec())
+    exit_code = app.exec()
+    _ll_leave(exit_code)
 
 
 if __name__ == '__main__':
