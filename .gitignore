@@ -78,7 +78,7 @@ Supervertaler.egg-info/
 *.spec
 
 # PyInstaller spec files that ARE part of this repo
-!Supervertaler.spec
+!LocalizeLarge.spec
 !Supervertaler.core.spec
 !Supervertaler.full.spec
 !Supervertaler_macOS.spec
