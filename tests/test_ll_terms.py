@@ -80,7 +80,7 @@ def test_a_tbx_file_cannot_pull_in_other_files(tmp_path):
     secret.write_text("TOP-SECRET", encoding="utf-8")
     evil = tmp_path / "evil.tbx"
     evil.write_text(
-        f'<?xml version="1.0"?><!DOCTYPE martif [<!ENTITY x SYSTEM "file://{secret}">]>'
+        f'<?xml version="1.0"?><!DOCTYPE martif [<!ENTITY x SYSTEM "{secret.as_uri()}">]>'
         '<martif type="TBX-Basic" xml:lang="en"><text><body><termEntry id="c1">'
         '<langSet xml:lang="en"><tig><term>a&x;</term></tig></langSet>'
         '<langSet xml:lang="fr"><tig><term>b</term></tig></langSet>'
