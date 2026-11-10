@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doc xmlns:its="http://www.w3.org/2005/11/its" its:version="2.0">
+<its:rules version="2.0">
+<its:translateRule selector="//code" translate="no"/>
+<its:withinTextRule selector="//b|//i|//br" withinText="yes"/>
+</its:rules>
+<title>Quarterly report</title>
+<para>This sentence has <b>bold</b> and <i>italic</i> words.</para>
+<para>First line<br/>second line.</para>
+<para>مرحبا بالعالم and 你好，世界.</para>
+<code>do_not_translate()</code>
+</doc>

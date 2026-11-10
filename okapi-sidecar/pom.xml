@@ -101,6 +101,62 @@
             <version>${okapi.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-openoffice</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-markdown</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-json</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-yaml</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-properties</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-table</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-plaintext</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-its</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-subtitles</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-regex</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.okapi.filters</groupId>
+            <artifactId>okapi-filter-xliff2</artifactId>
+            <version>${okapi.version}</version>
+        </dependency>
+
         <!-- Segmentation (SRX) -->
         <dependency>
             <groupId>net.sf.okapi.lib</groupId>
@@ -114,10 +170,22 @@
             <artifactId>okapi-step-common</artifactId>
             <version>${okapi.version}</version>
         </dependency>
+        <!-- Tests -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
             <!-- Package as fat JAR with all dependencies -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

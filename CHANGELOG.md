@@ -19,6 +19,19 @@ License). The history of that project is in its own repository.
 - License of the app as a whole: GPL-3.0-or-later. Files from Supervertaler Workbench keep
   their MIT notice (see `NOTICE`).
 
+### File formats
+
+- Import and export through Okapi for DOCX, XLSX, PPTX, ODT, ODS, ODP, HTML, XLIFF 1.2 and
+  2.0, PO, IDML, Markdown, JSON, YAML, Java properties, CSV, plain text, XML, WebVTT and
+  SRT. One table, `okapi-sidecar/src/main/resources/formats.json`, is read by both the
+  file-format service and the app.
+- An XLIFF 2.0 file named `.xlf` or `.xliff` is recognised by its content.
+- Export keeps what stood between the sentences of a paragraph: a line break inside a PO or
+  JSON string is kept, and Chinese, Japanese and Thai targets get no space between
+  sentences.
+- Tags written as text in a file (`<b>` inside a JSON or YAML string) are kept on export.
+- XLIFF 1.2 export keeps `<g>` formatting tags in the target.
+
 ### Security
 
 - The Okapi file-format service listens on `127.0.0.1` only, on a free port chosen at each

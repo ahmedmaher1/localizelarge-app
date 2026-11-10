@@ -1,0 +1,220 @@
+{
+  "comment": "Extension -> Okapi filter configuration. The sidecar and the app both read this file. 'import' is false for formats the app does not offer in the import dialog. 'parameters' are optional overrides set on the filter for both extract and merge. A file with an XLIFF 1.2 extension whose root element says version 2 is read with okf_xliff2.",
+  "formats": [
+    {
+      "extensions": [
+        ".docx"
+      ],
+      "configId": "okf_openxml",
+      "filterClass": "net.sf.okapi.filters.openxml.OpenXMLFilter",
+      "description": "Microsoft Word (DOCX)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".xlsx"
+      ],
+      "configId": "okf_openxml",
+      "filterClass": "net.sf.okapi.filters.openxml.OpenXMLFilter",
+      "description": "Microsoft Excel (XLSX)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".pptx"
+      ],
+      "configId": "okf_openxml",
+      "filterClass": "net.sf.okapi.filters.openxml.OpenXMLFilter",
+      "description": "Microsoft PowerPoint (PPTX)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".odt"
+      ],
+      "configId": "okf_openoffice",
+      "filterClass": "net.sf.okapi.filters.openoffice.OpenOfficeFilter",
+      "description": "OpenDocument Text (ODT)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".ods"
+      ],
+      "configId": "okf_openoffice",
+      "filterClass": "net.sf.okapi.filters.openoffice.OpenOfficeFilter",
+      "description": "OpenDocument Spreadsheet (ODS)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".odp"
+      ],
+      "configId": "okf_openoffice",
+      "filterClass": "net.sf.okapi.filters.openoffice.OpenOfficeFilter",
+      "description": "OpenDocument Presentation (ODP)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".html",
+        ".htm"
+      ],
+      "configId": "okf_html",
+      "filterClass": "net.sf.okapi.filters.html.HtmlFilter",
+      "description": "HTML",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".xlf",
+        ".xliff"
+      ],
+      "configId": "okf_xliff",
+      "filterClass": "net.sf.okapi.filters.xliff.XLIFFFilter",
+      "description": "XLIFF",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".xlf2",
+        ".xliff2"
+      ],
+      "configId": "okf_xliff2",
+      "filterClass": "net.sf.okapi.filters.xliff2.XLIFF2Filter",
+      "description": "XLIFF 2.0",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".po"
+      ],
+      "configId": "okf_po",
+      "filterClass": "net.sf.okapi.filters.po.POFilter",
+      "description": "Gettext PO",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".idml"
+      ],
+      "configId": "okf_idml",
+      "filterClass": "net.sf.okapi.filters.idml.IDMLFilter",
+      "description": "Adobe InDesign Markup (IDML)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".md",
+        ".markdown"
+      ],
+      "configId": "okf_markdown",
+      "filterClass": "net.sf.okapi.filters.markdown.MarkdownFilter",
+      "description": "Markdown",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".json"
+      ],
+      "configId": "okf_json",
+      "filterClass": "net.sf.okapi.filters.json.JSONFilter",
+      "description": "JSON",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".yaml",
+        ".yml"
+      ],
+      "configId": "okf_yaml",
+      "filterClass": "net.sf.okapi.filters.yaml.YamlFilter",
+      "description": "YAML",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".properties"
+      ],
+      "configId": "okf_properties",
+      "filterClass": "net.sf.okapi.filters.properties.PropertiesFilter",
+      "description": "Java properties",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".csv"
+      ],
+      "configId": "okf_table_csv",
+      "filterClass": "net.sf.okapi.filters.table.TableFilter",
+      "description": "CSV (comma-separated values)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".txt"
+      ],
+      "configId": "okf_plaintext",
+      "filterClass": "net.sf.okapi.filters.plaintext.PlainTextFilter",
+      "description": "Plain text",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".xml"
+      ],
+      "configId": "okf_xml",
+      "filterClass": "net.sf.okapi.filters.xml.XMLFilter",
+      "description": "XML (generic, with ITS rules)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".vtt"
+      ],
+      "configId": "okf_vtt",
+      "filterClass": "net.sf.okapi.filters.vtt.VTTFilter",
+      "description": "WebVTT subtitles",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".srt"
+      ],
+      "configId": "okf_regex-srt",
+      "filterClass": "net.sf.okapi.filters.regex.RegexFilter",
+      "description": "SubRip subtitles (SRT)",
+      "import": true,
+      "parameters": {}
+    },
+    {
+      "extensions": [
+        ".tmx"
+      ],
+      "configId": "okf_tmx",
+      "filterClass": "net.sf.okapi.filters.tmx.TmxFilter",
+      "description": "TMX (translation memory)",
+      "import": false,
+      "parameters": {}
+    }
+  ]
+}

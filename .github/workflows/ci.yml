@@ -43,6 +43,10 @@ jobs:
         shell: pwsh
         run: ./okapi-sidecar/build.ps1
 
+      - name: Test the Okapi sidecar (format table against this Okapi version)
+        working-directory: okapi-sidecar
+        run: mvn -B -q test
+
       - name: Run the tests on a throwaway profile
         shell: pwsh
         run: |

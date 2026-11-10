@@ -1,0 +1,11 @@
+1
+00:00:01,000 --> 00:00:04,000
+This is the quarterly report.
+
+2
+00:00:05,000 --> 00:00:08,000
+This sentence has <b>bold</b> and <i>italic</i> words.
+
+3
+00:00:09,000 --> 00:00:12,000
+مرحبا بالعالم and 你好，世界.

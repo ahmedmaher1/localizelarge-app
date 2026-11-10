@@ -12922,8 +12922,8 @@ class SupervertalerQt(QMainWindow):
         errors so one bad file doesn't sink the rest.
         """
         ext = os.path.splitext(file_path)[1].lower()
-        okapi_exts = {'.docx', '.xlsx', '.pptx', '.html', '.htm',
-                      '.xliff', '.xlf', '.idml', '.po'}
+        from localizelarge import formats as ll_formats
+        okapi_exts = ll_formats.import_extensions()
         if ext in okapi_exts:
             if not self._ensure_okapi_sidecar():
                 raise RuntimeError("The Okapi sidecar is not available.")
@@ -12955,16 +12955,9 @@ class SupervertalerQt(QMainWindow):
         from types import SimpleNamespace
         from PyQt6.QtWidgets import QProgressDialog
 
-        formats = [
-            ("Word Document", "*.docx"),
+        formats = self.IMPORT_DOCUMENT_FORMATS + [
             ("Trados bilingual", "*.sdlxliff"),
             ("memoQ bilingual", "*.mqxliff"),
-            ("Adobe InDesign Markup", "*.idml"),
-            ("HTML", "*.html *.htm"),
-            ("XLIFF 1.2", "*.xliff *.xlf"),
-            ("PO (gettext)", "*.po"),
-            ("Microsoft Excel", "*.xlsx"),
-            ("Microsoft PowerPoint", "*.pptx"),
         ]
         all_patterns = " ".join(p for _, p in formats)
         filter_parts = [f"All supported formats ({all_patterns})"]
@@ -15799,28 +15792,11 @@ class SupervertalerQt(QMainWindow):
                 )
                 return False
 
-            # Build translations list, ONE entry per Okapi text-unit ID.
-            #
-            # Why one-per-TU and not one-per-segment: the sidecar applies
-            # SRX sentence segmentation only inside its extract helper
-            # (segmentTextContentWithTags) – it doesn't actually re-segment
-            # the underlying ITextUnit. So when /merge re-opens the original
-            # file and reads the same TU, srcSegments.count() == 1. The
-            # merge loop then drops any MergeSegment with segmentIndex >= 1,
-            # silently losing the 2nd, 3rd, … sentences of every paragraph
-            # we sent (verified end-to-end against an IDML round-trip in
-            # v1.9.470 testing).
-            #
-            # Workaround: group all our per-sentence segments back by
-            # okapi_tu_id, sort by okapi_segment_index, concatenate the
-            # translations with a single space, and send one merge entry
-            # per TU at segmentIndex=0. The whole TU's text gets written
-            # into the single source segment that actually exists in the
-            # filter's view of the document. This costs us a possible
-            # extra space at SRX sentence boundaries (the LLM strips
-            # leading/trailing whitespace from each segment translation),
-            # which is a rounding error in laid-out text but matters less
-            # than the alternative of silently losing sentences.
+            # Build the translations list: one entry per sentence, with its
+            # text-unit ID and its index within that unit. The sidecar joins
+            # the sentences of a unit itself, because only it can see what
+            # stood between them in the source (a space, a line break inside
+            # a PO or JSON string, or nothing at all in Chinese or Japanese).
             from collections import defaultdict as _defaultdict
             tu_groups: dict = _defaultdict(list)  # tu_id → [(seg_idx, translation)]
             skipped = 0
@@ -15845,25 +15821,16 @@ class SupervertalerQt(QMainWindow):
             translations = []
             for tu_id, sub_segs in tu_groups.items():
                 sub_segs.sort(key=lambda pair: pair[0])
-                combined = ' '.join(t for _, t in sub_segs)
-
-                # Strip Okapi-internal run tags (<run1>, </run2>, …) that
-                # occasionally leak through from the source-to-cf
-                # conversion when SRX segments split inside an inline run.
-                # Our format uses <cf>/<b>/<i> etc.; <run\d+> tags should
-                # never appear in user-facing translations. If they reach
-                # /merge they unbalance Okapi's tag stack and crash the
-                # OpenXML writer with NoSuchElementException — see the
-                # BlockTextUnitWriter.writeCode → ArrayDeque.pop crash
-                # reported by a Mac user on v1.9.484 with a docx whose
-                # paragraphs had inline run boundaries mid-sentence.
-                combined = _re.sub(r'</?run\d+>', '', combined)
-
-                translations.append({
-                    'id': tu_id,
-                    'segmentIndex': 0,
-                    'translation': combined,
-                })
+                for seg_idx, translation in sub_segs:
+                    # Strip Okapi-internal run tags (<run1>, </run2>, …) that
+                    # occasionally leak through when SRX segments split
+                    # inside an inline run. They unbalance Okapi's tag stack
+                    # and crash the OpenXML writer.
+                    translations.append({
+                        'id': tu_id,
+                        'segmentIndex': seg_idx,
+                        'translation': _re.sub(r'</?run\d+>', '', translation),
+                    })
 
             if not translations:
                 self.log("No segments with Okapi metadata found -- falling back to standard export")
@@ -32729,24 +32696,12 @@ class SupervertalerQt(QMainWindow):
     # MEMOQ BILINGUAL DOCX IMPORT/EXPORT
     # ========================================================================
     
-    # Formats other than DOCX that we route through Okapi extract → merge.
-    # DOCX has its own dedicated menu entry; TMX is for TM import (separate
-    # path); everything else the sidecar reports as supported lands here.
-    OKAPI_OTHER_FORMATS = [
-        ("Adobe InDesign Markup", "*.idml"),
-        ("HTML", "*.html *.htm"),
-        ("XLIFF 1.2", "*.xliff *.xlf"),
-        ("PO (gettext)", "*.po"),
-        ("Microsoft Excel", "*.xlsx"),
-        ("Microsoft PowerPoint", "*.pptx"),
-    ]
-
-    # All formats import_document accepts. DOCX is listed first because it's
-    # the most common case; the rest come from OKAPI_OTHER_FORMATS so this
-    # list and the file filter stay in lockstep when new formats are added.
+    # The formats import_document accepts: the table the Okapi sidecar itself
+    # uses (localizelarge/formats.py reads the same formats.json).
     @property
     def IMPORT_DOCUMENT_FORMATS(self):
-        return [("Word Document", "*.docx")] + self.OKAPI_OTHER_FORMATS
+        from localizelarge import formats as ll_formats
+        return ll_formats.dialog_filters()
 
     def import_document(self):
         """Import any supported document format via the Okapi sidecar.
@@ -35324,23 +35279,22 @@ class SupervertalerQt(QMainWindow):
                 translations = []
                 for tu_id, sub_segs in tu_groups.items():
                     sub_segs.sort(key=lambda pair: pair[0])
-                    combined = ' '.join(t for _, t in sub_segs)
-                    # Strip Okapi-internal run tags (<run1>, …) that can leak
-                    # through when SRX splits inside an inline run; they
-                    # unbalance Okapi's tag stack and crash the OOXML writer.
-                    combined = re.sub(r'</?run\d+>', '', combined)
-                    translations.append({
-                        'id': tu_id,
-                        'segmentIndex': 0,
-                        'translation': combined,
-                    })
+                    # One entry per sentence; the sidecar joins the sentences
+                    # of a text unit. Strip Okapi-internal run tags (<run1>, …)
+                    # that can leak through when SRX splits inside an inline
+                    # run; they crash the OOXML writer.
+                    for seg_idx, translation in sub_segs:
+                        translations.append({
+                            'id': tu_id,
+                            'segmentIndex': seg_idx,
+                            'translation': re.sub(r'</?run\d+>', '', translation),
+                        })
 
                 if translations:
                     multi_tu_count = sum(1 for sub in tu_groups.values() if len(sub) > 1)
                     if multi_tu_count:
-                        self.log(f"      🔧 Combining sub-segments for merge: "
-                                 f"{multi_tu_count} text-unit(s) had multiple "
-                                 f"sentences (concatenated for /merge)")
+                        self.log(f"      🔧 {multi_tu_count} text unit(s) have several "
+                                 f"sentences; the sidecar joins them")
                     src_lang = self.current_project.source_lang
                     trg_lang = self.current_project.target_lang
                     self.log(f"      🔧 Okapi merge ({len(translations)} segments)…")

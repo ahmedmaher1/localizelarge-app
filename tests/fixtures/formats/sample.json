@@ -1,0 +1,9 @@
+{
+  "title": "Quarterly report",
+  "body": "This sentence has <b>bold</b> and <i>italic</i> words.",
+  "lines": "First line\nsecond line.",
+  "nested": {
+    "greeting": "مرحبا بالعالم and 你好，世界."
+  },
+  "count": 3
+}

@@ -1,0 +1,20 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: app.py:10
+msgid "Quarterly report"
+msgstr ""
+
+#: app.py:11
+msgid "This sentence has <b>bold</b> and <i>italic</i> words."
+msgstr ""
+
+#: app.py:12
+msgid "First line\nsecond line."
+msgstr ""
+
+#: app.py:13
+msgid "مرحبا بالعالم and 你好，世界."
+msgstr ""

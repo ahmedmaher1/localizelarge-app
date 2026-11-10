@@ -51,10 +51,25 @@ Versions from `okapi-sidecar/pom.xml`.
 
 | Library | Version | License |
 |---|---|---|
-| Okapi Framework | 1.48.0 | Apache-2.0 |
+| Okapi Framework (core, segmentation, and the filters openxml, openoffice, html, xliff, xliff2, po, idml, markdown, json, yaml, properties, table, plaintext, its/xml, subtitles, regex, tmx) | 1.48.0 | Apache-2.0 |
 | Javalin | 6.7.0 | Apache-2.0 |
 | Jackson Databind | 2.22.4 | Apache-2.0 |
 | SLF4J Simple | 2.0.17 | MIT |
+
+Brought in by the Okapi filters added in Phase 4 (licences read from each library's POM):
+
+| Library | Version | License |
+|---|---|---|
+| flexmark-java (Markdown filter) | 0.64.8 | BSD-2-Clause |
+| SnakeYAML Engine (YAML filter) | 2.8 | Apache-2.0 |
+| Woodstox | 7.0.0 | Apache-2.0 |
+| StAX2 API | 4.2.2 | BSD-2-Clause |
+| TwelveMonkeys common | 3.12.0 | BSD-3-Clause |
+| Jericho HTML Parser | 3.4 | Apache-2.0 (one of the three licences it offers; the others are LGPL and EPL) |
+| Validator.nu HTML Parser | 1.4 | MIT |
+| ICU4J | 75.1 | Unicode-3.0 |
+
+Used only to test the sidecar, not shipped: JUnit Jupiter 5.11.4 (EPL-2.0).
 
 Apache Commons FileUpload was listed by the base but never used; it is removed. Libraries
 these depend on (Jetty and others) are in the release SBOM.

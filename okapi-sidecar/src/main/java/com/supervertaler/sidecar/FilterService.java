@@ -35,38 +35,20 @@ public class FilterService {
     /** Default SRX document for segmentation. */
     private SRXDocument defaultSrx;
 
-    /** Supported formats: extension → description */
-    private static final Map<String, String> SUPPORTED_FORMATS;
-
-    static {
-        Map<String, String> m = new LinkedHashMap<>();
-        m.put(".docx",  "Microsoft Word 2007+ (OpenXML)");
-        m.put(".xlsx",  "Microsoft Excel 2007+ (OpenXML)");
-        m.put(".pptx",  "Microsoft PowerPoint 2007+ (OpenXML)");
-        m.put(".html",  "HTML");
-        m.put(".htm",   "HTML");
-        m.put(".xliff", "XLIFF 1.2");
-        m.put(".xlf",   "XLIFF 1.2");
-        m.put(".tmx",   "TMX (Translation Memory eXchange)");
-        m.put(".po",    "PO (Gettext)");
-        m.put(".idml",  "Adobe InDesign Markup (IDML)");
-        SUPPORTED_FORMATS = Collections.unmodifiableMap(m);
-    }
+    /** Extension → Okapi configuration, from formats.json. */
+    private final FormatTable formatTable = FormatTable.load();
 
     public FilterService() {
         // Set up the filter configuration mapper with all bundled filters
         fcMapper = new FilterConfigurationMapper();
-        fcMapper.addConfigurations("net.sf.okapi.filters.openxml.OpenXMLFilter");
-        fcMapper.addConfigurations("net.sf.okapi.filters.tmx.TmxFilter");
-        fcMapper.addConfigurations("net.sf.okapi.filters.html.HtmlFilter");
-        fcMapper.addConfigurations("net.sf.okapi.filters.xliff.XLIFFFilter");
-        fcMapper.addConfigurations("net.sf.okapi.filters.po.POFilter");
-        fcMapper.addConfigurations("net.sf.okapi.filters.idml.IDMLFilter");
+        for (String filterClass : formatTable.filterClasses()) {
+            fcMapper.addConfigurations(filterClass);
+        }
 
         // Load the default SRX rules bundled with Okapi
         loadDefaultSrx();
 
-        log.info("FilterService initialised — {} filters available", SUPPORTED_FORMATS.size());
+        log.info("FilterService initialised — {} file extensions available", formatTable.extensions().size());
     }
 
     /**
@@ -171,11 +153,14 @@ public class FilterService {
 
     public List<Map<String, String>> getSupportedFilters() {
         List<Map<String, String>> result = new ArrayList<>();
-        for (var entry : SUPPORTED_FORMATS.entrySet()) {
-            Map<String, String> item = new LinkedHashMap<>();
-            item.put("extension", entry.getKey());
-            item.put("description", entry.getValue());
-            result.add(item);
+        for (FormatTable.Format f : formatTable.all()) {
+            for (String ext : f.extensions) {
+                Map<String, String> item = new LinkedHashMap<>();
+                item.put("extension", ext);
+                item.put("description", f.description);
+                item.put("configId", f.configId);
+                result.add(item);
+            }
         }
         return result;
     }
@@ -189,12 +174,13 @@ public class FilterService {
                                  boolean doSegmentation,
                                  Map<String, Object> options) {
 
-        String configId = getConfigIdForFile(filename);
+        String configId = getConfigIdForFile(filename, filePath);
         LocaleId sourceLocale = LocaleId.fromString(srcLang);
         LocaleId targetLocale = LocaleId.fromString(trgLang);
 
         List<ExtractedSegment> segments = new ArrayList<>();
         int textUnitCount = 0;
+        Map<String, Integer> idCounts = new HashMap<>();
 
         // Track the current sub-document context (body, header, footer, etc.)
         String currentSubDoc = "body";
@@ -205,6 +191,7 @@ public class FilterService {
                     "No Okapi filter found for configuration: " + configId);
         }
         applyFilterParameters(filter, configId, options);
+        applyTableParameters(filter, filename);
 
         try {
             RawDocument rawDoc = new RawDocument(filePath.toUri(), "UTF-8", sourceLocale, targetLocale);
@@ -233,7 +220,7 @@ public class FilterService {
                     if (!tu.isTranslatable()) continue;
 
                     textUnitCount++;
-                    String tuId = tu.getId();
+                    String tuId = uniqueId(tu.getId(), idCounts);
                     String tuName = tu.getName() != null ? tu.getName() : "";
 
                     if (doSegmentation && defaultSrx != null) {
@@ -286,7 +273,7 @@ public class FilterService {
                         List<MergeSegment> translations,
                         Map<String, Object> options) {
 
-        String configId = getConfigIdForFile(filename);
+        String configId = getConfigIdForFile(filename, originalPath);
         LocaleId sourceLocale = LocaleId.fromString(srcLang);
         LocaleId targetLocale = LocaleId.fromString(trgLang);
 
@@ -302,6 +289,7 @@ public class FilterService {
                     "No Okapi filter found for configuration: " + configId);
         }
         applyFilterParameters(filter, configId, options);
+        applyTableParameters(filter, filename);
 
         // Prepare output
         Path outputPath;
@@ -320,6 +308,7 @@ public class FilterService {
             writer.setOptions(targetLocale, "UTF-8");
             writer.setOutput(outputPath.toString());
 
+            Map<String, Integer> idCounts = new HashMap<>();
             String lastTuId = "<none>";
             String lastTuSourceText = "";
             String lastTuTargetText = "";
@@ -330,7 +319,18 @@ public class FilterService {
                 if (event.isTextUnit()) {
                     ITextUnit tu = event.getTextUnit();
 
-                    List<MergeSegment> segs = txMap.get(tu.getId());
+                    // Same ids as on the extract path, which skips text
+                    // units that are not translatable.
+                    String publicId = tu.isTranslatable()
+                            ? uniqueId(tu.getId(), idCounts) : null;
+                    List<MergeSegment> segs = publicId != null ? txMap.get(publicId) : null;
+                    if (segs != null && segs.size() > 1) {
+                        // Several sentences of one text unit: join them
+                        // here, where the source shows what stood between
+                        // them (a space, a line break, or nothing).
+                        segs = Collections.singletonList(joinSegments(
+                                tu.getSource(), segs, srcLang, trgLang));
+                    }
                     if (segs != null && !segs.isEmpty()) {
                         // ── Per-segment target population ─────────────
                         // Earlier versions concatenated all segment
@@ -1006,6 +1006,105 @@ public class FilterService {
     }
 
     /**
+     * Some filters (OpenDocument) start their text-unit ids again in every
+     * part of a package, so "tu1" can occur several times in one file. The
+     * first occurrence keeps its id; later ones get "@2", "@3", … appended.
+     * Extract and merge both use this, in the same order.
+     */
+    static String uniqueId(String id, Map<String, Integer> counts) {
+        int n = counts.merge(id, 1, Integer::sum);
+        return n == 1 ? id : id + "@" + n;
+    }
+
+    /** Languages written without spaces between sentences. */
+    private static final Set<String> NO_SPACE_LANGUAGES =
+            Set.of("zh", "ja", "th", "lo", "km", "my");
+
+    /**
+     * What stood between consecutive sentences of a source text unit, for
+     * the sentences the extract path reports (it skips blank ones).
+     * Entry i is the text between sentence i and sentence i + 1.
+     */
+    List<String> sentenceGaps(TextContainer source, String srcLang) {
+        List<String> gaps = new ArrayList<>();
+        if (defaultSrx == null) return gaps;
+        TextContainer copy = source.clone();
+        ISegmenter segmenter = defaultSrx.compileLanguageRules(
+                LocaleId.fromString(srcLang), null);
+        segmenter.computeSegments(copy);
+        copy.getSegments().create(segmenter.getRanges());
+
+        StringBuilder gap = null;   // null until the first sentence is seen
+        for (TextPart part : copy) {
+            String plain = TextFragment.getText(part.getContent().getCodedText());
+            if (part.isSegment() && !plain.isBlank()) {
+                String lead = plain.substring(0, plain.length() - plain.stripLeading().length());
+                String trail = plain.substring(plain.stripTrailing().length());
+                if (gap != null) {
+                    gaps.add(gap + lead);
+                }
+                gap = new StringBuilder(trail);
+            } else if (gap != null) {
+                gap.append(plain);
+            }
+        }
+        return gaps;
+    }
+
+    /** The text to put between two translated sentences. */
+    static String joiner(String sourceGap, String trgLang) {
+        if (sourceGap != null && (sourceGap.indexOf('\n') >= 0 || sourceGap.indexOf('\r') >= 0)) {
+            StringBuilder ws = new StringBuilder();
+            for (char c : sourceGap.toCharArray()) {
+                if (Character.isWhitespace(c)) ws.append(c);
+            }
+            return ws.toString();
+        }
+        String lang = trgLang == null ? "" : trgLang.toLowerCase(Locale.ROOT);
+        int cut = lang.indexOf('-') >= 0 ? lang.indexOf('-') : lang.indexOf('_');
+        if (cut > 0) lang = lang.substring(0, cut);
+        return NO_SPACE_LANGUAGES.contains(lang) ? "" : " ";
+    }
+
+    /** Join the translated sentences of one text unit into one entry. */
+    private MergeSegment joinSegments(TextContainer source, List<MergeSegment> segs,
+                                      String srcLang, String trgLang) {
+        List<MergeSegment> ordered = new ArrayList<>(segs);
+        ordered.sort(Comparator.comparingInt(m -> m.segmentIndex));
+        List<String> gaps = sentenceGaps(source, srcLang);
+        StringBuilder joined = new StringBuilder();
+        MergeSegment previous = null;
+        for (MergeSegment seg : ordered) {
+            if (seg.translation == null) continue;
+            if (previous != null) {
+                // The gap after the previous sentence, if the two are neighbours.
+                String gap = (seg.segmentIndex == previous.segmentIndex + 1
+                        && previous.segmentIndex >= 0 && previous.segmentIndex < gaps.size())
+                        ? gaps.get(previous.segmentIndex) : " ";
+                joined.append(joiner(gap, trgLang));
+            }
+            joined.append(seg.translation);
+            previous = seg;
+        }
+        MergeSegment result = new MergeSegment();
+        result.id = ordered.get(0).id;
+        result.segmentIndex = 0;
+        result.translation = joined.toString();
+        return result;
+    }
+
+    /** Names of the tags that are plain text (not inline codes) in a source fragment. */
+    private static Set<String> literalTagNames(TextFragment sourceContent) {
+        if (sourceContent == null) return Collections.emptySet();
+        String text = TextFragment.getText(sourceContent.getCodedText());
+        if (text.indexOf('<') < 0) return Collections.emptySet();
+        Set<String> names = new HashSet<>();
+        Matcher m = TAG_RE.matcher(text);
+        while (m.find()) names.add(m.group(2).toLowerCase());
+        return names;
+    }
+
+    /**
      * Build a target {@link TextFragment} from a translation string that
      * may contain HTML display tags ({@code <b>}, {@code <i>}, etc.),
      * mapping them back to the original Okapi inline codes from the source.
@@ -1021,9 +1120,26 @@ public class FilterService {
                                              TextFragment sourceContent) {
         List<Code> srcCodes = (sourceContent != null) ? sourceContent.getCodes() : null;
 
+        // Tags that are plain text in the source (for example "<b>" inside a
+        // JSON or YAML string, where the filter makes no inline code of it).
+        // The same tag in the translation is text too and must be kept.
+        Set<String> literalTags = literalTagNames(sourceContent);
+
         if (srcCodes == null || srcCodes.isEmpty()) {
-            // No codes in source — strip any tags and return plain text
-            return new TextFragment(TAG_RE.matcher(taggedTranslation).replaceAll(""));
+            // No codes in source — drop tags the source does not have, keep
+            // the ones it has as text.
+            Matcher lm = TAG_RE.matcher(taggedTranslation);
+            StringBuilder plain = new StringBuilder();
+            int end = 0;
+            while (lm.find()) {
+                plain.append(taggedTranslation, end, lm.start());
+                if (literalTags.contains(lm.group(2).toLowerCase())) {
+                    plain.append(lm.group(0));
+                }
+                end = lm.end();
+            }
+            plain.append(taggedTranslation.substring(end));
+            return new TextFragment(plain.toString());
         }
 
         // ── Step 1: classify source codes ──────────────────────────
@@ -1118,6 +1234,8 @@ public class FilterService {
                 if (src != null) {
                     used.add(codeId);
                     result.append(src.clone());
+                } else if (literalTags.contains(tagName)) {
+                    result.append(fullTag);
                 }
                 // else: AI-hallucinated tag with no matching source
                 // code – drop silently so it doesn't end up as
@@ -1133,11 +1251,12 @@ public class FilterService {
                     Code src = codeId != null ? openingById.get(codeId) : null;
                     if (src != null) {
                         used.add(codeId);
-                        Code c = new Code(TextFragment.TagType.OPENING,
-                                          src.getType(), src.getData());
-                        c.setId(codeId);
-                        result.append(c);
+                        // A clone keeps the outer data that the XLIFF
+                        // writers print (a <g> element has no inner data).
+                        result.append(src.clone());
                         openStack.push(new OpenTag(codeId, tagName));
+                    } else if (literalTags.contains(tagName)) {
+                        result.append(fullTag);
                     }
                     // else: tag not in source → silently drop it
                 }
@@ -1162,11 +1281,10 @@ public class FilterService {
                 if (matchedId != null) {
                     Code src = closingById.get(matchedId);
                     if (src != null) {
-                        Code c = new Code(TextFragment.TagType.CLOSING,
-                                          src.getType(), src.getData());
-                        c.setId(matchedId);
-                        result.append(c);
+                        result.append(src.clone());
                     }
+                } else if (literalTags.contains(tagName)) {
+                    result.append(fullTag);
                 }
                 // else: unmatched closing tag → silently drop it
             }
@@ -1216,21 +1334,56 @@ public class FilterService {
      * Map a filename to an Okapi filter configuration ID.
      */
     private String getConfigIdForFile(String filename) {
-        String lower = filename.toLowerCase();
-        if (lower.endsWith(".docx"))  return "okf_openxml";
-        if (lower.endsWith(".xlsx"))  return "okf_openxml";
-        if (lower.endsWith(".pptx"))  return "okf_openxml";
-        if (lower.endsWith(".html") || lower.endsWith(".htm"))
-                                      return "okf_html";
-        if (lower.endsWith(".xliff") || lower.endsWith(".xlf"))
-                                      return "okf_xliff";
-        if (lower.endsWith(".tmx"))   return "okf_tmx";
-        if (lower.endsWith(".po"))    return "okf_po";
-        if (lower.endsWith(".idml"))  return "okf_idml";
+        FormatTable.Format format = formatTable.forFile(filename);
+        if (format == null) {
+            throw new IllegalArgumentException(
+                    "Unsupported file format: " + filename +
+                    ". Supported: " + String.join(", ", formatTable.extensions()));
+        }
+        return format.configId;
+    }
 
-        throw new IllegalArgumentException(
-                "Unsupported file format: " + filename +
-                ". Supported: " + String.join(", ", SUPPORTED_FORMATS.keySet()));
+    /**
+     * The configuration for a file on disk. XLIFF 2 files often carry the
+     * XLIFF 1.2 extensions (.xlf, .xliff), so those are told apart by the
+     * version attribute of the root element.
+     */
+    private String getConfigIdForFile(String filename, Path file) {
+        String configId = getConfigIdForFile(filename);
+        if ("okf_xliff".equals(configId) && isXliff2(file)) {
+            return "okf_xliff2";
+        }
+        return configId;
+    }
+
+    private static final Pattern XLIFF_VERSION = Pattern.compile(
+            "<xliff\\b[^>]*\\bversion\\s*=\\s*[\"']([0-9.]+)[\"']", Pattern.DOTALL);
+
+    static boolean isXliff2(Path file) {
+        try (InputStream in = Files.newInputStream(file)) {
+            String head = new String(in.readNBytes(8192), java.nio.charset.StandardCharsets.UTF_8);
+            Matcher m = XLIFF_VERSION.matcher(head);
+            return m.find() && m.group(1).startsWith("2");
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Set the parameter overrides that formats.json gives for this file's
+     * format. Used on both the extract and the merge path.
+     */
+    private void applyTableParameters(IFilter filter, String filename) {
+        FormatTable.Format format = formatTable.forFile(filename);
+        if (format == null || format.parameters.isEmpty()) return;
+        IParameters params = filter.getParameters();
+        if (params == null) return;
+        for (Map.Entry<String, Object> p : format.parameters.entrySet()) {
+            Object v = p.getValue();
+            if (v instanceof Boolean) params.setBoolean(p.getKey(), (Boolean) v);
+            else if (v instanceof Integer) params.setInteger(p.getKey(), (Integer) v);
+            else params.setString(p.getKey(), String.valueOf(v));
+        }
     }
 
     private static String getSuffix(String filename) {
