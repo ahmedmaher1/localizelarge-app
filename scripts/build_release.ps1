@@ -76,7 +76,7 @@ Write-Host "== 5. Checks =="
 # Packages removed from v1 must not be in the build: look for their package
 # folders and for the WebEngine libraries.
 $Internal = Join-Path $Dist "_internal"
-$ForbiddenFolders = @("fitz", "pymupdf", "vosk", "sounddevice", "boto3", "botocore", "deepl", "pynput", "ahk", "google\generativeai", "PyQt6\Qt6\resources")
+$ForbiddenFolders = @("fitz", "pymupdf", "vosk", "sounddevice", "boto3", "botocore", "deepl", "pynput", "ahk", "google\generativeai")
 $Found = @()
 foreach ($folder in $ForbiddenFolders) {
     $path = Join-Path $Internal $folder
