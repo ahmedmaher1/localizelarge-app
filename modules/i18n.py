@@ -1,5 +1,5 @@
 """
-Supervertaler Workbench internationalisation (i18n) support.
+Localize Large internationalisation (i18n) support.
 
 Added in v1.10.207 as the MVP infrastructure for translating the UI into
 other languages. The MVP scope is deliberately narrow: menu bar, toolbar,
@@ -10,10 +10,10 @@ non-primary tooltips remain in English for v1.
 
 # Why XLIFF (and not .ts or .po)
 
-Supervertaler's audience is professional translators. Every CAT tool in
+Localize Large's audience is professional translators. Every CAT tool in
 regular use in the industry – Trados, memoQ, Phrase, OmegaT, Wordfast,
 and Workbench itself – natively supports **XLIFF 1.2** as a source-file
-format. A translator can take ``supervertaler_zh_CN.xlf``, open it in
+format. A translator can take ``localizelarge_zh_CN.xlf``, open it in
 their normal CAT environment with their normal TMs and termbases, work
 through the strings, and send it back. No tool-specific dance.
 
@@ -42,7 +42,7 @@ marked ``needs-translation``)::
 
     python tools/extract_strings.py
 
-Translators open the locale file (e.g. ``translations/supervertaler_zh_CN.xlf``)
+Translators open the locale file (e.g. ``translations/localizelarge_zh_CN.xlf``)
 in their CAT tool of choice, translate, save back as XLIFF, and PR the
 file. On the next Workbench launch in that locale, translations load
 automatically.
@@ -267,7 +267,7 @@ class XliffTranslator(QTranslator):
             self._loaded_locale = "en"
             return False
 
-        xlf_path = translations_dir() / f"supervertaler_{locale_code}{TRANSLATION_FILE_SUFFIX}"
+        xlf_path = translations_dir() / f"localizelarge_{locale_code}{TRANSLATION_FILE_SUFFIX}"
         if not xlf_path.exists():
             return False
 

@@ -15,7 +15,7 @@ XML document of the form:
         ...
     </Elements><CultureName>nl-BE</CultureName></Segment>
 
-We map those Trados tags to Supervertaler's existing inline-tag form so the
+We map those Trados tags to Localize Large's existing inline-tag form so the
 text round-trips cleanly into the grid and TM lookups:
 
     <Tag Type=Start  TagID=N>   →  <N>
@@ -128,7 +128,7 @@ class SDLTMReader:
         batch_size: int = 1000,
     ) -> Iterator[Tuple[int, str, str, Optional[str]]]:
         """Yield (tu_id, source_text, target_text, change_date) tuples with
-        tags converted to Supervertaler `<N>` form.
+        tags converted to Localize Large `<N>` form.
 
         With default args (`since_id=0`, `since_change_date=None`) yields
         every translatable TU in the file. Pass non-default args for an
@@ -187,10 +187,10 @@ class SDLTMReader:
             self.log(f"  Skipped {skipped} TU(s) with empty/unparseable segments")
 
 
-# ─── XML → Supervertaler tag-form converter ─────────────────────────────
+# ─── XML → Localize Large tag-form converter ─────────────────────────────
 
 def parse_segment_xml(xml: str) -> str:
-    """Convert a Trados `<Segment>` XML doc to Supervertaler text form.
+    """Convert a Trados `<Segment>` XML doc to Localize Large text form.
 
     Walks `<Elements>` children in order, mapping `<Text><Value>...</Value>`
     to its literal text and `<Tag>` blocks to `<N>`, `</N>`, or `<N/>` based

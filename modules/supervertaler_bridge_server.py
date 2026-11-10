@@ -1,5 +1,5 @@
 """
-Supervertaler Bridge Server (formerly "Sidekick Bridge")
+Localize Large Bridge Server (formerly "Sidekick Bridge")
 ========================================================
 
 Localhost HTTP listener that lets the Supervertaler for Trados plugin
@@ -7,7 +7,7 @@ Localhost HTTP listener that lets the Supervertaler for Trados plugin
 of ``trados_bridge_client``: there Workbench reads context from Trados;
 here Trados sends a prompt for Workbench to run.
 
-The feature was renamed from "Sidekick Bridge" to "Supervertaler Bridge".
+The feature was renamed from "Sidekick Bridge" to "Localize Large Bridge".
 Only the on-disk handshake filename ``sidekick-bridge.json`` and the log
 ``sidekick-bridge.log`` keep the old name: they are a wire-protocol
 surface that already-deployed Trados plugins look up by exactly that
@@ -88,7 +88,7 @@ def _log(message: str) -> None:
             if not _LOG_TRUNCATED_THIS_SESSION:
                 _LOG_TRUNCATED_THIS_SESSION = True
                 header = (
-                    f"--- Supervertaler Bridge session started at {datetime.now().isoformat()} "
+                    f"--- Localize Large Bridge session started at {datetime.now().isoformat()} "
                     f"(PID {os.getpid()}) ---\n"
                     f"runtime_dir = {_runtime_dir()}\n"
                     f"handshake   = {_handshake_path()}\n"
@@ -112,12 +112,12 @@ def _resolve_user_data_root() -> Path:
     Falls back to ``~/Supervertaler`` when no pointer is present.
     """
     if sys.platform == "win32":
-        pointer = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "Supervertaler" / "config.json"
+        pointer = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "Localize Large" / "config.json"
     elif sys.platform == "darwin":
-        pointer = Path.home() / "Library" / "Application Support" / "Supervertaler" / "config.json"
+        pointer = Path.home() / "Library" / "Application Support" / "Localize Large" / "config.json"
     else:
         xdg = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
-        pointer = xdg / "Supervertaler" / "config.json"
+        pointer = xdg / "Localize Large" / "config.json"
 
     if pointer.exists():
         try:
@@ -128,7 +128,7 @@ def _resolve_user_data_root() -> Path:
         except Exception:
             pass
 
-    return Path.home() / "Supervertaler"
+    return Path.home() / "Localize Large"
 
 
 def _runtime_dir() -> Path:

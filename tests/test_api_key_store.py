@@ -173,7 +173,7 @@ def test_round_trip_and_the_key_appears_nowhere_in_the_locked_file(scratch):
     assert store.get("claude") == K1 and store.get("openai") == UNI
     assert set(locked_map(scratch.locked)) == {"claude", "openai"}
     no_key_text_in(scratch)
-    assert read_bytes(scratch.locked).startswith(b'{\r\n  "_comment": "Supervertaler API keys, locked by Windows')
+    assert read_bytes(scratch.locked).startswith(b'{\r\n  "_comment": "Localize Large API keys, locked by Windows')
 
 
 @windows_only
@@ -648,8 +648,8 @@ def test_keychain_round_trip_one_item_with_plain_values(scratch, keychain):
     assert store.set_key("claude", K1) and store.set_key("google", GT)
     os.remove(scratch.plain)
     assert store.get("claude") == K1 and store.get("google") == GT
-    assert set(keychain.items) == {("Supervertaler", "api-keys")}       # one item; the second one deleted
-    assert json.loads(keychain.items[("Supervertaler", "api-keys")]) == {"claude": K1, "google": GT}
+    assert set(keychain.items) == {("Localize Large", "api-keys")}       # one item; the second one deleted
+    assert json.loads(keychain.items[("Localize Large", "api-keys")]) == {"claude": K1, "google": GT}
 
 
 def test_keychain_save_stopped_after_the_main_item_is_deleted_still_reads(scratch, keychain):
@@ -657,12 +657,12 @@ def test_keychain_save_stopped_after_the_main_item_is_deleted_still_reads(scratc
     keychain.stop_after_deleting = "api-keys"
     with pytest.raises(SystemExit):
         store.set_key("openai", OAI_SHARED)
-    assert ("Supervertaler", "api-keys") not in keychain.items          # the main item is gone...
+    assert ("Localize Large", "api-keys") not in keychain.items          # the main item is gone...
     keychain.stop_after_deleting = None
     os.remove(scratch.plain)
     assert store.get("claude") == K1 and store.get("openai") == OAI_SHARED   # ...and api-keys.new holds them
     assert store.set_key("gemini", GEM)                                   # the next save puts things right
-    assert set(keychain.items) == {("Supervertaler", "api-keys")}
+    assert set(keychain.items) == {("Localize Large", "api-keys")}
     assert store.get("openai") == OAI_SHARED
 
 
@@ -678,17 +678,17 @@ def test_keychain_sync_join_and_profiles(scratch, keychain):
 
 
 def test_a_damaged_keychain_item_is_unreadable_then_set_aside(scratch, keychain):
-    keychain.items[("Supervertaler", "api-keys")] = '{"claude": "sk-ant'
+    keychain.items[("Localize Large", "api-keys")] = '{"claude": "sk-ant'
     found = store.lookup("claude")
     assert found.status == store.UNREADABLE
     holder = "Keychain item" if sys.platform == "darwin" else "secret-store item"
     assert store.when_used(found, "claude", PLACE) == (
-        f"Can't use your Anthropic key – the {holder} holding your API keys is damaged: Supervertaler / api-keys. "
+        f"Can't use your Anthropic key – the {holder} holding your API keys is damaged: Localize Large / api-keys. "
         "Paste the key in again in Settings → AI Settings.")
     write_plain(scratch, claude=K2)
     sync = store.sync_locked()
     asides = [u for (_, u) in keychain.items if u.startswith("api-keys.damaged-")]
-    assert len(asides) == 1 and keychain.items[("Supervertaler", asides[0])] == '{"claude": "sk-ant'
+    assert len(asides) == 1 and keychain.items[("Localize Large", asides[0])] == '{"claude": "sk-ant'
     assert sync.notice.endswith(f"was damaged and has been set aside as {asides[0]}. Please paste your keys in again.")
     os.remove(scratch.plain)
     assert store.get("claude") == K2
@@ -699,16 +699,16 @@ def test_a_keychain_that_cannot_be_opened_is_unreadable_not_absent(scratch, keyc
     found = store.lookup("claude")
     assert found.status == store.UNREADABLE
     assert store.when_used(found, "claude", PLACE).endswith(
-        "could not be opened: Supervertaler / api-keys. Try again in a moment.")
+        "could not be opened: Localize Large / api-keys. Try again in a moment.")
     assert store.set_key("claude", K1)               # saved in the plain file; the next start locks it
     assert store.get("claude") == K1
 
 
 @pytest.mark.parametrize("platform, module, notice", [
     ("darwin", "keyring.backends.macOS",
-     "Your Mac's Keychain isn't available to Supervertaler, so your keys stay in Supervertaler's settings file as before."),
+     "Your Mac's Keychain isn't available to Localize Large, so your keys stay in Localize Large's settings file as before."),
     ("linux", "keyring.backends.SecretService",
-     "Your computer's secret store isn't available to Supervertaler, so your keys stay in Supervertaler's settings file as before."),
+     "Your computer's secret store isn't available to Localize Large, so your keys stay in Localize Large's settings file as before."),
 ])
 def test_m7_when_a_frozen_build_has_lost_its_keychain_backend(scratch, monkeypatch, platform, module, notice):
     import keyring.backends

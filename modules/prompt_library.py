@@ -9,7 +9,7 @@ Supports two types:
 Supports both JSON (legacy) and Markdown (recommended) formats.
 Markdown files use YAML frontmatter for metadata.
 
-Extracted from main Supervertaler file for better modularity.
+Extracted from main Localize Large file for better modularity.
 """
 
 import os

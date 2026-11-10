@@ -16,7 +16,7 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Supervertaler Okapi Sidecar — lightweight REST service that wraps
+ * Localize Large Okapi Sidecar — lightweight REST service that wraps
  * Okapi Framework filters for document extraction and merge.
  *
  * Endpoints:
@@ -140,7 +140,7 @@ public class App {
         });
 
         app.start(port);
-        log.info("Supervertaler Okapi Sidecar started on port {}", port);
+        log.info("Localize Large Okapi Sidecar started on port {}", port);
     }
 
     /**

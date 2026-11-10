@@ -1,6 +1,6 @@
 """
 Simple Segmenter
-Sentence segmentation for the text Supervertaler splits itself (plain-text and
+Sentence segmentation for the text Localize Large splits itself (plain-text and
 Markdown imports, pasted text), extended with the user's segmentation rules
 from Settings → Segmentation Rules (issue #191).
 

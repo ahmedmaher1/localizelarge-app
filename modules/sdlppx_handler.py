@@ -51,7 +51,7 @@ for prefix, uri in NAMESPACES.items():
 # XLIFF namespace URI (for creating elements)
 XLIFF_NS = NAMESPACES['xliff']
 
-# Regex for Supervertaler inline tag markers:
+# Regex for Localize Large inline tag markers:
 #   <ID>...</ID>  = paired tag (maps to <g id="ID">...</g>)
 #   <ID/>         = standalone tag (maps to <x id="ID"/>)
 # Tag IDs can be numeric (e.g. "14") or alphanumeric (e.g. "qSuperscript").
@@ -416,7 +416,7 @@ class SDLXLIFFParser:
                 tag_name = child.tag.split('}')[-1] if '}' in child.tag else child.tag
                 
                 if tag_name == 'g':
-                    # Paired tag - convert to Supervertaler format
+                    # Paired tag - convert to Localize Large format
                     tag_id = child.get('id', '')
                     text_parts.append(f'<{tag_id}>')
                     process_element(child, depth + 1)
@@ -510,7 +510,7 @@ class SDLXLIFFParser:
 
 def _markers_to_xml(text: str) -> str:
     """
-    Convert Supervertaler marker tags in text to SDLXLIFF XML elements.
+    Convert Localize Large marker tags in text to SDLXLIFF XML elements.
 
     <N>content</N>  → <g id="N">content</g>
     <N/>            → <x id="N"/>
@@ -1529,7 +1529,7 @@ class TradosPackageHandler:
     
     This class provides methods to:
     - Extract and parse SDLPPX packages
-    - Import segments into Supervertaler projects
+    - Import segments into Localize Large projects
     - Update translations in SDLXLIFF files
     - Create return packages (SDLRPX)
     """
@@ -1927,7 +1927,7 @@ class TradosPackageHandler:
         Update segment confirmation status in sdl:seg-defs.
         
         Changes the conf attribute from 'Draft' to 'Translated' for segments
-        that have been translated in Supervertaler.
+        that have been translated in Localize Large.
         """
         # Status mapping from internal to SDL format
         # Trados terminology: "Translated" = confirmed by translator,
@@ -1991,7 +1991,7 @@ class TradosPackageHandler:
 
     def _set_element_text(self, elem: ET.Element, text: str):
         """
-        Set element text, converting Supervertaler marker tags back to SDLXLIFF
+        Set element text, converting Localize Large marker tags back to SDLXLIFF
         XML elements.
 
         Marker format (from import):

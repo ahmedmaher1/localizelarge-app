@@ -1,5 +1,5 @@
 """
-Ribbon Widget - Modern Office-style ribbon interface for Supervertaler Qt
+Ribbon Widget - Modern Office-style ribbon interface for Localize Large Qt
 
 Provides context-sensitive ribbon tabs with grouped tool buttons,
 similar to memoQ, Trados Studio, and Microsoft Office applications.

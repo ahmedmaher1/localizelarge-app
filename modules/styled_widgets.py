@@ -1,4 +1,4 @@
-"""Shared styled widgets used across Supervertaler.
+"""Shared styled widgets used across Localize Large.
 
 Currently a single class – :class:`CheckmarkCheckBox` – that previously
 existed as nine near-identical copies scattered through the codebase.
@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import QCheckBox, QPushButton, QRadioButton, QStyleOptionBu
 
 
 class CheckmarkCheckBox(QCheckBox):
-    """Standard Supervertaler styled checkbox.
+    """Standard Localize Large styled checkbox.
 
     16×16 rounded indicator, white background unchecked, green fill
     (Material 500 / hover 600) when checked, with a manually-painted
@@ -279,7 +279,7 @@ class HelpButton(QPushButton):
 
 
 class CheckmarkRadioButton(QRadioButton):
-    """Standard Supervertaler styled radio button.
+    """Standard Localize Large styled radio button.
 
     Matches :class:`CheckmarkCheckBox` (same 16px indicator, green-when-checked
     look) but round, with a manually-painted white centre dot so the checked

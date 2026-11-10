@@ -70,7 +70,7 @@ public class FilterService {
     }
 
     /**
-     * Applies Supervertaler's preferred filter parameters to a freshly
+     * Applies Localize Large's preferred filter parameters to a freshly
      * created filter. For the Word/OpenXML filter this excludes drawing
      * "graphic metadata" — the auto-generated object names such as
      * "Shape 16", "Group 574248", "Rectangle 4" and picture alt-text —
@@ -91,7 +91,7 @@ public class FilterService {
     }
 
     /**
-     * Applies Supervertaler's preferred filter parameters to a freshly
+     * Applies Localize Large's preferred filter parameters to a freshly
      * created filter. For the Word/OpenXML filter this controls which
      * parts of an Office document become translatable text units —
      * comments, hidden text, headers/footers, document properties, etc.
@@ -99,7 +99,7 @@ public class FilterService {
      * object names such as "Shape 16", "Group 574248").
      *
      * The {@code opts} map carries the user's per-file-type import choices
-     * (keys below); any key that is absent falls back to the Supervertaler
+     * (keys below); any key that is absent falls back to the Localize Large
      * default. {@code opts} may be null (→ all defaults).
      *
      * MUST be applied identically on the extract and merge paths so the

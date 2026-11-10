@@ -1,7 +1,7 @@
 """
 AI Actions Module
 
-Provides structured action interface for AI Assistant to interact with Supervertaler
+Provides structured action interface for AI Assistant to interact with Localize Large
 resources (Prompt Library, Translation Memories, Termbases).
 
 Phase 2 of AI Assistant Enhancement Plan:
@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Tuple, Any
 
 class AIActionSystem:
     """
-    Handles parsing and execution of AI actions on Supervertaler resources.
+    Handles parsing and execution of AI actions on Localize Large resources.
     """
 
     def __init__(self, prompt_library, parent_app=None, log_callback=None):
@@ -734,7 +734,7 @@ class AIActionSystem:
 
 ## 🔧 Available Actions
 
-You can interact with the Supervertaler Prompt Library using structured actions.
+You can interact with the Localize Large Prompt Library using structured actions.
 When you want to perform an action, use this format:
 
 ACTION:function_name

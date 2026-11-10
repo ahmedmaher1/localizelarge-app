@@ -1,7 +1,7 @@
 """
 Termbase Manager Module
 
-Handles termbase/termbase management for Supervertaler:
+Handles termbase/termbase management for Localize Large:
 - Create/delete glossaries
 - Add/edit/delete terms
 - Activate/deactivate for projects

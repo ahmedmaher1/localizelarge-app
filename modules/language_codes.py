@@ -123,7 +123,7 @@ def iso_to_english_name(code: Optional[str]) -> Optional[str]:
 #
 # Every part of the app that needs to normalise or compare a language should
 # use these functions (directly, or via the back-compat shims in
-# tmx_generator / Supervertaler that now delegate here). Do NOT add another
+# tmx_generator / Localize Large that now delegate here). Do NOT add another
 # private name→code table somewhere — that is exactly what caused years of
 # "no results when From/To is set" bugs.
 #

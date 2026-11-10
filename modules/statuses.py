@@ -1,4 +1,4 @@
-"""Centralized status vocabulary for Supervertaler segments."""
+"""Centralized status vocabulary for Localize Large segments."""
 
 from dataclasses import dataclass
 from typing import Dict, Optional

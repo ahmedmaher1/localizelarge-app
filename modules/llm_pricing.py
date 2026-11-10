@@ -1,5 +1,5 @@
 """
-LLM Pricing Module for Supervertaler
+LLM Pricing Module for Localize Large
 =====================================
 
 Per-model token prices, loaded from the canonical ``pricing.json`` that is
@@ -7,7 +7,7 @@ shared verbatim with Supervertaler for Trados (single source of truth).
 
 Resolution order:
   1. ``<home>/Supervertaler/pricing.json`` — the shared user override. Edit this
-     one file to re-price BOTH Supervertaler products at once.
+     one file to re-price BOTH Localize Large products at once.
   2. ``modules/pricing.json`` bundled with this app — the default canonical list.
   3. a tiny hardcoded table — only if both files fail to load, so cost
      estimation never crashes.

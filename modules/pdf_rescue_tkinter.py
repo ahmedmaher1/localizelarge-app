@@ -3,7 +3,7 @@ PDF Rescue Module
 Embeddable version of the AI-powered OCR tool for extracting text from poorly formatted PDFs
 Uses OpenAI's GPT-4 Vision API
 
-This module can be embedded in the main Supervertaler application as a tab.
+This module can be embedded in the main Localize Large application as a tab.
 """
 
 import os

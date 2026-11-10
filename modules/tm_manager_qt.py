@@ -1,5 +1,5 @@
 """
-Translation Memory Manager for Supervertaler Qt
+Translation Memory Manager for Localize Large Qt
 Provides comprehensive TM management features:
 - Browse all TM entries
 - Concordance search
@@ -972,7 +972,7 @@ class TMManagerDialog(QDialog):
             header.set('srclang', 'en')
             header.set('adminlang', 'en')
             header.set('segtype', 'sentence')
-            header.set('creationtool', 'Supervertaler')
+            header.set('creationtool', 'Localize Large')
             header.set('creationtoolversion', '4.0')
             header.set('datatype', 'plaintext')
             

@@ -84,7 +84,7 @@ def download_and_extract(
 
     Args:
         model_key: One of the keys in :data:`MODELS`.
-        user_data_path: User's Supervertaler data folder. Models go in
+        user_data_path: User's Localize Large data folder. Models go in
             ``<user_data>/vosk-models/``.
         progress_callback: Optional ``callback(bytes_done, bytes_total)``
             invoked during the download. Both values are -1 if the server

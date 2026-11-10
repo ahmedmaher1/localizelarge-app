@@ -451,11 +451,11 @@ class KeyboardShortcutsWidget(QWidget):
             mac_note = QLabel(
                 "macOS: Global hotkeys require Accessibility permission on "
                 "the binary that launched Python.\n"
-                "  • Bundled Supervertaler.app → add Supervertaler\n"
+                "  • Bundled Supervertaler.app → add Localize Large\n"
                 "  • Launched from Terminal.app → add Terminal.app\n"
                 "  • Launched from iTerm2 → add iTerm2.app\n"
                 "Open System Settings → Privacy & Security → Accessibility, "
-                "tick the relevant app, then restart Supervertaler.\n\n"
+                "tick the relevant app, then restart Localize Large.\n\n"
                 "Also requires the pyobjc-framework-Cocoa Python package "
                 "(pip install pyobjc-framework-Cocoa)."
             )
@@ -579,7 +579,7 @@ class KeyboardShortcutsWidget(QWidget):
                 action_item = QTableWidgetItem(action_text)
                 if data.get("global"):
                     action_item.setToolTip(
-                        "Global – also works when Supervertaler isn't the "
+                        "Global – also works when Localize Large isn't the "
                         "frontmost app."
                     )
                 self.table.setItem(row, 2, action_item)

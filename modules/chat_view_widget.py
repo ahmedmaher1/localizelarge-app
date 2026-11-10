@@ -1,5 +1,5 @@
 """
-Chat View Widget for Supervertaler
+Chat View Widget for Localize Large
 =====================================
 
 A self-contained QWidget that displays a chat conversation and provides
@@ -329,7 +329,7 @@ class ChatViewWidget(QWidget):
 
         self._context_chips_row.addStretch()
 
-        # Trados Supervertaler Bridge integration: detect whether the Trados
+        # Trados Localize Large Bridge integration: detect whether the Trados
         # plugin is running and auto-light the Trados chip when it is.
         # The chip is hidden entirely when no bridge has ever been seen,
         # to avoid cluttering the UI for users who don't have the plugin.
@@ -393,7 +393,7 @@ class ChatViewWidget(QWidget):
             chip.setStyleSheet(self._CHIP_OFF)
             chip.setToolTip(
                 "Trados plugin not detected. Start Trados Studio with the "
-                "Supervertaler plugin to enable Trados-aware chat."
+                "Localize Large plugin to enable Trados-aware chat."
             )
 
         self._trados_bridge_available = available
@@ -804,7 +804,7 @@ class ChatViewWidget(QWidget):
         UnifiedPromptManagerQt replaces this with context-aware sending.
         """
         prompt = user_text or "Describe this image."
-        system_prompt = "You are an AI assistant for Supervertaler, a professional translation tool."
+        system_prompt = "You are an AI assistant for Localize Large, a professional translation tool."
 
         # Trados-aware mode: prepend the active Trados project context to
         # the system prompt when the chip is on AND the bridge is reachable.
@@ -916,7 +916,7 @@ class ChatViewWidget(QWidget):
         role = msg_data.get('role', 'system')
         title = {
             'user': 'Your message',
-            'assistant': 'Supervertaler Sidekick',
+            'assistant': 'Localize Large Sidekick',
         }.get(role, 'System message')
 
         dlg = QDialog(self)

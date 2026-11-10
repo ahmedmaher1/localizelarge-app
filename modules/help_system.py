@@ -1,5 +1,5 @@
 """
-Context-sensitive help system for Supervertaler.
+Context-sensitive help system for Localize Large.
 
 Opens the relevant documentation page when the user presses F1
 or uses the Help > Context Help menu action.

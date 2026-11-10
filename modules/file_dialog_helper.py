@@ -1,5 +1,5 @@
 """
-File Dialog Helper for Supervertaler
+File Dialog Helper for Localize Large
 Wraps PyQt6 QFileDialog to remember last used directory across all dialogs.
 
 Author: Michael Beijer

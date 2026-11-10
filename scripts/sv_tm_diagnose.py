@@ -1,4 +1,4 @@
-r"""Supervertaler Workbench - "no TM matches" diagnostic.
+r"""Localize Large - "no TM matches" diagnostic.
 
 Usage
     python sv_tm_diagnose.py
@@ -23,7 +23,7 @@ HOME = os.path.expanduser("~")
 def find_db(explicit=None):
     if explicit:
         return explicit
-    for p in glob.glob(os.path.join(HOME, "Supervertaler", "**", "supervertaler.db"),
+    for p in glob.glob(os.path.join(HOME, "Localize Large", "**", "supervertaler.db"),
                        recursive=True):
         return p
     return None
@@ -33,7 +33,7 @@ def find_projects(explicit=None):
     if explicit:
         return [explicit]
     found = []
-    for root in (os.path.join(HOME, "Supervertaler"), os.path.join(HOME, "Documents")):
+    for root in (os.path.join(HOME, "Localize Large"), os.path.join(HOME, "Documents")):
         found += glob.glob(os.path.join(root, "**", "*.svproj"), recursive=True)
     found.sort(key=os.path.getmtime, reverse=True)
     return found[:5]

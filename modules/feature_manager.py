@@ -1,5 +1,5 @@
 """
-Supervertaler Feature Manager
+Localize Large Feature Manager
 =============================
 
 Manages feature availability and user enable/disable toggles. Features can be

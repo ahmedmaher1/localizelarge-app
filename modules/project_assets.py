@@ -1,10 +1,10 @@
 """Project-folder asset handling (issue #228).
 
-Supervertaler projects live in their own folder (the `.svproj` plus the files
+Localize Large projects live in their own folder (the `.llproj` plus the files
 it references). To make a project portable — movable, renamable, zippable,
 emailable — and to make it impossible for a project to bind to an unrelated
 document, the source file is **bundled** into a `source/` subfolder and the
-`.svproj` stores it as a path **relative** to the project folder.
+`.llproj` stores it as a path **relative** to the project folder.
 
 This module is the small, pure-ish core (copy + path math), so it can be
 unit-tested without the GUI. `Supervertaler.py` calls:
@@ -36,7 +36,7 @@ def resolve_source_path(stored_path, project_dir):
     """Resolve a project's stored source path to an absolute path.
 
     Relative paths resolve against ``project_dir`` (the folder containing the
-    ``.svproj``); absolute paths (legacy projects) are returned normalised.
+    ``.llproj``); absolute paths (legacy projects) are returned normalised.
     Returns ``None`` for an empty/None ``stored_path``.
     """
     if not stored_path:
@@ -59,7 +59,7 @@ def to_project_relative(abs_path, project_dir):
 
 
 def nest_in_own_folder(svproj_path):
-    """Return a path that places ``<name>.svproj`` inside a folder named
+    """Return a path that places ``<name>.llproj`` inside a folder named
     ``<name>`` (creating the folder), so a project gets its own tidy home and
     its `source/`/`target/` subfolders don't clutter a shared folder.
 
@@ -265,11 +265,11 @@ def _looks_complete(path):
 def write_project_file(path, text):
     """Write a project file safely.
 
-    The previous version is kept as ``<name>.svproj.bak`` (only when it was
+    The previous version is kept as ``<name>.llproj.bak`` (only when it was
     itself complete), and the new content goes to a temporary file next to
     the project that then replaces it in one step – so a save that fails
     part-way (full disk, crash, a value that will not serialise) can no
-    longer leave a truncated ``.svproj``. Returns the backup path, or None
+    longer leave a truncated ``.llproj``. Returns the backup path, or None
     when there was no complete previous version or it could not be copied
     (the backup is a convenience; it never stops the save itself).
     """

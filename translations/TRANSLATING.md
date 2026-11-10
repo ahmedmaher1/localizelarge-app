@@ -47,10 +47,10 @@ One file per locale, in this folder:
 
 ```
 translations/
-├── supervertaler_template.xlf   <- regenerated from source; never edited by hand
-├── supervertaler_zh_CN.xlf      <- Simplified Chinese
-├── supervertaler_zh_TW.xlf      <- Traditional Chinese
-└── supervertaler_pl.xlf         <- Polish
+├── localizelarge_template.xlf   <- regenerated from source; never edited by hand
+├── localizelarge_zh_CN.xlf      <- Simplified Chinese
+├── localizelarge_zh_TW.xlf      <- Traditional Chinese
+└── localizelarge_pl.xlf         <- Polish
 ```
 
 At startup, Supervertaler reads the `.xlf` matching the user's selected language (Settings → General → 🌐 Language) and applies it. Targets marked `needs-translation` (the default for untranslated entries) fall through to English – partial coverage is fine.
@@ -61,7 +61,7 @@ At startup, Supervertaler reads the `.xlf` matching the user's selected language
 2. **Copy the template** as a starting point:
 
    ```bash
-   cp translations/supervertaler_template.xlf translations/supervertaler_<your_locale>.xlf
+   cp translations/localizelarge_template.xlf translations/localizelarge_<your_locale>.xlf
    ```
 
 3. **Set the target language** on the `<file>` element near the top of the new file:
@@ -78,7 +78,7 @@ The Settings dropdown automatically marks locales without a `.xlf` as `[no trans
 
 ## Translating in your CAT tool
 
-Pick any CAT tool that handles XLIFF (they all do). Open `translations/supervertaler_<your_locale>.xlf` as a regular source file. You'll see the English source on the left and an empty target column on the right – the same workflow as any other XLIFF job.
+Pick any CAT tool that handles XLIFF (they all do). Open `translations/localizelarge_<your_locale>.xlf` as a regular source file. You'll see the English source on the left and an empty target column on the right – the same workflow as any other XLIFF job.
 
 **Workbench itself**: File → Import → Bilingual XLIFF (.sdlxliff or generic). Supervertaler's XLIFF is the standard variant, not SDLXLIFF or MQXLIFF, but the generic XLIFF importer handles it.
 
@@ -166,10 +166,10 @@ python tools/merge_template.py      # 2. propagate new strings into every locale
 
 **Step 1** walks the AST of `Supervertaler.py` + `modules/i18n.py`, finds every
 `self.tr(...)` call (literal arguments only — f-strings are skipped), and writes
-`translations/supervertaler_template.xlf`.
+`translations/localizelarge_template.xlf`.
 
 **Step 2** merges that template into each existing locale file
-(`supervertaler_zh_CN.xlf`, etc.): completed translations whose source text is
+(`localizelarge_zh_CN.xlf`, etc.): completed translations whose source text is
 unchanged are **preserved** (`state="translated"`/`signed-off`), brand-new or
 reworded strings appear as `needs-translation`, and strings removed from the
 code are dropped. (A CAT tool's own "update from source" can do the same job if

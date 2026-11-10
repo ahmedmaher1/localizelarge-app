@@ -40,7 +40,7 @@ class InlineCodesWidget(QWidget):
             "Inline codes are placeholders and markup in the text that must reach the translation "
             "unchanged – <code>{playerName}</code>, <code>%s</code>, <code>\\n</code>, "
             "<code>&lt;color=#f00&gt;</code> and the like, typical of software strings and game "
-            "files. Describe them here with regular expressions and Supervertaler treats them "
+            "files. Describe them here with regular expressions and Localize Large treats them "
             "like inline tags:"
             "<ul style='margin-top:4px;'>"
             "<li>they are coloured like tags in the grid;</li>"

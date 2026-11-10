@@ -4,7 +4,7 @@ TMX Generator Module
 Helper class for generating TMX (Translation Memory eXchange) files.
 Supports TMX 1.4 format with proper XML structure.
 
-Extracted from main Supervertaler file for better modularity.
+Extracted from main Localize Large file for better modularity.
 """
 
 import re
@@ -200,7 +200,7 @@ class TMXGenerator:
         header.set('srclang', get_simple_lang_code(source_lang))
         header.set('adminlang', 'en')
         header.set('segtype', 'sentence')
-        header.set('creationtool', 'Supervertaler')
+        header.set('creationtool', 'Localize Large')
         header.set('creationtoolversion', '3.6.0-beta')
         header.set('datatype', 'unknown')
 

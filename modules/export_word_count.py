@@ -3,7 +3,7 @@ Export Word Count
 =================
 
 Reads a freshly exported translation back and counts the words it contains,
-so Supervertaler can warn when an export looks as if it silently dropped text
+so Localize Large can warn when an export looks as if it silently dropped text
 (the post-export safeguard added in v1.10.254 for DOCX; issue #219 extends it
 to the other formats the Okapi merge produces).
 

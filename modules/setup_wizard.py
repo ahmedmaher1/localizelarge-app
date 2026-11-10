@@ -1,5 +1,5 @@
 """
-Setup Wizard for Supervertaler First Launch
+Setup Wizard for Localize Large First Launch
 Guides new users to select their user_data folder location.
 
 Author: Michael Beijer
@@ -16,7 +16,7 @@ from modules.config_manager import ConfigManager
 
 class SetupWizard:
     """
-    First-launch setup wizard for Supervertaler.
+    First-launch setup wizard for Localize Large.
     
     Guides users through:
     1. Welcome and explanation
@@ -64,7 +64,7 @@ class SetupWizard:
                 # User cancelled
                 messagebox.showinfo(
                     "Setup Cancelled",
-                    "Supervertaler setup was cancelled. The application will exit."
+                    "Localize Large setup was cancelled. The application will exit."
                 )
                 return False, ""
             
@@ -77,7 +77,7 @@ class SetupWizard:
             
             # Step 3b: Show confirmation of what will be created
             confirm_message = (
-                "Supervertaler will create the following structure:\n\n"
+                "Localize Large will create the following structure:\n\n"
                 f"{self.selected_path}\n"
                 f"  ├── prompt_library/\n"
                 f"  │   ├── domain_expertise/\n"
@@ -99,7 +99,7 @@ class SetupWizard:
                 # User wants to go back and select again
                 self.selected_path = self._select_folder()
                 if self.selected_path is None:
-                    messagebox.showinfo("Setup Cancelled", "Supervertaler setup was cancelled.")
+                    messagebox.showinfo("Setup Cancelled", "Localize Large setup was cancelled.")
                     return False, ""
                 # Loop back to confirmation by recursing (or just continue with the new path)
             
@@ -137,7 +137,7 @@ class SetupWizard:
             # Success!
             messagebox.showinfo(
                 "Setup Complete",
-                f"✅ Supervertaler is ready!\n\n"
+                f"✅ Localize Large is ready!\n\n"
                 f"Your data folder: {self.selected_path}\n\n"
                 f"Created:\n"
                 f"  • api_keys.txt (add your API keys here)\n"
@@ -157,9 +157,9 @@ class SetupWizard:
     def _show_welcome(self):
         """Show welcome dialog explaining what's happening."""
         welcome_message = (
-            "Welcome to Supervertaler!\n\n"
+            "Welcome to Localize Large!\n\n"
             "This is your first launch. We need to set up your data folder.\n\n"
-            "This folder is where Supervertaler will store:\n"
+            "This folder is where Localize Large will store:\n"
             "  • api_keys.txt (your API credentials)\n"
             "  • Translation Memories (TMs)\n"
             "  • Glossaries and Non-translatables\n"
@@ -169,7 +169,7 @@ class SetupWizard:
             "  • Session reports and configuration\n\n"
             "IMPORTANT: Select a NEW or EMPTY folder location.\n"
             "Examples: Documents/Supervertaler_Data or Desktop/Supervertaler\n\n"
-            "Supervertaler will automatically create the full folder\n"
+            "Localize Large will automatically create the full folder\n"
             "structure inside the location you select.\n\n"
             "Click OK to browse for your folder location."
         )
@@ -186,7 +186,7 @@ class SetupWizard:
         default_path = self.config._get_default_user_data_path()
         
         folder_selected = filedialog.askdirectory(
-            title="Select WHERE to create your Supervertaler Data Folder\n(e.g., Documents or Desktop - NOT the program folder)",
+            title="Select WHERE to create your Localize Large Data Folder\n(e.g., Documents or Desktop - NOT the program folder)",
             initialdir=str(Path.home()),
             mustexist=False
         )
@@ -208,7 +208,7 @@ class SetupWizard:
             True if user wants to migrate, False otherwise
         """
         migrate_message = (
-            "We found your existing Supervertaler data!\n\n"
+            "We found your existing Localize Large data!\n\n"
             f"Location: {existing_data_path}\n\n"
             "Would you like to move this data to your new location?\n\n"
             "Click YES to migrate your data to the new folder.\n"
@@ -247,7 +247,7 @@ class SetupWizardWindow:
     def run(self) -> Tuple[bool, str]:
         """Run the window-based wizard."""
         self.window = tk.Tk()
-        self.window.title("Supervertaler - First Time Setup")
+        self.window.title("Localize Large - First Time Setup")
         self.window.geometry("600x400")
         self.window.resizable(False, False)
         
@@ -272,7 +272,7 @@ class SetupWizardWindow:
         
         title = tk.Label(
             frame,
-            text="Welcome to Supervertaler!",
+            text="Welcome to Localize Large!",
             font=("Arial", 16, "bold")
         )
         title.pack(pady=10)
@@ -281,7 +281,7 @@ class SetupWizardWindow:
             frame,
             text=(
                 "This is your first launch.\n\n"
-                "Supervertaler needs to know where to store your data:\n"
+                "Localize Large needs to know where to store your data:\n"
                 "• Translation Memories\n"
                 "• Glossaries\n"
                 "• Prompts and Instructions\n"

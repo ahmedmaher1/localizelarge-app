@@ -2,10 +2,10 @@
 Merge an updated XLIFF template into existing locale files.
 
 After ``tools/extract_strings.py`` regenerates
-``translations/supervertaler_template.xlf`` with whatever strings were
+``translations/localizelarge_template.xlf`` with whatever strings were
 recently added/removed in the source, this script propagates those
-changes into every existing locale file (``supervertaler_zh_CN.xlf``,
-``supervertaler_pl.xlf``, etc.) while **preserving completed
+changes into every existing locale file (``localizelarge_zh_CN.xlf``,
+``localizelarge_pl.xlf``, etc.) while **preserving completed
 translations**.
 
 # What "merge" means
@@ -58,7 +58,7 @@ from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TRANS_DIR = REPO_ROOT / "translations"
-TEMPLATE_PATH = TRANS_DIR / "supervertaler_template.xlf"
+TEMPLATE_PATH = TRANS_DIR / "localizelarge_template.xlf"
 XLIFF_NS = "urn:oasis:names:tc:xliff:document:1.2"
 
 
@@ -128,10 +128,10 @@ def _locales_in_translations_dir() -> list[str]:
     if not TRANS_DIR.exists():
         return []
     codes: list[str] = []
-    for path in sorted(TRANS_DIR.glob("supervertaler_*.xlf")):
-        if path.name == "supervertaler_template.xlf":
+    for path in sorted(TRANS_DIR.glob("localizelarge_*.xlf")):
+        if path.name == "localizelarge_template.xlf":
             continue
-        codes.append(path.stem.replace("supervertaler_", ""))
+        codes.append(path.stem.replace("localizelarge_", ""))
     return codes
 
 
@@ -144,7 +144,7 @@ def merge_locale(locale_code: str) -> tuple[int, int]:
     needs-translation).
     """
 
-    locale_path = TRANS_DIR / f"supervertaler_{locale_code}.xlf"
+    locale_path = TRANS_DIR / f"localizelarge_{locale_code}.xlf"
     target_lang = _detect_target_language(locale_path, locale_code)
     existing = _read_existing_translations(locale_path)
 

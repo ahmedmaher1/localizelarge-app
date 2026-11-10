@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare how Trados Studio, memoQ and Supervertaler Workbench extract the
+"""Compare how Trados Studio, memoQ and Localize Large extract the
 same source documents, and report where Workbench does something different.
 
 WHY THIS EXISTS

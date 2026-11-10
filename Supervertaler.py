@@ -1,11 +1,11 @@
 """   
-Supervertaler
+Localize Large
 =============
 The Ultimate Translation Workbench.
 Modern PyQt6 interface with specialised modules to handle any problem.
 Framework: PyQt6
 
-This is the modern edition of Supervertaler using PyQt6 framework.
+This is the modern edition of Localize Large using PyQt6 framework.
 For the classic tkinter edition, see Supervertaler_tkinter.py
 
 Key Features:
@@ -49,11 +49,11 @@ def _read_version():
     # 2. Try importlib.metadata (works for pip install)
     try:
         from importlib.metadata import version
-        return version("supervertaler")
+        return version("localizelarge")
     except Exception:
         pass
     # 3. Last-resort hardcoded fallback
-    return "1.10.313"
+    return "1.0.0"
 
 __version__ = _read_version()
 __phase__ = "0.9"
@@ -152,6 +152,7 @@ def get_resource_path(relative_path: str) -> Path:
 
 
 from localizelarge import paths as _ll_paths  # the one owner of every data path
+from localizelarge import project_format as _ll_project_format
 
 
 def get_config_pointer_path() -> Path:
@@ -1588,7 +1589,7 @@ class Comment:
       ``anchor_field`` is empty, the comment is segment-level
       (anchors to the whole paragraph in export).
 
-    Backward-compat: old ``.svproj`` files store user notes as a
+    Backward-compat: old ``.llproj`` files store user notes as a
     single string in ``segment.notes``. ``Segment.from_dict`` migrates
     those to a single segment-level Comment with the legacy text.
     """
@@ -1668,7 +1669,7 @@ class Segment:
     status: str = DEFAULT_STATUS.key
     type: str = "para"  # para, heading, list_item, table_cell
     notes: str = ""  # DEPRECATED: legacy single-string note. New code should use comments[]
-                     # instead. Kept for backward-compat with .svproj files (and for code
+                     # instead. Kept for backward-compat with .llproj files (and for code
                      # paths not yet migrated). Kept in sync with comments[] by
                      # _sync_notes_from_comments() and the segment-helper methods below.
     comments: List['Comment'] = field(default_factory=list)  # v1.10.57: structured comments
@@ -1694,7 +1695,7 @@ class Segment:
     okapi_tu_id: str = ""  # Okapi text unit ID for merge round-trip
     okapi_segment_index: int = -1  # Segment index within Okapi text unit (-1 = not from Okapi)
     category: str = ""  # Okapi sub-document category: "" (body) / "comment" / "header" / "footer" / "property" / "notes"
-    join_before: Optional[str] = None  # Whitespace between this segment and the previous one on the same line when Supervertaler split the line (issue #191); plain-text export uses it to rebuild the line exactly. None = unknown → a single space
+    join_before: Optional[str] = None  # Whitespace between this segment and the previous one on the same line when Localize Large split the line (issue #191); plain-text export uses it to rebuild the line exactly. None = unknown → a single space
 
     def __post_init__(self):
         """Initialize timestamps and reconcile comments[] ↔ notes."""
@@ -1875,7 +1876,7 @@ class Project:
     files: List[Dict[str, Any]] = None  # List of files in project: [{id, name, path, type, segment_count, ...}]
     is_multifile: bool = False  # True if this is a multi-file project
     views: List[Dict[str, Any]] = None  # Saved views: [{"name": "...", "file_ids": [1, 3]}]
-    # Scratchpad for private translator notes (stored only in .svproj, never exported to CAT tools)
+    # Scratchpad for private translator notes (stored only in .llproj, never exported to CAT tools)
     scratchpad_notes: str = ""
     import_engine: str = ""  # "okapi" or "" (standard/built-in)
     import_options: Optional[Dict[str, Any]] = None  # per-file-type Okapi import toggles; reused at export/merge
@@ -2114,9 +2115,9 @@ class _QuitEventFilter(QObject):
     v1.10.238: The main window's closeEvent backgrounds the app to the system
     tray / dock (the deliberate "close to tray" behaviour) instead of quitting,
     so clicking the window's X (Windows) or red close button (macOS) keeps
-    Supervertaler running for the SuperLookup global hotkey.
+    Localize Large running for the SuperLookup global hotkey.
 
-    But an *explicit* quit — macOS "Quit Supervertaler" / ⌘Q, or a system
+    But an *explicit* quit — macOS "Quit Localize Large" / ⌘Q, or a system
     shutdown — must genuinely quit. Those arrive as a ``QEvent.Quit`` on the
     application object; we set ``main_window._really_quit`` when we see one, so
     the subsequent closeEvent accepts and terminates instead of hiding. We do
@@ -4129,7 +4130,7 @@ class ReadOnlyGridTextEditor(QTextEdit):
             menu.addSeparator()
 
         # Segment split / merge (Trados / memoQ style). Only offered when the
-        # project's segmentation is owned by Supervertaler (monolingual DOCX /
+        # project's segmentation is owned by Localize Large (monolingual DOCX /
         # Okapi / TXT-MD); hidden for bilingual CAT round-trip formats whose
         # segment slots belong to the external tool.
         try:
@@ -4288,7 +4289,7 @@ class ReadOnlyGridTextEditor(QTextEdit):
 
             # Bold heading at the top of the submenu
             from PyQt6.QtWidgets import QWidgetAction, QLabel
-            _heading_lbl = QLabel(self.tr("  Supervertaler QuickLauncher"))
+            _heading_lbl = QLabel(self.tr("  Localize Large QuickLauncher"))
             _heading_lbl.setStyleSheet("font-weight: bold; padding: 4px 8px; color: #1565C0;")
             _heading_act = QWidgetAction(qm_menu)
             _heading_act.setDefaultWidget(_heading_lbl)
@@ -5437,7 +5438,7 @@ class EditableGridTextEditor(QTextEdit):
 
             # Bold heading at the top of the submenu
             from PyQt6.QtWidgets import QWidgetAction, QLabel
-            _heading_lbl = QLabel(self.tr("  Supervertaler QuickLauncher"))
+            _heading_lbl = QLabel(self.tr("  Localize Large QuickLauncher"))
             _heading_lbl.setStyleSheet("font-weight: bold; padding: 4px 8px; color: #1565C0;")
             _heading_act = QWidgetAction(qm_menu)
             _heading_act.setDefaultWidget(_heading_lbl)
@@ -7154,7 +7155,7 @@ class DetachedLogWindow(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
-        self.setWindowTitle(self.tr("Supervertaler Workbench - Session Log"))
+        self.setWindowTitle(self.tr("Localize Large - Session Log"))
         self.setWindowIcon(self.parent.windowIcon())
         self.resize(800, 600)
 
@@ -7459,7 +7460,7 @@ class AdvancedFiltersDialog(QDialog):
 class ScratchpadDialog(QDialog):
     """Dialog for private translator notes (scratchpad).
     
-    Notes are stored only in the .svproj file and never exported to CAT tools.
+    Notes are stored only in the .llproj file and never exported to CAT tools.
     """
     
     def __init__(self, parent=None, notes_text: str = ""):
@@ -7479,7 +7480,7 @@ class ScratchpadDialog(QDialog):
         # Info label
         info_label = QLabel(
             "📝 <b>Private notes for this project</b><br>"
-            "<small>These notes are saved with your project (.svproj) file and are <b>never</b> "
+            "<small>These notes are saved with your project (.llproj) file and are <b>never</b> "
             "exported to CAT tools or shared with clients.</small>"
         )
         info_label.setWordWrap(True)
@@ -9306,8 +9307,8 @@ class SupervertalerQt(QMainWindow):
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(100, self.refresh_theme_colors)
         
-        self.log(f"Welcome to Supervertaler Workbench v{__version__}")
-        self.log("Supervertaler: The Ultimate Translation Workbench.")
+        self.log(f"Welcome to Localize Large v{__version__}")
+        self.log("Localize Large: The Ultimate Translation Workbench.")
 
         # Bring up the Voice tray icon now (in its inactive/grey
         # state) so the system tray slot is allocated up-front. Allocating
@@ -9403,7 +9404,7 @@ class SupervertalerQt(QMainWindow):
             
             # Explanation
             msg_label = QLabel(
-                "Supervertaler stores your data in a folder of your choice, which contains things like:<br><br>"
+                "Localize Large stores your data in a folder of your choice, which contains things like:<br><br>"
                 "• API keys<br>"
                 "• Translation memories<br>"
                 "• Termbases<br>"
@@ -9432,10 +9433,10 @@ class SupervertalerQt(QMainWindow):
                     str(Path.home())
                 )
                 if folder:
-                    # Append "Supervertaler" if user didn't include it
+                    # Append "Localize Large" if user didn't include it
                     folder_path = Path(folder)
-                    if folder_path.name != "Supervertaler":
-                        folder_path = folder_path / "Supervertaler"
+                    if folder_path.name != "Localize Large":
+                        folder_path = folder_path / "Localize Large"
                     path_edit.setText(str(folder_path))
             
             browse_btn.clicked.connect(browse_folder)
@@ -9563,7 +9564,7 @@ class SupervertalerQt(QMainWindow):
     def _show_first_run_welcome(self):
         """No-op since v1.9.474.
 
-        This used to pop up an intro dialog about Supervertaler's modular
+        This used to pop up an intro dialog about Localize Large's modular
         feature architecture and route the user to Settings → Features.
         Both the modular-extras system and the Features tab were retired
         when every feature module became a core dependency. The setup
@@ -9593,7 +9594,7 @@ class SupervertalerQt(QMainWindow):
             from PyQt6.QtCore import Qt
 
             dialog = QDialog(self)
-            dialog.setWindowTitle(self.tr("Supervertaler Workbench Setup Wizard"))
+            dialog.setWindowTitle(self.tr("Localize Large Setup Wizard"))
             dialog.setMinimumWidth(600)
             dialog.setMinimumHeight(450)
             dialog.setModal(True)
@@ -9623,7 +9624,7 @@ class SupervertalerQt(QMainWindow):
 
             # Explanation
             page1_msg = QLabel(
-                "Supervertaler stores your data in a folder of your choice:<br><br>"
+                "Localize Large stores your data in a folder of your choice:<br><br>"
                 "• <b>API keys</b> – Your LLM provider credentials<br>"
                 "• <b>Translation memories</b> – Reusable translation pairs<br>"
                 "• <b>Termbases</b> – Terminology databases<br>"
@@ -9651,8 +9652,8 @@ class SupervertalerQt(QMainWindow):
                 )
                 if folder:
                     folder_path = Path(folder)
-                    if folder_path.name != "Supervertaler":
-                        folder_path = folder_path / "Supervertaler"
+                    if folder_path.name != "Localize Large":
+                        folder_path = folder_path / "Localize Large"
                     path_edit.setText(str(folder_path))
 
             browse_btn.clicked.connect(browse_folder)
@@ -9711,13 +9712,13 @@ class SupervertalerQt(QMainWindow):
             page2_layout.addWidget(page2_title)
 
             # Message – kept deliberately short. Earlier versions of this
-            # page explained Supervertaler's modular-features architecture
+            # page explained Localize Large's modular-features architecture
             # and pointed users at Settings → Features. Both are gone in
             # v1.9.474: every feature module that used to be optional is
             # now a core dependency, so there is nothing for the user to
             # install or toggle.
             page2_msg = QLabel(
-                "Your data folder is ready and Supervertaler is set up.<br><br>"
+                "Your data folder is ready and Localize Large is set up.<br><br>"
                 "Have a look around the <b>Editor</b> tab to start translating, "
                 "or visit <b>Settings</b> to configure API keys, prompts, theme, "
                 "and more."
@@ -9820,7 +9821,7 @@ class SupervertalerQt(QMainWindow):
             else:
                 # Skip to features page if data folder already configured
                 go_to_page(1)
-                step2_indicator.setText(self.tr("<span style='color: #888;'>Supervertaler Setup</span>"))
+                step2_indicator.setText(self.tr("<span style='color: #888;'>Localize Large Setup</span>"))
 
             dialog.exec()
 
@@ -9832,7 +9833,7 @@ class SupervertalerQt(QMainWindow):
     def init_ui(self):
         """Initialize the user interface"""
         # Build window title with dev mode indicator
-        title = f"Supervertaler Workbench v{__version__}"
+        title = f"Localize Large v{__version__}"
         if ENABLE_PRIVATE_FEATURES:
             title += " [🛠️ DEV MODE]"
         self.setWindowTitle(title)
@@ -10105,7 +10106,7 @@ class SupervertalerQt(QMainWindow):
         # The next three actions used to have only an OS-level global hotkey
         # entry. After merging local + global into one shortcut per action,
         # they need an in-app QShortcut binding too so the same key works
-        # whether or not Supervertaler is frontmost. The global side is
+        # whether or not Localize Large is frontmost. The global side is
         # registered separately by SuperlookupTab.register_global_hotkey.
         create_shortcut(
             "tools_universal_lookup", "Ctrl+Alt+L",
@@ -10441,14 +10442,14 @@ class SupervertalerQt(QMainWindow):
             self.log(f"❌ Error opening QuickLauncher: {e}")
 
     def show_supervertaler_assistant(self, initial_text=None, external_mode=False):
-        """Navigate to the Supervertaler Sidekick (AI Assistant tab) and optionally insert text.
+        """Navigate to the Localize Large Sidekick (AI Assistant tab) and optionally insert text.
 
         Instead of a separate floating window, this reuses the existing AI Assistant
-        inside the AI tab. For external mode, it also brings Supervertaler
+        inside the AI tab. For external mode, it also brings Localize Large
         to the foreground first.
         """
         try:
-            # If called from external app, bring Supervertaler to front
+            # If called from external app, bring Localize Large to front
             if external_mode:
                 self.show()
                 self.raise_()
@@ -10468,7 +10469,7 @@ class SupervertalerQt(QMainWindow):
                     initial_text or "", from_external=external_mode
                 )
 
-            print(f"[Assistant] Navigated to Supervertaler Sidekick (external={external_mode})")
+            print(f"[Assistant] Navigated to Localize Large Sidekick (external={external_mode})")
 
         except Exception as e:
             print(f"[Assistant] Error navigating to assistant: {e}")
@@ -11558,14 +11559,14 @@ class SupervertalerQt(QMainWindow):
         import_menu.addSeparator()
 
         # v1.10.231: the two Supervertaler-native re-importable round-trip
-        # formats, grouped to mirror the Export → 🔁 Supervertaler Re-importable
+        # formats, grouped to mirror the Export → 🔁 Localize Large Re-importable
         # submenu. Both update the SAME open project.
-        reimport_submenu = import_menu.addMenu(self.tr("🔁 Supervertaler &Re-importable"))
+        reimport_submenu = import_menu.addMenu(self.tr("🔁 Localize Large &Re-importable"))
 
         import_review_table_action = QAction(self.tr("Bilingual &Table (DOCX) - Update Project..."), self)
         import_review_table_action.triggered.connect(self.import_review_table)
         import_review_table_action.setToolTip(self.tr(
-            "Re-import an edited Supervertaler bilingual Word table to update this project's "
+            "Re-import an edited Localize Large bilingual Word table to update this project's "
             "translations and comments."))
         reimport_submenu.addAction(import_review_table_action)
 
@@ -11696,7 +11697,7 @@ class SupervertalerQt(QMainWindow):
         # v1.10.231: the two Supervertaler-native re-importable round-trip
         # formats, grouped together. Both update the SAME open project on
         # re-import. "Table" = Word DOCX; "Text" = AI-friendly plain text.
-        reimport_export_submenu = export_menu.addMenu(self.tr("🔁 Supervertaler &Re-importable"))
+        reimport_export_submenu = export_menu.addMenu(self.tr("🔁 Localize Large &Re-importable"))
 
         export_reimport_table_action = QAction(self.tr("Bilingual &Table (DOCX)..."), self)
         export_reimport_table_action.triggered.connect(self.export_review_table_with_tags)
@@ -11753,7 +11754,7 @@ class SupervertalerQt(QMainWindow):
         exit_action = QAction(self.tr("E&xit"), self)
         exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         # v1.10.278: route Exit / ⌘Q (and, on macOS, the role-merged
-        # "Quit Supervertaler" app-menu item this action becomes) through
+        # "Quit Localize Large" app-menu item this action becomes) through
         # the real-quit path. Connecting to self.close() goes straight into
         # closeEvent with _really_quit still False, so when close_to_tray is
         # enabled the app merely *hides* — leaving macOS users unable to quit
@@ -12295,9 +12296,9 @@ class SupervertalerQt(QMainWindow):
         # an actual context page, and duplicated this item). Context-sensitive
         # help is unaffected: the global F1 event filter (install_help_system)
         # still opens the page for whichever panel is focused.
-        superdocs_action = QAction(self.tr("Supervertaler Workbench Help"), self)
+        superdocs_action = QAction(self.tr("Localize Large Help"), self)
         superdocs_action.setToolTip(self.tr("Open the Workbench documentation in your browser (press F1 for help on the current panel)"))
-        superdocs_action.triggered.connect(lambda: self._open_url("https://docs.supervertaler.com/workbench/"))
+        superdocs_action.triggered.connect(lambda: self._open_url("https://localizelarge.com/docs"))
         help_menu.addAction(superdocs_action)
 
         setup_wizard_action = QAction(self.tr("🚀 Setup Wizard..."), self)
@@ -12324,7 +12325,7 @@ class SupervertalerQt(QMainWindow):
         help_menu.addAction(changelog_action)
 
         update_check_action = QAction(self.tr("🔄 Check for Updates..."), self)
-        update_check_action.setToolTip(self.tr("Check whether you are running the latest Supervertaler release"))
+        update_check_action.setToolTip(self.tr("Check whether you are running the latest Localize Large release"))
         update_check_action.triggered.connect(self.check_for_updates)
         help_menu.addAction(update_check_action)
 
@@ -12334,7 +12335,7 @@ class SupervertalerQt(QMainWindow):
         help_menu.addAction(copy_version_info_action)
 
         # Diagnostic log – so users can send us error output even when they
-        # launched Supervertaler without a terminal window (silent / .exe /
+        # launched Localize Large without a terminal window (silent / .exe /
         # gui-scripts entry point).
         open_log_action = QAction(self.tr("📄 Open Diagnostic Log"), self)
         open_log_action.setToolTip(self.tr(
@@ -13240,7 +13241,7 @@ class SupervertalerQt(QMainWindow):
 
         # Sidekick (Floating Assistant) was retired in v1.10.4 and its
         # tabs moved into Workbench itself. The Clipboard tab was
-        # removed again in v1.10.374: the AutoHotkey Supervertaler
+        # removed again in v1.10.374: the AutoHotkey Localize Large
         # Sidekick is the clipboard tool.
         #   Chat        → right_tabs "💬 Chat"
         #   Voice       → main_tabs "🎤 Voice"
@@ -13249,7 +13250,7 @@ class SupervertalerQt(QMainWindow):
         # deleted and no code path references _floating_assistant
         # any more.
 
-        # Supervertaler Bridge server – inverse of the Trados-side bridge.
+        # Localize Large Bridge server – inverse of the Trados-side bridge.
         # Lets the Trados plugin POST a QuickLauncher prompt here for
         # the Workbench Chat panel to run. Only the on-disk handshake
         # filename (sidekick-bridge.json) keeps the old "sidekick" name,
@@ -13403,7 +13404,7 @@ class SupervertalerQt(QMainWindow):
         return tab
     
     def create_prompt_manager_tab(self) -> QWidget:
-        """Create the AI tab (Prompt Manager, Supervertaler Sidekick, Variables)"""
+        """Create the AI tab (Prompt Manager, Localize Large Sidekick, Variables)"""
         from modules.unified_prompt_manager_qt import UnifiedPromptManagerQt
         
         # Create Unified Prompt Manager widget (embedded mode, not standalone)
@@ -13442,7 +13443,7 @@ class SupervertalerQt(QMainWindow):
 
         window = QWidget()
         window.setWindowFlags(Qt.WindowType.Window)
-        window.setWindowTitle(self.tr("🌐 Superbrowser – Supervertaler"))
+        window.setWindowTitle(self.tr("🌐 Superbrowser – Localize Large"))
         # Three browser columns want width; height matches the TMX Editor.
         window.resize(1500, 850)
 
@@ -13481,7 +13482,7 @@ class SupervertalerQt(QMainWindow):
 
         window = QWidget()
         window.setWindowFlags(Qt.WindowType.Window)
-        window.setWindowTitle(self.tr("📝 TMX Editor – Supervertaler"))
+        window.setWindowTitle(self.tr("📝 TMX Editor – Localize Large"))
         window.resize(1200, 800)
 
         layout = QVBoxLayout(window)
@@ -14097,7 +14098,7 @@ class SupervertalerQt(QMainWindow):
 
         window = QWidget()
         window.setWindowFlags(Qt.WindowType.Window)
-        window.setWindowTitle(self.tr("🔍 PDF Rescue – Supervertaler"))
+        window.setWindowTitle(self.tr("🔍 PDF Rescue – Localize Large"))
         window.resize(1100, 800)
 
         # PDFRescueQt builds its own header / layout into the supplied widget.
@@ -14777,7 +14778,7 @@ class SupervertalerQt(QMainWindow):
         # The embedded docs viewer was removed in favor of online documentation.
         placeholder = QWidget()
         layout = QVBoxLayout(placeholder)
-        label = QLabel(self.tr("📚 Supervertaler Help is now available online.\n\nVisit https://docs.supervertaler.com/workbench/ to view the documentation."))
+        label = QLabel(self.tr("📚 Supervertaler Help is now available online.\n\nVisit https://localizelarge.com/docs to view the documentation."))
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("color: #888; font-size: 12px;")
         layout.addWidget(label)
@@ -15230,7 +15231,7 @@ class SupervertalerQt(QMainWindow):
             
             # Create detached window
             self.lookup_detached_window = QDialog(self)
-            self.lookup_detached_window.setWindowTitle(self.tr("🔍 SuperLookup - Supervertaler Workbench"))
+            self.lookup_detached_window.setWindowTitle(self.tr("🔍 SuperLookup - Localize Large"))
             self.lookup_detached_window.setMinimumSize(600, 700)
             self.lookup_detached_window.resize(700, 800)
             
@@ -15885,7 +15886,7 @@ class SupervertalerQt(QMainWindow):
         attach_sdltm_btn = QPushButton(self.tr("🔗 Attach Trados TM"))
         attach_sdltm_btn.setToolTip(
             "Mirror a Trados Studio .sdltm file as a read-only TM. "
-            "Inline tags are preserved as Supervertaler <N> markers."
+            "Inline tags are preserved as Localize Large <N> markers."
         )
         attach_sdltm_btn.clicked.connect(lambda: self._attach_sdltm_as_tm(tm_metadata_mgr, refresh_tm_list))
         set_help_topic(attach_sdltm_btn, HelpTopics.TM_TRADOS_SDLTM)
@@ -16369,7 +16370,7 @@ class SupervertalerQt(QMainWindow):
         box.setWindowTitle(self.tr("Original document not found"))
         hint = f"\n\nStored path:\n{stored_hint}" if stored_hint else ""
         box.setText(self.tr(
-            "Supervertaler can't find the original source document for this "
+            "Localize Large can't find the original source document for this "
             "project, so the export would be rebuilt from the translated segments "
             "alone – losing the document's formatting (line numbers, headings, "
             "page layout).\n\nLocate the original document to keep its formatting.")
@@ -17765,10 +17766,10 @@ class SupervertalerQt(QMainWindow):
             return False
 
     def export_review_table_with_tags(self):
-        """Export Supervertaler Bilingual Table with formatting tags visible.
+        """Export Localize Large Bilingual Table with formatting tags visible.
         
         This format is intended for proofreaders who will edit and return the file
-        for re-import into Supervertaler.
+        for re-import into Localize Large.
         """
         self._export_review_table(apply_formatting=False)
 
@@ -17816,11 +17817,11 @@ class SupervertalerQt(QMainWindow):
         return Run(new_run, paragraph)
     
     def _export_review_table(self, apply_formatting=False):
-        """Internal method to export Supervertaler Bilingual Table.
+        """Internal method to export Localize Large Bilingual Table.
         
         Args:
             apply_formatting: If True, apply bold/italic/underline formatting.
-                            If False, show raw Supervertaler tags.
+                            If False, show raw Localize Large tags.
         """
         import re
         
@@ -17934,21 +17935,21 @@ class SupervertalerQt(QMainWindow):
             line_run.font.size = Pt(10)
             header_line.paragraph_format.space_after = Pt(6)
             
-            # Add title with link to Supervertaler website
+            # Add title with link to Localize Large website
             title = doc.add_paragraph()
             title.alignment = WD_ALIGN_PARAGRAPH.CENTER
             title.paragraph_format.space_before = Pt(0)
             title.paragraph_format.space_after = Pt(6)
             
-            # Add globe emoji and "Supervertaler Bilingual Table" in blue (no link on title)
+            # Add globe emoji and "Localize Large Bilingual Table" in blue (no link on title)
             globe_run = title.add_run("🌐 ")
             globe_run.font.size = Pt(18)
             
             # v1.10.231: title reflects whether this variant round-trips.
             # With-Tags (apply_formatting=False) is re-importable; Formatted
             # (apply_formatting=True) is a one-way read-only deliverable.
-            _doc_title = ("Supervertaler Formatted Table"
-                          if apply_formatting else "Supervertaler Re-importable Table")
+            _doc_title = ("Localize Large Formatted Table"
+                          if apply_formatting else "Localize Large Re-importable Table")
             title_run = title.add_run(_doc_title)
             title_run.font.size = Pt(18)
             title_run.font.bold = True
@@ -17960,16 +17961,16 @@ class SupervertalerQt(QMainWindow):
             subtitle.paragraph_format.space_before = Pt(0)
             subtitle.paragraph_format.space_after = Pt(6)
             
-            # Make Supervertaler.com/workbench a clickable link.
+            # Make localizelarge.com a clickable link.
             # v1.10.167: switched from the bare supervertaler.com to the
             # product-specific URL so files exported by the Workbench can
-            # be visually distinguished from files exported by Supervertaler
+            # be visually distinguished from files exported by Localize Large
             # for Trados (which uses supervertaler.com/trados). Both
-            # products keep the same "Supervertaler Bilingual Table" title
+            # products keep the same "Localize Large Bilingual Table" title
             # so the format remains one recognisable family.
             url_link = self._add_hyperlink_to_paragraph(
                 subtitle, "https://supervertaler.com/workbench/",
-                "Supervertaler.com/workbench")
+                "localizelarge.com")
             url_link.font.size = Pt(10)
             url_link.font.color.rgb = RGBColor(0, 102, 204)
             url_link.font.underline = True
@@ -18001,7 +18002,7 @@ class SupervertalerQt(QMainWindow):
                 warning_run.bold = True
                 warning_run.font.color.rgb = RGBColor(180, 100, 0)
                 notice.add_run("Do not change segment numbers (#) or source text. ").italic = True
-                notice.add_run("This file can be re-imported into Supervertaler after proofreading.").italic = True
+                notice.add_run("This file can be re-imported into Localize Large after proofreading.").italic = True
             else:
                 notice.add_run("Note: This version shows applied formatting and is for client delivery or archiving. It cannot be re-imported.").italic = True
             
@@ -18100,14 +18101,14 @@ class SupervertalerQt(QMainWindow):
                 para.paragraph_format.space_after = Pt(2)
                 
                 if not apply_fmt:
-                    # Show raw text with tags in pink text (like in Supervertaler)
-                    # Parse to find tags and color them - includes Supervertaler tags AND CAT tool tags
-                    # Supervertaler tags: <b>, <i>, <u>, <bi>, <li>, <li-o>, <li-b>
+                    # Show raw text with tags in pink text (like in Localize Large)
+                    # Parse to find tags and color them - includes Localize Large tags AND CAT tool tags
+                    # Localize Large tags: <b>, <i>, <u>, <bi>, <li>, <li-o>, <li-b>
                     # memoQ tags: {1}, [2}, {3], [uicontrol id="..."], {tagname}
                     # Trados tags: <1>, </1>
                     tag_pattern = re.compile(
                         r'('
-                        r'</?(?:b|i|u|bi|li|li-[bo])>'  # Supervertaler tags
+                        r'</?(?:b|i|u|bi|li|li-[bo])>'  # Localize Large tags
                         r'|</?[0-9]+>'  # Trados numeric tags: <1>, </1>
                         r'|\[[^}\]]+\}'  # memoQ mixed: [anything}
                         r'|\{[^\[\]]+\]'  # memoQ mixed: {anything]
@@ -18269,7 +18270,7 @@ class SupervertalerQt(QMainWindow):
             footer_line_run.font.size = Pt(10)
             footer_line_run.font.color.rgb = RGBColor(0, 102, 204)
             
-            # Add footer text: "Supervertaler Bilingual Table | Supervertaler.com"
+            # Add footer text: "Supervertaler Bilingual Table | localizelarge.com"
             footer_text = doc.add_paragraph()
             footer_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
             
@@ -18282,7 +18283,7 @@ class SupervertalerQt(QMainWindow):
             separator_run.font.color.rgb = RGBColor(150, 150, 150)
             
             # Add clickable website link in footer
-            footer_link = self._add_hyperlink_to_paragraph(footer_text, "https://supervertaler.com/", "Supervertaler.com")
+            footer_link = self._add_hyperlink_to_paragraph(footer_text, "https://localizelarge.com/", "localizelarge.com")
             footer_link.font.size = Pt(9)
             footer_link.font.color.rgb = RGBColor(0, 102, 204)
             footer_link.font.underline = True
@@ -18411,7 +18412,7 @@ class SupervertalerQt(QMainWindow):
             file_path, _ = QFileDialog.getSaveFileName(
                 self, 
                 "Export Selected Segments as TMX", 
-                "supervertaler_selected.tmx", 
+                "localizelarge_selected.tmx", 
                 "TMX Files (*.tmx);;All Files (*.*)"
             )
             
@@ -18500,7 +18501,7 @@ class SupervertalerQt(QMainWindow):
             file_path, _ = QFileDialog.getSaveFileName(
                 self, 
                 "Export TM Database as TMX", 
-                "supervertaler_tm_database.tmx", 
+                "localizelarge_tm_database.tmx", 
                 "TMX Files (*.tmx);;All Files (*.*)"
             )
             
@@ -18715,7 +18716,7 @@ class SupervertalerQt(QMainWindow):
                         highlighter.rehighlight()
 
     def _make_sentence_segmenter(self, markdown: bool = False):
-        """The sentence segmenter for text Supervertaler splits itself, with
+        """The sentence segmenter for text Localize Large splits itself, with
         the user's rules from Settings → Segmentation Rules."""
         from modules.simple_segmenter import MarkdownSegmenter, SimpleSegmenter
         return (MarkdownSegmenter if markdown else SimpleSegmenter)(self._load_segmentation_rules())
@@ -23509,11 +23510,11 @@ class SupervertalerQt(QMainWindow):
             QMessageBox.critical(self, "Import Error", f"Failed to import TMX:\n\n{str(e)}")
 
     def _attach_sdltm_as_tm(self, tm_metadata_mgr, refresh_callback):
-        """Mirror a Trados Studio .sdltm into Supervertaler's DB as a read-only TM.
+        """Mirror a Trados Studio .sdltm into Localize Large's DB as a read-only TM.
 
         The .sdltm file stays untouched – we open it in SQLite read-only mode
         so it's safe to attach while Trados Studio has the same TM open. Each
-        translation unit's source/target XML is converted to Supervertaler's
+        translation unit's source/target XML is converted to Localize Large's
         inline-tag form (`<N>...</N>` / `<N/>`), then bulk-inserted under a
         new tm_id.
         """
@@ -23554,7 +23555,7 @@ class SupervertalerQt(QMainWindow):
             f"<b>{Path(file_path).name}</b><br><br>"
             f"Languages: <b>{md['source_lang']}</b> → <b>{md['target_lang']}</b><br>"
             f"Translation units: <b>{md['tu_count']:,}</b><br><br>"
-            f"This will mirror the TM into Supervertaler as <i>read-only</i>. "
+            f"This will mirror the TM into Localize Large as <i>read-only</i>. "
             f"The .sdltm file itself is not modified.<br><br>"
             f"Continue?"
         )
@@ -23571,7 +23572,7 @@ class SupervertalerQt(QMainWindow):
         # Ask the user for the display name (default = full filename of the .sdltm).
         name, ok = QInputDialog.getText(
             self, "Trados TM name",
-            "Display name for this TM in Supervertaler:",
+            "Display name for this TM in Localize Large:",
             text=default_name
         )
         if not ok or not name.strip():
@@ -25403,7 +25404,7 @@ class SupervertalerQt(QMainWindow):
         mt_provider_layout = QVBoxLayout()
         
         mt_info = QLabel(
-            "Enable or disable individual MT providers. Supervertaler will use the first available enabled provider in priority order:\n"
+            "Enable or disable individual MT providers. Localize Large will use the first available enabled provider in priority order:\n"
             "1. Google Translate, 2. DeepL, 3. Microsoft Translator, 4. Amazon Translate, 5. ModernMT, 6. MyMemory"
         )
         mt_info.setWordWrap(True)
@@ -26008,7 +26009,7 @@ class SupervertalerQt(QMainWindow):
     def _create_backup_settings_tab(self):
         """Settings → 💾 Backup tab.
 
-        Hosts both the time-based auto-backup (overwrites the working .svproj +
+        Hosts both the time-based auto-backup (overwrites the working .llproj +
         TMX on a timer) and the every-N-saves *timestamped* project backups
         (immutable snapshots in <user_data>/workbench/backups/). Moved here from
         the General tab so users can find them.
@@ -26034,7 +26035,7 @@ class SupervertalerQt(QMainWindow):
         backup_layout = QVBoxLayout()
 
         backup_info = QLabel(
-            "Supervertaler can automatically back up your project at regular intervals\n"
+            "Localize Large can automatically back up your project at regular intervals\n"
             "to prevent data loss. Both a project.json and TMX file will be saved."
         )
         backup_info.setWordWrap(True)
@@ -26044,7 +26045,7 @@ class SupervertalerQt(QMainWindow):
         enable_backup_cb = CheckmarkCheckBox(self.tr("Enable automatic backups"))
         enable_backup_cb.setChecked(general_settings.get('enable_auto_backup', True))
         enable_backup_cb.setToolTip(
-            "When enabled, Supervertaler will automatically save your project and export\n"
+            "When enabled, Localize Large will automatically save your project and export\n"
             "a TMX file at the configured interval. This helps prevent data loss."
         )
         backup_layout.addWidget(enable_backup_cb)
@@ -26056,7 +26057,7 @@ class SupervertalerQt(QMainWindow):
         backup_interval_spin.setValue(general_settings.get('backup_interval_minutes', 5))
         backup_interval_spin.setSuffix(" minutes")
         backup_interval_spin.setToolTip(
-            "Set how often Supervertaler should automatically save your project.\n"
+            "Set how often Localize Large should automatically save your project.\n"
             "Default: 5 minutes. Range: 1-60 minutes."
         )
         interval_layout.addWidget(backup_interval_spin)
@@ -26070,7 +26071,7 @@ class SupervertalerQt(QMainWindow):
         versioned_layout = QVBoxLayout()
 
         versioned_info = QLabel(
-            "Keep immutable, timestamped copies of the project file (.svproj) so you\n"
+            "Keep immutable, timestamped copies of the project file (.llproj) so you\n"
             "can roll back to an earlier state. These are separate from the auto-backup\n"
             "above (which overwrites the working file)."
         )
@@ -26081,7 +26082,7 @@ class SupervertalerQt(QMainWindow):
         versioned_cb = CheckmarkCheckBox(self.tr("Keep timestamped project backups"))
         versioned_cb.setChecked(general_settings.get('enable_versioned_backup', True))
         versioned_cb.setToolTip(
-            "Every N saves, keep a timestamped copy of the .svproj file in a\n"
+            "Every N saves, keep a timestamped copy of the .llproj file in a\n"
             "dedicated backups folder, so you can roll back to an earlier state.")
         versioned_layout.addWidget(versioned_cb)
 
@@ -26174,14 +26175,14 @@ class SupervertalerQt(QMainWindow):
         restore_last_project_cb = CheckmarkCheckBox(self.tr("Restore last project on startup"))
         restore_last_project_cb.setChecked(general_settings.get('restore_last_project', False))
         restore_last_project_cb.setToolTip(
-            self.tr("When enabled, Supervertaler will automatically open the last project you were working on when the application starts.")
+            self.tr("When enabled, Localize Large will automatically open the last project you were working on when the application starts.")
         )
         startup_layout.addWidget(restore_last_project_cb)
         
         auto_open_log_cb = CheckmarkCheckBox(self.tr("Auto-open log window on startup (detached)"))
         auto_open_log_cb.setChecked(general_settings.get('auto_open_log', False))
         auto_open_log_cb.setToolTip(
-            self.tr("When enabled, the log window will automatically open in a separate detached window when Supervertaler starts.")
+            self.tr("When enabled, the log window will automatically open in a separate detached window when Localize Large starts.")
         )
         startup_layout.addWidget(auto_open_log_cb)
         
@@ -26223,7 +26224,7 @@ class SupervertalerQt(QMainWindow):
 
         language_combo = QComboBox()
         language_combo.setToolTip(
-            "Restart Supervertaler after changing the language for the new "
+            "Restart Localize Large after changing the language for the new "
             "translations to take effect."
         )
         # "System" entry is the implicit default for new installs – uses
@@ -26239,8 +26240,8 @@ class SupervertalerQt(QMainWindow):
         _xlf_dir = translations_dir()
         _available_xlf_codes = set()
         if _xlf_dir.exists():
-            for _xlf in _xlf_dir.glob(f"supervertaler_*{TRANSLATION_FILE_SUFFIX}"):
-                _code = _xlf.stem.replace("supervertaler_", "")
+            for _xlf in _xlf_dir.glob(f"localizelarge_*{TRANSLATION_FILE_SUFFIX}"):
+                _code = _xlf.stem.replace("localizelarge_", "")
                 _available_xlf_codes.add(_code)
 
         for _code, _label in SUPPORTED_LOCALES:
@@ -26278,7 +26279,7 @@ class SupervertalerQt(QMainWindow):
                 return
             if new_code != prev:
                 language_status.setText(
-                    self.tr("↻ Restart Supervertaler for the new language to take effect.")
+                    self.tr("↻ Restart Localize Large for the new language to take effect.")
                 )
             else:
                 language_status.setText("")
@@ -26353,9 +26354,9 @@ class SupervertalerQt(QMainWindow):
             )
             if folder:
                 folder_path = Path(folder)
-                # Append "Supervertaler" if user didn't include it
-                if folder_path.name != "Supervertaler":
-                    folder_path = folder_path / "Supervertaler"
+                # Append "Localize Large" if user didn't include it
+                if folder_path.name != "Localize Large":
+                    folder_path = folder_path / "Localize Large"
                 
                 # Warn if switching to a folder with existing data
                 if folder_path.exists() and folder_path != self.user_data_path:
@@ -28409,7 +28410,7 @@ class SupervertalerQt(QMainWindow):
         header_layout = QVBoxLayout()
 
         info_label = QLabel(
-            "<b>System Prompts are the foundation of Supervertaler's 2-Layer Prompt Architecture.</b><br><br>"
+            "<b>System Prompts are the foundation of Localize Large's 2-Layer Prompt Architecture.</b><br><br>"
             "These prompts are <b>always applied</b> and contain critical infrastructure instructions:<br>"
             "• CAT tool tag preservation (memoQ, Trados, CafeTran)<br>"
             "• Formatting rules and output standards<br>"
@@ -28430,7 +28431,7 @@ class SupervertalerQt(QMainWindow):
         mode_layout = QVBoxLayout()
 
         mode_info = QLabel(
-            self.tr("Supervertaler uses different system prompts for different translation modes:")
+            self.tr("Localize Large uses different system prompts for different translation modes:")
         )
         mode_info.setStyleSheet("font-size: 9pt; color: #666; padding: 8px;")
         mode_info.setWordWrap(True)
@@ -29128,7 +29129,7 @@ class SupervertalerQt(QMainWindow):
         debug_export_cb.setChecked(debug_settings.get('debug_auto_export', False))
         debug_export_cb.setToolTip(
             "When enabled, automatically saves debug logs to:\n"
-            "supervertaler_debug_log_<timestamp>.txt in the program root.\n"
+            "localizelarge_debug_log_<timestamp>.txt in the program root.\n"
             "Logs are exported every 5 minutes or when you close the application."
         )
         debug_export_cb.setEnabled(debug_mode_cb.isChecked())  # Only enabled if debug mode is on
@@ -29221,11 +29222,11 @@ class SupervertalerQt(QMainWindow):
         from datetime import datetime
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"supervertaler_debug_log_{timestamp}.txt"
+        filename = f"localizelarge_debug_log_{timestamp}.txt"
         
         try:
             with open(filename, 'w', encoding='utf-8') as f:
-                f.write(f"Supervertaler Workbench Debug Log\n")
+                f.write(f"Localize Large Debug Log\n")
                 f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write("="*80 + "\n\n")
                 
@@ -29535,7 +29536,7 @@ class SupervertalerQt(QMainWindow):
     
     def _save_api_keys_from_ui(self):
         """Save API keys from inline input fields: a changed key into the keys
-        every Supervertaler product shares (the plain file, then locked to this
+        every Localize Large product shares (the plain file, then locked to this
         computer), and all of them into Workbench's own settings as before."""
         if not hasattr(self, '_api_key_inputs') or not self._api_key_inputs:
             return
@@ -29553,7 +29554,7 @@ class SupervertalerQt(QMainWindow):
                     input_widget.setProperty("shown_key", value)
                 else:
                     self.log(f"⚠ Your {display_name(SHARED_KEY_IDS.get(key_name, key_name))} key could not be "
-                             f"saved to the keys Supervertaler's products share. Try again in a moment.")
+                             f"saved to the keys Localize Large's products share. Try again in a moment.")
         # Migrate legacy 'google' key to canonical 'gemini' key
         if api_keys.get('google') and not api_keys.get('gemini'):
             api_keys['gemini'] = api_keys['google']
@@ -31065,7 +31066,7 @@ class SupervertalerQt(QMainWindow):
         # Info label at top
         scratchpad_info = QLabel(
             "📝 <b>Private notes for this project</b><br>"
-            "<small>Stored in .svproj file only – never exported to CAT tools</small>"
+            "<small>Stored in .llproj file only – never exported to CAT tools</small>"
         )
         scratchpad_info.setWordWrap(True)
         scratchpad_info.setStyleSheet("color: #666; font-size: 9pt; padding: 3px; background: #f9f9f9; border-radius: 3px; margin-bottom: 5px;")
@@ -32708,7 +32709,7 @@ class SupervertalerQt(QMainWindow):
             self.tr("📁 Create a dedicated folder for this project"))
         subfolder_check.setChecked(self._create_project_subfolder_pref())
         subfolder_check.setToolTip(self.tr(
-            "When you first save, place the .svproj in its own folder so its "
+            "When you first save, place the .llproj in its own folder so its "
             "source/ and target/ subfolders stay self-contained."))
         layout.addWidget(subfolder_check)
 
@@ -32854,7 +32855,7 @@ class SupervertalerQt(QMainWindow):
         self._tray_icon = None
         self._really_quit = False  # Set by tray "Quit" so closeEvent doesn't hide
 
-        # v1.10.238: route an explicit quit (macOS "Quit Supervertaler" / ⌘Q,
+        # v1.10.238: route an explicit quit (macOS "Quit Localize Large" / ⌘Q,
         # or system shutdown) through _really_quit so it terminates instead of
         # backgrounding to the tray. The window X / red close button does NOT
         # send QEvent.Quit, so it still backgrounds as designed.
@@ -32871,7 +32872,7 @@ class SupervertalerQt(QMainWindow):
         # blurry 16-px frame). Fall back to icon.ico, then the window
         # icon, so older installs without the PNGs still get *something*.
         icon = None
-        for candidate in ("icon_24.png", "icon_16x16.png", "icon_128.png", "icon.ico"):
+        for candidate in ("icon_24.png", "icon_16.png", "icon_128.png", "icon.ico"):
             icon_path = get_resource_path(f"assets/{candidate}")
             if icon_path.exists():
                 icon = QIcon(str(icon_path))
@@ -32880,7 +32881,7 @@ class SupervertalerQt(QMainWindow):
             icon = self.windowIcon()
 
         self._tray_icon = QSystemTrayIcon(icon, self)
-        self._tray_icon.setToolTip(self.tr("Supervertaler Workbench"))
+        self._tray_icon.setToolTip(self.tr("Localize Large"))
 
         prefs = self._load_settings_section("ui")
         menu = QMenu()
@@ -32953,7 +32954,7 @@ class SupervertalerQt(QMainWindow):
 
         menu.addSeparator()
 
-        quit_action = QAction("Quit Supervertaler", self)
+        quit_action = QAction("Quit Localize Large", self)
         quit_action.triggered.connect(self._tray_quit)
         menu.addAction(quit_action)
 
@@ -33115,7 +33116,7 @@ class SupervertalerQt(QMainWindow):
         self._save_settings_section("ui", prefs)
 
     def _on_toggle_autostart(self, checked: bool):
-        """Register or unregister Supervertaler with the OS autostart facility."""
+        """Register or unregister Localize Large with the OS autostart facility."""
         mod = getattr(self, "_autostart_mod", None)
         if mod is None:
             return
@@ -33131,7 +33132,7 @@ class SupervertalerQt(QMainWindow):
             try:
                 from PyQt6.QtWidgets import QSystemTrayIcon
                 self._tray_icon.showMessage(
-                    "Supervertaler",
+                    "Localize Large",
                     "Will start automatically with your computer. "
                     "Tip: enable 'Start minimized to tray' to skip the window at boot.",
                     QSystemTrayIcon.MessageIcon.Information,
@@ -33172,7 +33173,7 @@ class SupervertalerQt(QMainWindow):
                     try:
                         from PyQt6.QtWidgets import QSystemTrayIcon
                         self._tray_icon.showMessage(
-                            "Supervertaler is still running",
+                            "Localize Large is still running",
                             "Click the tray icon to bring it back, or right-click "
                             "for Quit.",
                             QSystemTrayIcon.MessageIcon.Information,
@@ -33257,7 +33258,7 @@ class SupervertalerQt(QMainWindow):
         file_path, _ = fdh.get_open_file_name(
             self,
             "Open Project",
-            "Supervertaler Projects (*.svproj);;Legacy Projects (*.json);;All Files (*.*)"
+            _ll_project_format.FILE_DIALOG_FILTER_OPEN
         )
         
         if file_path:
@@ -33300,7 +33301,7 @@ class SupervertalerQt(QMainWindow):
                         data = json.load(f)
             except json.JSONDecodeError as damaged:
                 # A damaged project file: offer the copy kept at the last good
-                # save (<name>.svproj.bak, issue #228)
+                # save (<name>.llproj.bak, issue #228)
                 data = self._offer_project_backup(file_path, damaged, progress)
                 if data is None:
                     raise
@@ -33310,14 +33311,17 @@ class SupervertalerQt(QMainWindow):
             if 'name' not in data:
                 data['name'] = Path(file_path).stem
             
+            _ll_project_format.check_version(data)
             self.current_project = Project.from_dict(data)
-            self.project_file_path = file_path
+            # A project opened from an older .svproj is saved as a .llproj
+            # beside it; the .svproj is left as it was.
+            self.project_file_path = _ll_project_format.save_path_for(file_path)
             # Exports must not use the memoQ/Trados/… file of the project
             # that was open before this one
             self._forget_round_trip_state()
             # Opened from the backup: mark it modified so the next save repairs
             # the damaged file
-            self.project_modified = recovered_from_backup
+            self.project_modified = recovered_from_backup or _ll_project_format.is_legacy(file_path)
 
             # Clear the previous project's per-segment comment/notes editors up
             # front, so opening this project directly (without closing the last
@@ -33370,8 +33374,8 @@ class SupervertalerQt(QMainWindow):
                             # v1.10.156: stored path no longer exists in the
                             # library. Most common cause: the user renamed or
                             # moved the prompt after activating it, and the
-                            # next .svproj save captured the new path (good)
-                            # but the OLD .svproj on disk still has the
+                            # next .llproj save captured the new path (good)
+                            # but the OLD .llproj on disk still has the
                             # stored one. Try a basename-match fallback so a
                             # single rename doesn't lose the activation, and
                             # log loudly either way so the user knows.
@@ -33817,7 +33821,7 @@ class SupervertalerQt(QMainWindow):
                 f"Failed to load project - file encoding error:\n\n"
                 f"{str(e)}\n\n"
                 f"The project file may be corrupted or saved with an incompatible encoding.\n"
-                f"This can happen if the file was edited outside Supervertaler.\n\n"
+                f"This can happen if the file was edited outside Localize Large.\n\n"
                 f"Try opening the file in a text editor and re-saving it as UTF-8."
             )
             QMessageBox.critical(self, "Encoding Error", error_msg)
@@ -35262,13 +35266,13 @@ class SupervertalerQt(QMainWindow):
         file_path, _ = fdh.get_save_file_name(
             self,
             "Save Project As",
-            "Supervertaler Projects (*.svproj);;All Files (*.*)"
+            "Localize Large Projects (*.llproj);;All Files (*.*)"
         )
 
         if file_path:
-            # Ensure .svproj extension
-            if not file_path.lower().endswith('.svproj'):
-                file_path += '.svproj'
+            # Ensure .llproj extension
+            if not file_path.lower().endswith('.llproj'):
+                file_path += '.llproj'
             # Optionally tuck the project into its own folder so its source/ and
             # target/ subfolders stay self-contained (project-folder model, #228).
             if self._create_project_subfolder_pref():
@@ -35407,7 +35411,7 @@ class SupervertalerQt(QMainWindow):
             }
             
             # Bundle the source document into the project folder (source/) and
-            # store it RELATIVE to the .svproj, so the project is portable and
+            # store it RELATIVE to the .llproj, so the project is portable and
             # can never bind to an unrelated file (project-folder model, #228).
             # A directory source (multi-file/folder projects) keeps the legacy
             # absolute path. Bundling is a one-time copy: once original_docx is
@@ -35465,9 +35469,9 @@ class SupervertalerQt(QMainWindow):
             try:
                 # Serialise first, then write through a temporary file that
                 # replaces the project in one step, keeping the previous
-                # version as <name>.svproj.bak (issue #228). Writing straight
-                # into the .svproj left it truncated when a save failed half-way.
-                payload = json.dumps(self.current_project.to_dict(), indent=2, ensure_ascii=False)
+                # version as <name>.llproj.bak (issue #228). Writing straight
+                # into the .llproj left it truncated when a save failed half-way.
+                payload = json.dumps(_ll_project_format.stamp(self.current_project.to_dict()), indent=2, ensure_ascii=False)
                 write_project_file(file_path, payload)
             finally:
                 # Restore the current (sorted) order after saving – also when
@@ -35486,7 +35490,7 @@ class SupervertalerQt(QMainWindow):
             self.log(f"✗ Error saving project: {e}")
 
     def _maybe_make_versioned_backup(self, project_path: str):
-        """Every N saves, drop a timestamped copy of the .svproj into the
+        """Every N saves, drop a timestamped copy of the .llproj into the
         backups folder (<user_data>/workbench/backups/<project>/), pruning to
         the most recent K. Best-effort: never raises into the save path."""
         try:
@@ -35724,7 +35728,7 @@ class SupervertalerQt(QMainWindow):
         # documents (.docx, .sdlxliff, …) opened or imported via other paths must
         # never land here – clicking one later runs json.load() on it and fails
         # with "Expecting value: line 1 column 1 (char 0)".
-        if not file_path.lower().endswith('.svproj'):
+        if not file_path.lower().endswith('.llproj'):
             return
 
         # Load existing recent projects
@@ -35834,10 +35838,10 @@ class SupervertalerQt(QMainWindow):
                         if 'last_opened' not in item:
                             item['last_opened'] = datetime.now().isoformat()
                         # Only include if the file still exists AND is an actual
-                        # project file – this auto-purges any stray non-.svproj
+                        # project file – this auto-purges any stray non-.llproj
                         # entries (e.g. source documents) left by older builds.
                         if (os.path.exists(item['path'])
-                                and str(item['path']).lower().endswith('.svproj')):
+                                and str(item['path']).lower().endswith('.llproj')):
                             normalized.append(item)
                 return normalized
             
@@ -36137,7 +36141,7 @@ class SupervertalerQt(QMainWindow):
                 "Okapi sidecar unavailable",
                 "The Okapi sidecar client is not initialised. This is "
                 "usually caused by a missing 'requests' Python package. "
-                "Please reinstall Supervertaler."
+                "Please reinstall Localize Large."
             )
             return False
 
@@ -36205,7 +36209,7 @@ class SupervertalerQt(QMainWindow):
                 "DOCX import requires the Okapi sidecar, but it failed "
                 "to start.\n\n"
                 "What to try:\n"
-                "• Restart Supervertaler.\n"
+                "• Restart Localize Large.\n"
                 "• Check that port 8090 isn't taken by another app.\n"
                 "• Check the diagnostic log for errors mentioning "
                 "\"okapi sidecar\"."
@@ -36236,7 +36240,7 @@ class SupervertalerQt(QMainWindow):
                         "  • Homebrew (recommended): brew install --cask temurin@17\n"
                         "  • Or download from https://adoptium.net\n\n"
                         "Verify with: java -version\n"
-                        "Then restart Supervertaler and re-try the import."
+                        "Then restart Localize Large and re-try the import."
                     )
                 else:
                     install_hint = (
@@ -36278,7 +36282,7 @@ class SupervertalerQt(QMainWindow):
             "Download Okapi sidecar?",
             "DOCX import requires the Okapi sidecar – a small Java "
             "service that handles document extraction.\n\n"
-            "Supervertaler can download and install it for you "
+            "Localize Large can download and install it for you "
             f"({size_text}, one-time download). It will be saved to "
             "your local app data folder.\n\n"
             f"{extra_note}"
@@ -36334,7 +36338,7 @@ class SupervertalerQt(QMainWindow):
                 "The Okapi sidecar could not be downloaded. Check your "
                 "internet connection and try again.\n\n"
                 "If the problem persists, you can download the full "
-                "Supervertaler release zip from GitHub – it ships with "
+                "Localize Large release zip from GitHub – it ships with "
                 "the sidecar bundled."
             )
             return False
@@ -36351,7 +36355,7 @@ class SupervertalerQt(QMainWindow):
             "The Okapi sidecar was downloaded successfully, but it "
             "failed to launch.\n\n"
             "Check the diagnostic log for errors. You may need to "
-            "restart Supervertaler."
+            "restart Localize Large."
         )
         return False
 
@@ -40224,7 +40228,7 @@ class SupervertalerQt(QMainWindow):
             msg.setTextFormat(Qt.TextFormat.RichText)
         else:
             msg = QLabel(self.tr(
-                "Supervertaler could not read the language pair from this file.\n\n"
+                "Localize Large could not read the language pair from this file.\n\n"
                 "Please set it now. If this is wrong, the TM is searched for the "
                 "wrong languages and no matches are ever shown, even though the TM "
                 "itself looks fine in TM Edit/Maintain."))
@@ -40915,12 +40919,12 @@ class SupervertalerQt(QMainWindow):
             "4. Save project<br>"
             "5. Export → Bilingual Review (DOCX)<br>"
             "6. Open in Word, select all target text, delete it, save<br><br>"
-            "<b>Then in Supervertaler:</b><br>"
+            "<b>Then in Localize Large:</b><br>"
             "7. Import the prepared bilingual review DOCX<br>"
             "8. Translate with AI<br>"
             "9. Export → Trados Studio → Bilingual Review<br>"
             "10. <b>Rename</b> the exported file to match the original Trados export name<br>"
-            "&nbsp;&nbsp;&nbsp;&nbsp;<i>Supervertaler adds \"_translated\" to the filename, e.g.:<br>"
+            "&nbsp;&nbsp;&nbsp;&nbsp;<i>Localize Large adds \"_translated\" to the filename, e.g.:<br>"
             "&nbsp;&nbsp;&nbsp;&nbsp;MyFile_review<b>_translated</b>.docx → rename to MyFile_review.docx</i><br>"
             "11. Update from bilingual review in Trados<br><br>"
             "<i>See Help → CAT Tool Workflow Guide for details.</i>"
@@ -41886,7 +41890,7 @@ class SupervertalerQt(QMainWindow):
         Convert an SDLSegment to an internal Segment with proper status mapping.
 
         Shared by import_sdlppx_package() and import_standalone_sdlxliff().
-        Maps SDL origin/percent/text-match to the 13-level Supervertaler status hierarchy.
+        Maps SDL origin/percent/text-match to the 13-level Localize Large status hierarchy.
 
         Args:
             sdl_seg: SDLSegment to convert
@@ -43331,7 +43335,7 @@ class SupervertalerQt(QMainWindow):
             traceback.print_exc()
 
     def import_review_table(self):
-        """Import a Supervertaler Bilingual Table to update translations in current project.
+        """Import a Localize Large Bilingual Table to update translations in current project.
         
         This allows proofreaders to make changes in the exported DOCX bilingual table
         and have those changes re-imported back into the project.
@@ -43367,7 +43371,7 @@ class SupervertalerQt(QMainWindow):
                 QMessageBox.warning(
                     self, "Invalid Format",
                     "No table found in the document.\n\n"
-                    "Expected a Supervertaler Bilingual Table with columns:\n"
+                    "Expected a Localize Large Bilingual Table with columns:\n"
                     "#, Source, Target, Status, Comments"
                 )
                 return
@@ -43698,7 +43702,7 @@ class SupervertalerQt(QMainWindow):
                 "<b>[SEGMENT NNNN]</b> format, with a <code>.svexport.json</code> "
                 "sidecar written alongside it.<br><br>"
                 "Edit the target lines in any text editor or with an LLM, then "
-                "re-import via <b>Project → Import → 🔁 Supervertaler Re-importable → "
+                "re-import via <b>Project → Import → 🔁 Localize Large Re-importable → "
                 "Bilingual Text (AI-friendly) - Update Project…</b> to update this project."
             )
             info.setTextFormat(Qt.TextFormat.RichText)
@@ -43848,7 +43852,7 @@ class SupervertalerQt(QMainWindow):
                     f"Copied {len(export_segs)} segment(s) to the clipboard.\n\n"
                     "Paste them into your AI chat. When you have the edited reply, "
                     "copy it and press " + paste_key + " (Project → Import → "
-                    "🔁 Supervertaler Re-importable → Bilingual Text (AI-friendly) - "
+                    "🔁 Localize Large Re-importable → Bilingual Text (AI-friendly) - "
                     "Update from Pasted Text…) to update this project.")
                 return
 
@@ -43861,7 +43865,7 @@ class SupervertalerQt(QMainWindow):
                 f"Exported {len(export_segs)} segment(s) to:\n{os.path.basename(file_path)}\n\n"
                 f"Sidecar: {os.path.basename(side_path)}\n\n"
                 "Edit the target lines, then re-import via Project → Import → "
-                "🔁 Supervertaler Re-importable → Bilingual Text (AI-friendly) - "
+                "🔁 Localize Large Re-importable → Bilingual Text (AI-friendly) - "
                 "Update Project… to update this project.")
 
         except Exception as e:
@@ -43899,7 +43903,7 @@ class SupervertalerQt(QMainWindow):
                 QMessageBox.warning(
                     self, "Not a re-importable text file",
                     "This file doesn't contain any [SEGMENT N] markers.\n\n"
-                    "Choose a file exported via Export → 🔁 Supervertaler "
+                    "Choose a file exported via Export → 🔁 Localize Large "
                     "Re-importable → Bilingual Text (AI-friendly).")
                 return
 
@@ -43980,7 +43984,7 @@ class SupervertalerQt(QMainWindow):
                     QMessageBox.warning(
                         dialog, "No segments found",
                         "The text doesn't contain any [SEGMENT N] markers.\n\n"
-                        "Paste text exported via Export → 🔁 Supervertaler "
+                        "Paste text exported via Export → 🔁 Localize Large "
                         "Re-importable → Bilingual Text (AI-friendly), or copied "
                         "with its Copy to Clipboard button.")
                     return
@@ -46291,7 +46295,7 @@ class SupervertalerQt(QMainWindow):
                 self._preview_window = None  # previous window was destroyed
 
         win = QMainWindow(self)
-        win.setWindowTitle(self.tr("Supervertaler — Document Preview"))
+        win.setWindowTitle(self.tr("Localize Large — Document Preview"))
         win.setWindowFlag(Qt.WindowType.Window, True)
         pv = self._create_preview_tab(with_popout_button=False)
         win.setCentralWidget(pv)
@@ -48118,7 +48122,7 @@ class SupervertalerQt(QMainWindow):
 
             # v1.10.184: mirror Match Panel zoom into the current
             # project's ui_settings so the value round-trips per-
-            # project as well as globally. The next .svproj save
+            # project as well as globally. The next .llproj save
             # picks it up via save_project's existing ui_settings
             # write; the per-project load on project open restores it
             # in preference to the global default. Pre-v1.10.184 this
@@ -54633,7 +54637,7 @@ class SupervertalerQt(QMainWindow):
            v1.10.69 file watcher uses). If anything changed in
            ``termbases`` or ``termbase_terms`` (count, max id, max
            modified_date), rebuilds the in-memory index from disk so
-           cross-process edits (typically from the Supervertaler for
+           cross-process edits (typically from the Localize Large for
            Trados plugin sharing the same SQLite database) are picked
            up. If nothing changed, skips the rebuild — keeping the
            common-case F5 fast (<100 ms) for "I just want to redraw".
@@ -56809,7 +56813,7 @@ class SupervertalerQt(QMainWindow):
         hunspell_layout.addWidget(QLabel(self.tr("<b>To add more languages:</b>")))
         hunspell_layout.addWidget(QLabel(self.tr("1. Download .dic + .aff files for your language")))
         hunspell_layout.addWidget(QLabel(self.tr("2. Place them in the dictionaries folder")))
-        hunspell_layout.addWidget(QLabel(self.tr("3. Restart Supervertaler")))
+        hunspell_layout.addWidget(QLabel(self.tr("3. Restart Localize Large")))
         
         hunspell_layout.addWidget(QLabel(""))
         hunspell_layout.addWidget(QLabel(self.tr("<b>Download sources:</b>")))
@@ -60565,7 +60569,7 @@ class SupervertalerQt(QMainWindow):
     
     def update_window_title(self):
         """Update window title with project name and modified state"""
-        title = f"Supervertaler Workbench v{__version__}"
+        title = f"Localize Large v{__version__}"
         if ENABLE_PRIVATE_FEATURES:
             title += " [🛠️ DEV MODE]"
         if self.current_project:
@@ -61302,19 +61306,19 @@ class SupervertalerQt(QMainWindow):
             QMessageBox.warning(self, "Error", f"Could not open URL: {e}")
 
     def _open_superdocs_tab(self):
-        """Open the online Supervertaler Help in the user's browser."""
+        """Open the online Localize Large Help in the user's browser."""
         try:
             # Prefer opening the published online docs
-            self._open_url("https://docs.supervertaler.com/workbench/")
+            self._open_url("https://localizelarge.com/docs")
         except Exception:
             QMessageBox.information(
                 self,
-                "Supervertaler Help",
-                "Supervertaler Help is available online at https://docs.supervertaler.com/workbench/"
+                "Localize Large Help",
+                "Supervertaler Help is available online at https://localizelarge.com/docs"
             )
 
     def check_for_updates(self):
-        """Check GitHub for the latest Supervertaler release and report whether the user is up to date."""
+        """Check GitHub for the latest Localize Large release and report whether the user is up to date."""
         # Temporary simplified behavior: QtNetwork HTTPS update checks can fail/hang on some Windows
         # environments (seen as QNetworkReply "Unknown error"). Until this is revisited, open the
         # GitHub releases page directly.
@@ -61415,7 +61419,7 @@ class SupervertalerQt(QMainWindow):
                 url = api_url
 
             request = QNetworkRequest(url)
-            request.setRawHeader(b"User-Agent", f"Supervertaler/{__version__}".encode("utf-8", errors="ignore"))
+            request.setRawHeader(b"User-Agent", f"LocalizeLarge/{__version__}".encode("utf-8", errors="ignore"))
             if kind == "api":
                 request.setRawHeader(b"Accept", b"application/vnd.github+json")
 
@@ -61831,7 +61835,7 @@ class SupervertalerQt(QMainWindow):
             api_url,
             headers={
                 "Accept": "application/vnd.github+json",
-                "User-Agent": f"Supervertaler/{__version__}",
+                "User-Agent": f"LocalizeLarge/{__version__}",
             },
         )
 
@@ -61871,7 +61875,7 @@ class SupervertalerQt(QMainWindow):
         from PyQt6.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
 
         lines = []
-        lines.append(f"Supervertaler {self._format_version_for_display(__version__)}")
+        lines.append(f"Localize Large {self._format_version_for_display(__version__)}")
         try:
             lines.append(f"Release date: {__release_date__}")
         except Exception:
@@ -61936,7 +61940,7 @@ class SupervertalerQt(QMainWindow):
         except Exception:
             pass
         try:
-            return Path(self.user_data_path) / "workbench" / "logs" / "supervertaler.log"
+            return _ll_paths.logs_dir() / "localizelarge.log"
         except Exception:
             return None
 
@@ -61987,69 +61991,10 @@ class SupervertalerQt(QMainWindow):
             )
 
     def show_about(self):
-        """Show about dialog with clickable website link"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle(self.tr("About Supervertaler Workbench"))
-        dialog.setMinimumWidth(400)
-        
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(10)
-        layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Title
-        title = QLabel(f"<h2>Supervertaler Workbench v{__version__}</h2>")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
+        """Show the About dialog (localizelarge/about.py)."""
+        from localizelarge.about import show_about_dialog
+        show_about_dialog(self, __version__, self.copy_version_info_to_clipboard)
 
-        # Description
-        desc = QLabel(self.tr("<p><b>AI-enhanced tool for translators & writers</b></p>"))
-        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(desc)
-
-        # Links section
-        links_label = QLabel(
-            '<p style="text-align: center;">'
-            '<b>Project:</b> <a href="https://supervertaler.com/" style="color: #1976D2; text-decoration: none;">supervertaler.com</a><br>'
-            '<b>Author:</b> <a href="https://beijer.uk/" style="color: #1976D2; text-decoration: none;">beijer.uk</a>'
-            '</p>'
-        )
-        links_label.setOpenExternalLinks(True)
-        links_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(links_label)
-
-        # Additional info
-        info = QLabel(
-            "<p style='text-align: center;'><b>License:</b> MIT</p>"
-            "<hr>"
-            "<p style='text-align: center; color: #666; font-size: 9pt;'>"
-            "Built with PyQt6 • Supports OpenAI, Claude, Gemini & Ollama"
-            "</p>"
-        )
-        info.setWordWrap(True)
-        layout.addWidget(info)
-
-        # Buttons
-        btn_row = QHBoxLayout()
-        copy_btn = QPushButton(self.tr("📋 Copy Version Info"))
-        copy_btn.setToolTip(self.tr("Copy version and system info to clipboard"))
-        copy_btn.clicked.connect(self.copy_version_info_to_clipboard)
-        btn_row.addWidget(copy_btn)
-
-        update_btn = QPushButton(self.tr("🔄 Check for Updates..."))
-        update_btn.setToolTip(self.tr("Check whether you are running the latest Supervertaler release"))
-        update_btn.clicked.connect(self.check_for_updates)
-        btn_row.addWidget(update_btn)
-
-        btn_row.addStretch(1)
-
-        close_btn = QPushButton(self.tr("Close"))
-        close_btn.clicked.connect(dialog.accept)
-        btn_row.addWidget(close_btn)
-
-        layout.addLayout(btn_row)
-
-        dialog.exec()
-    
     # closeEvent lives with the tray code (search "def closeEvent"); a second
     # definition here used to shadow it and stop the app quitting (#255).
 
@@ -62166,7 +62111,7 @@ class SupervertalerQt(QMainWindow):
         box.setIcon(QMessageBox.Icon.Information)
         box.setWindowTitle(self.tr("Java needed for enhanced file filters"))
         box.setText(
-            "Supervertaler can use a small Java helper (the Okapi "
+            "Localize Large can use a small Java helper (the Okapi "
             "sidecar) to import Word, Excel, HTML and other office "
             "documents. No Java runtime was found on your system."
         )
@@ -62176,7 +62121,7 @@ class SupervertalerQt(QMainWindow):
             f"    {install_cmd}\n\n"
             f"Then verify with:\n\n"
             f"    {verify_cmd}\n\n"
-            "Restart Supervertaler after installing. Plain-text "
+            "Restart Localize Large after installing. Plain-text "
             "translation, TMX, etc. all work without Java."
         )
         dont_show = QCheckBox(self.tr("Don't show this again"))
@@ -63221,7 +63166,7 @@ class SupervertalerQt(QMainWindow):
 
         if behavior == "replace":
             if not target_widget or not isinstance(target_widget, QTextEdit):
-                self._quicklauncher_show_result_dialog("Supervertaler QuickLauncher", output_text)
+                self._quicklauncher_show_result_dialog("Localize Large QuickLauncher", output_text)
                 return
 
             apply_replacement()
@@ -63229,7 +63174,7 @@ class SupervertalerQt(QMainWindow):
 
         # Default: show dialog (with optional Replace button)
         can_apply = target_widget is not None and isinstance(target_widget, QTextEdit)
-        title = "Supervertaler QuickLauncher"
+        title = "Localize Large QuickLauncher"
         self._quicklauncher_show_result_dialog(title, output_text, apply_callback=apply_replacement if can_apply else None)
     
     def translate_multiple_segments(self, scope: str):
@@ -64971,7 +64916,7 @@ class SupervertalerQt(QMainWindow):
             return f"[MyMemory error: {str(e)}]"
     
     def load_api_keys(self) -> Dict[str, str]:
-        """Every API key Workbench uses: the keys shared with Supervertaler for
+        """Every API key Workbench uses: the keys shared with Localize Large for
         Trados, memoQ and Sidekick, then Workbench's own settings - through the
         one reader in modules/llm_clients.py."""
         from modules.llm_clients import load_api_keys
@@ -65051,7 +64996,7 @@ class SupervertalerQt(QMainWindow):
     def show_scratchpad(self):
         """Show Scratchpad dialog for private translator notes.
         
-        Notes are saved with the project (.svproj) and never exported to CAT tools.
+        Notes are saved with the project (.llproj) and never exported to CAT tools.
         """
         if not hasattr(self, 'current_project') or self.current_project is None:
             QMessageBox.warning(
@@ -66300,7 +66245,7 @@ class _ReadOnlyHtmlCell(QTextEdit):
     """Read-only QTextEdit for Superlookup results table cells.
 
     Uses plain text + a QSyntaxHighlighter for search term highlighting –
-    the same pattern the main Supervertaler grid uses. This gives us full
+    the same pattern the main Localize Large grid uses. This gives us full
     native text selection, right-click copy, and mouse word selection,
     without the rendering issues that QLabel cell widgets have.
     """
@@ -67253,7 +67198,7 @@ class SuperlookupTab(QWidget):
 
                 External websites (IATE, Juremy, Google Patents, etc.) emit tons of
                 noisy console messages about CSP violations, mixed content, etc.
-                These are not relevant to Supervertaler and clutter the terminal.
+                These are not relevant to Localize Large and clutter the terminal.
                 """
                 def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
                     # Silently ignore all JS console messages from web pages
@@ -67584,7 +67529,7 @@ class SuperlookupTab(QWidget):
         sidebar_layout.addWidget(mode_label)
         
         self.web_mode_embedded_radio = CheckmarkRadioButton(self.tr("Embedded"))
-        self.web_mode_embedded_radio.setToolTip(self.tr("Show results inside Supervertaler"))
+        self.web_mode_embedded_radio.setToolTip(self.tr("Show results inside Localize Large"))
         self.web_mode_embedded_radio.setChecked(self.web_browser_mode == 'embedded')
         self.web_mode_embedded_radio.setEnabled(self.web_engine_available)
         self.web_mode_embedded_radio.toggled.connect(self._on_web_mode_changed)
@@ -70281,7 +70226,7 @@ class SuperlookupTab(QWidget):
 
     def search_termbases(self, text, source_lang=None, target_lang=None, connection=None,
                          selected_tb_ids=None):
-        """Search Supervertaler termbases for matching terms.
+        """Search Localize Large termbases for matching terms.
 
         Uses Superlookup's OWN checkbox selections (independent from Resources > Termbases).
         Respects the search direction setting (source only, target only, or both).
@@ -70726,7 +70671,7 @@ class SuperlookupTab(QWidget):
             f"SuperLookup uses AutoHotkey to provide a global hotkey ({format_shortcut_for_display('Ctrl+Alt+L')}) "
             "that works from any application.\n\n"
             "Without AutoHotkey, SuperLookup will still work, but only when "
-            "Supervertaler is the active window."
+            "Localize Large is the active window."
         )
         explanation.setWordWrap(True)
         explanation.setStyleSheet("margin-bottom: 15px;")
@@ -70768,7 +70713,7 @@ class SuperlookupTab(QWidget):
         
         # Note about restart
         note = QLabel(
-            self.tr("💡 Note: After installing AutoHotkey, restart Supervertaler to enable the global hotkey.")
+            self.tr("💡 Note: After installing AutoHotkey, restart Localize Large to enable the global hotkey.")
         )
         note.setStyleSheet("color: #666; font-size: 10px; margin-top: 15px;")
         note.setWordWrap(True)
@@ -70802,7 +70747,7 @@ class SuperlookupTab(QWidget):
             self,
             "Download AutoHotkey",
             "The AutoHotkey download page has been opened in your browser.\n\n"
-            "Download and install AutoHotkey v2.x, then restart Supervertaler."
+            "Download and install AutoHotkey v2.x, then restart Localize Large."
         )
     
     def _browse_for_autohotkey(self, parent_dialog):
@@ -70834,13 +70779,13 @@ class SuperlookupTab(QWidget):
                 self.main_window.save_general_settings(settings)
                 print(f"[Superlookup] Saved AutoHotkey path: {file_path}")
             
-            self._ahk_setup_status.setText(f"✓ Saved: {file_path}\n\nRestart Supervertaler to use this path.")
+            self._ahk_setup_status.setText(f"✓ Saved: {file_path}\n\nRestart Localize Large to use this path.")
             
             QMessageBox.information(
                 parent_dialog,
                 "Path Saved",
                 f"AutoHotkey path saved:\n{file_path}\n\n"
-                "Please restart Supervertaler to enable the global hotkey."
+                "Please restart Localize Large to enable the global hotkey."
             )
     
     def register_global_hotkey(self):
@@ -70958,7 +70903,7 @@ class SuperlookupTab(QWidget):
                      "to whichever binary launched Python (Terminal.app / "
                      "iTerm2.app for terminal launches, Supervertaler.app "
                      "for the bundled app) in System Settings → Privacy & "
-                     "Security → Accessibility, then restart Supervertaler.")
+                     "Security → Accessibility, then restart Localize Large.")
 
         # --- Attempt 2: AHK external script (Windows only) ---
         if IS_WINDOWS:
@@ -71058,9 +71003,9 @@ class SuperlookupTab(QWidget):
                     # Get clipboard text
                     text = pyperclip.paste()
                     
-                    # Activate Supervertaler window
+                    # Activate Localize Large window
                     try:
-                        self._ahk.win_activate('Supervertaler')
+                        self._ahk.win_activate('Localize Large')
                     except Exception as e:
                         print(f"[Superlookup] win_activate error (non-critical): {e}")
                     
@@ -71325,7 +71270,7 @@ class SuperlookupTab(QWidget):
         try:
             print(f"[Superlookup] on_ahk_capture called with text: {text[:50]}...")
 
-            # Bring Supervertaler to foreground using platform-native method
+            # Bring Localize Large to foreground using platform-native method
             # On Windows: AttachThreadInput + SetForegroundWindow (reliable)
             # On macOS: osascript
             # On Linux: wmctrl / xdotool
@@ -71340,8 +71285,8 @@ class SuperlookupTab(QWidget):
                     main_window.show()
 
                 # Use native API to bring window to foreground
-                # This uses the window title, which always contains "Supervertaler"
-                activate_window_by_title("Supervertaler")
+                # This uses the window title, which always contains "Localize Large"
+                activate_window_by_title("Localize Large")
 
                 # Qt side: raise + activate as fallback
                 main_window.raise_()
@@ -71359,7 +71304,7 @@ class SuperlookupTab(QWidget):
         try:
             print(f"[QuickTrans] on_ahk_mt_lookup_capture called with text: {text[:50]}...")
 
-            # Show popup directly without bringing Supervertaler to foreground
+            # Show popup directly without bringing Localize Large to foreground
             # The popup has WindowStaysOnTopHint so it will appear over any app
             QTimer.singleShot(100, lambda: self.show_mt_quick_lookup_from_ahk(text))
 
@@ -71413,7 +71358,7 @@ class SuperlookupTab(QWidget):
             self._ahk_mt_popup = popup
 
             # Show popup on top – Tool window type prevents the main
-            # Supervertaler icon from flashing in the taskbar
+            # Localize Large icon from flashing in the taskbar
             popup.show()
             popup.raise_()
             popup.activateWindow()
@@ -71425,10 +71370,10 @@ class SuperlookupTab(QWidget):
             traceback.print_exc()
 
     def show_supervertaler_assistant(self, initial_text=None, external_mode=False):
-        """Navigate to the Supervertaler Sidekick (AI Assistant tab) and optionally insert text.
+        """Navigate to the Localize Large Sidekick (AI Assistant tab) and optionally insert text.
 
         Instead of a separate floating window, this reuses the existing AI Assistant
-        inside the AI tab. For external mode, it also brings Supervertaler
+        inside the AI tab. For external mode, it also brings Localize Large
         to the foreground first.
         """
         try:
@@ -71437,7 +71382,7 @@ class SuperlookupTab(QWidget):
             if hasattr(main_window, 'window') and main_window is not main_window.window():
                 main_window = main_window.window()
 
-            # If called from external app, bring Supervertaler to front
+            # If called from external app, bring Localize Large to front
             if external_mode:
                 main_window.show()
                 main_window.raise_()
@@ -71452,13 +71397,13 @@ class SuperlookupTab(QWidget):
             elif hasattr(main_window, 'main_tabs'):
                 main_window.main_tabs.setCurrentIndex(3)  # last-resort fallback
 
-            # Switch to Supervertaler Sidekick sub-tab and insert text
+            # Switch to Localize Large Sidekick sub-tab and insert text
             if hasattr(main_window, 'prompt_manager_qt') and main_window.prompt_manager_qt:
                 main_window.prompt_manager_qt.receive_text_for_assistant(
                     initial_text or "", from_external=external_mode
                 )
 
-            print(f"[Assistant] Navigated to Supervertaler Sidekick (external={external_mode})")
+            print(f"[Assistant] Navigated to Localize Large Sidekick (external={external_mode})")
 
         except Exception as e:
             print(f"[Assistant] Error navigating to assistant: {e}")
@@ -71922,9 +71867,9 @@ def _setup_diagnostic_log():
     stdout/stderr would otherwise go to a null device – users have no
     console to copy from, but they can point us at a file.
 
-    Path: <user_data_path>/workbench/logs/supervertaler.log
+    Path: <user_data_path>/workbench/logs/localizelarge.log
     Rotation: once the log exceeds ~2 MB it is renamed to
-    supervertaler-previous.log (overwriting any older copy). Keeps at most
+    localizelarge-previous.log (overwriting any older copy). Keeps at most
     2 files, ~4 MB total, so the disk footprint is negligible.
 
     The tee preserves the original stdout/stderr, so developers running
@@ -71939,8 +71884,8 @@ def _setup_diagnostic_log():
     try:
         log_dir = _ll_paths.logs_dir()
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / "supervertaler.log"
-        prev_path = log_dir / "supervertaler-previous.log"
+        log_path = log_dir / "localizelarge.log"
+        prev_path = log_dir / "localizelarge-previous.log"
 
         # Rotate if the existing log is too large (~2 MB).
         try:
@@ -71956,7 +71901,7 @@ def _setup_diagnostic_log():
         log_file = open(log_path, 'a', encoding='utf-8', errors='replace', buffering=1)
         log_file.write(
             f"\n{'=' * 70}\n"
-            f"Supervertaler session started {datetime.now().isoformat(timespec='seconds')}\n"
+            f"Localize Large session started {datetime.now().isoformat(timespec='seconds')}\n"
             f"Python: {sys.version.split()[0]} on {sys.platform}\n"
             f"{'=' * 70}\n"
         )
@@ -72041,7 +71986,7 @@ def _install_log_hooks():
       * Python warnings       – DeprecationWarning, ResourceWarning, ...
 
     Everything they emit is written via ``print`` / ``sys.stderr``, which
-    _setup_diagnostic_log has already teed to supervertaler.log. So after
+    _setup_diagnostic_log has already teed to localizelarge.log. So after
     this runs, the in-app diagnostic log is a true superset of what the
     dev terminal would have shown.
     """
@@ -72150,7 +72095,7 @@ def main():
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-logging --log-level=3 --enable-logging=stderr --v=-1"
     
     # Suppress Qt WebEngine's "js:" console output (CSP violations, permissions policy warnings)
-    # These come from embedded web pages and are not relevant to Supervertaler
+    # These come from embedded web pages and are not relevant to Localize Large
     os.environ["QT_LOGGING_RULES"] = "*.debug=false;qt.webenginecontext.debug=false;js=false"
     
     # Filter stderr to suppress noisy Chromium JS console messages
@@ -72195,8 +72140,8 @@ def main():
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
     
     app = QApplication(sys.argv)
-    app.setApplicationName("Supervertaler")
-    app.setOrganizationName("Supervertaler")
+    app.setApplicationName("LocalizeLarge")
+    app.setOrganizationName("LocalizeLarge")
 
     # ─── v1.10.207: install UI translator BEFORE constructing any widgets ───
     # Reads the locale from settings.json (general.ui_locale, default "en").
@@ -72317,7 +72262,7 @@ def main():
     if sys.platform == 'win32':
         try:
             import ctypes
-            myappid = 'com.michaelbeijer.supervertaler.1.9.27'
+            myappid = 'com.localizelarge.app'
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         except Exception:
             pass  # Fail silently if not on Windows or ctypes unavailable

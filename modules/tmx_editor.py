@@ -2,7 +2,7 @@
 TMX Editor Module - Professional Translation Memory Editor
 
 A standalone, nimble TMX editor inspired by Heartsome TMX Editor 8.
-Can run independently or integrate with Supervertaler.
+Can run independently or integrate with Localize Large.
 
 Key Features (inspired by Heartsome):
 - Dual-language grid editor (source/target columns)
@@ -16,7 +16,7 @@ Key Features (inspired by Heartsome):
 
 Architecture:
 - Standalone mode: Run this file directly
-- Integrated mode: Called from Supervertaler as a module
+- Integrated mode: Called from Localize Large as a module
 
 Designer: Michael Beijer
 Based on concepts from: Heartsome TMX Editor 8 (Java/Eclipse RCP)
@@ -71,7 +71,7 @@ class TmxTranslationUnit:
 @dataclass
 class TmxHeader:
     """TMX file header information"""
-    creation_tool: str = "Supervertaler TMX Editor"
+    creation_tool: str = "Localize Large TMX Editor"
     creation_tool_version: str = "1.0"
     segtype: str = "sentence"
     o_tmf: str = "unknown"
@@ -342,7 +342,7 @@ class TmxEditorUI:
         if standalone:
             # Create standalone window
             self.root = tk.Tk()
-            self.root.title("TMX Editor - Supervertaler")
+            self.root.title("TMX Editor - Localize Large")
             self.root.geometry("1200x700")
             self.container = self.root
         else:

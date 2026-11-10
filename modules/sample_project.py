@@ -2,7 +2,7 @@
 Sample project
 ==============
 
-A small ready-made English → Dutch project that shows what Supervertaler does
+A small ready-made English → Dutch project that shows what Localize Large does
 at a glance (issue #147): TermLens with glossary terms (including a forbidden
 term and a non-translatable), TM matches – exact, and fuzzy with the
 differences highlighted – already translated and untranslated segments, and an
@@ -14,11 +14,11 @@ reuses them afterwards, so opening the sample again never duplicates anything.
 
 from typing import Dict, List, Tuple
 
-PROJECT_NAME = "Supervertaler sample project"
+PROJECT_NAME = "Localize Large sample project"
 PROJECT_ID = 147000147          # fixed, so TM/glossary activation carries over
 SOURCE_LANG, TARGET_LANG = "en", "nl"
-TM_NAME, TM_ID = "Sample TM (Supervertaler)", "supervertaler_sample_tm"
-GLOSSARY_NAME = "Sample glossary (Supervertaler)"
+TM_NAME, TM_ID = "Sample TM (Localize Large)", "supervertaler_sample_tm"
+GLOSSARY_NAME = "Sample glossary (Localize Large)"
 
 # (source, target, status) – the first two are already done
 SEGMENTS: List[Tuple[str, str, str]] = [

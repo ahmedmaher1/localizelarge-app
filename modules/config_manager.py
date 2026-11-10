@@ -1,5 +1,5 @@
 """
-Configuration Manager for Supervertaler
+Configuration Manager for Localize Large
 Handles user_data folder location, first-time setup, and configuration persistence.
 
 Author: Michael Beijer
@@ -15,7 +15,7 @@ from typing import Optional, Tuple
 
 class ConfigManager:
     """
-    Manages Supervertaler configuration and user_data paths.
+    Manages Localize Large configuration and user_data paths.
     
     MODES:
     - Dev mode: .supervertaler.local exists → uses user_data_private/ folder (git-ignored)

@@ -1,5 +1,5 @@
 """
-Spellcheck Manager for Supervertaler
+Spellcheck Manager for Localize Large
 =====================================
 Provides spellchecking functionality using Hunspell dictionaries.
 Supports custom word lists and project-specific dictionaries.
@@ -79,7 +79,7 @@ def parse_word_list(text: str) -> Tuple[List[str], int]:
 
 class SpellcheckManager:
     """
-    Manages spellchecking for Supervertaler.
+    Manages spellchecking for Localize Large.
     
     Supports:
     - Hunspell dictionaries (.dic/.aff files)
@@ -222,7 +222,7 @@ class SpellcheckManager:
         """Save custom words to file"""
         try:
             with open(self.custom_words_file, 'w', encoding='utf-8') as f:
-                f.write("# Supervertaler Custom Dictionary\n")
+                f.write("# Localize Large Custom Dictionary\n")
                 f.write("# Add words that should not be marked as spelling errors\n\n")
                 for word in sorted(self._custom_words):
                     f.write(f"{word}\n")

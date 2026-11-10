@@ -1,7 +1,7 @@
 """
 Theme Manager
 =============
-Manages UI themes and color schemes for Supervertaler Qt.
+Manages UI themes and color schemes for Localize Large Qt.
 Allows users to customize the appearance of the entire application.
 
 Features:
@@ -109,8 +109,8 @@ class ThemeManager:
             text="#212121",
             base="#FFFFFF",
             button="#E0E0E0",
-            highlight="#e3f2fd",
-            highlight_text="#000000",
+            highlight="#0F766E",  # Localize Large accent
+            highlight_text="#FFFFFF",
         ),
         
         "Soft Gray": Theme(

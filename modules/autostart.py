@@ -1,5 +1,5 @@
 """
-Cross-platform "Start with computer" helper for Supervertaler Workbench.
+Cross-platform "Start with computer" helper for Localize Large.
 
 Provides ``is_enabled()`` / ``enable()`` / ``disable()`` for Windows, macOS,
 and Linux without requiring elevation:
@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
-APP_NAME = "Supervertaler"
+APP_NAME = "Localize Large"
 APP_BUNDLE_ID = "com.supervertaler.workbench"
 
 # ── Resolving the launch command ────────────────────────────────────────

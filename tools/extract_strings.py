@@ -1,5 +1,5 @@
 """
-Extract translatable strings from Supervertaler source files into XLIFF 1.2.
+Extract translatable strings from Localize Large source files into XLIFF 1.2.
 
 Walks the AST of every requested Python file, finds calls to ``self.tr(...)``
 and ``QCoreApplication.translate(...)`` with literal string arguments, and
@@ -7,7 +7,7 @@ emits a single XLIFF 1.2 file with one ``<trans-unit>`` per unique
 ``(context, source)`` pair.
 
 We chose XLIFF over the more conventional Qt ``.ts`` (Qt Linguist's XML) and
-GNU gettext ``.po`` because Supervertaler's audience is professional
+GNU gettext ``.po`` because Localize Large's audience is professional
 translators – every CAT tool in regular use (Trados, memoQ, Phrase, OmegaT,
 Workbench itself) eats standard XLIFF 1.2 natively as a source-file format,
 where ``.ts`` is essentially Qt-only and ``.po`` ergonomics vary by tool.
@@ -20,7 +20,7 @@ CAT tool → save back as XLIFF → load on next launch.
 
     python tools/extract_strings.py
 
-Produces ``translations/supervertaler_template.xlf`` with all strings
+Produces ``translations/localizelarge_template.xlf`` with all strings
 collected from ``Supervertaler.py`` and ``modules/i18n.py``.
 
 # Notes
@@ -28,7 +28,7 @@ collected from ``Supervertaler.py`` and ``modules/i18n.py``.
 - Only literal-string ``tr()`` arguments are extracted. f-strings, name
   references, and string concatenations are silently skipped – they
   require runtime-side ``.format()`` plumbing that's a separate audit.
-- Existing translations in target locale files (``supervertaler_*.xlf``)
+- Existing translations in target locale files (``localizelarge_*.xlf``)
   are NOT touched by this tool. Re-running it regenerates the template
   only. A small ``merge_template.py`` helper handles propagating new
   strings into existing translated files while preserving completed
@@ -57,14 +57,14 @@ DEFAULT_SOURCES: list[Path] = [
     REPO_ROOT / "Supervertaler.py",
     REPO_ROOT / "modules" / "i18n.py",
 ]
-DEFAULT_TEMPLATE_PATH = REPO_ROOT / "translations" / "supervertaler_template.xlf"
+DEFAULT_TEMPLATE_PATH = REPO_ROOT / "translations" / "localizelarge_template.xlf"
 
 # Source language for the XLIFF <file> header. ISO 639-1.
 SOURCE_LANG = "en"
 
 # Tool identification baked into the generated header for traceability.
 TOOL_ID = "supervertaler-extract-strings"
-TOOL_NAME = "Supervertaler i18n string extractor"
+TOOL_NAME = "Localize Large i18n string extractor"
 TOOL_VERSION = "1.0"
 
 

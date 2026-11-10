@@ -2,7 +2,7 @@
 Resource Backup
 ===============
 
-Writes every translation resource in the Supervertaler database out to open,
+Writes every translation resource in the Localize Large database out to open,
 tool-neutral files in one go (issue #52):
 
     <folder>/Supervertaler resources <date time>/
@@ -76,10 +76,10 @@ def write_tm_tmx(cursor, tm: Dict, path: str, tool_version: str = "",
     with open(path, 'w', encoding='utf-8', newline='\n') as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         f.write('<tmx version="1.4">\n')
-        f.write('  <header creationtool="Supervertaler Workbench" '
+        f.write('  <header creationtool="Localize Large" '
                 f'creationtoolversion={quoteattr(tool_version or "")} '
                 'datatype="plaintext" segtype="sentence" adminlang="en" '
-                f'srclang={quoteattr(srclang)} o-tmf="Supervertaler">\n')
+                f'srclang={quoteattr(srclang)} o-tmf="Localize Large">\n')
         f.write(f'    <prop type="x-tm-name">{_xml_text(tm.get("name", ""))}</prop>\n')
         f.write('  </header>\n  <body>\n')
         while True:
@@ -120,7 +120,7 @@ def backup_all_resources(db_manager, tm_metadata_mgr, termbase_mgr, out_folder: 
     from modules.termbase_import_export import TermbaseExporter
 
     stamp = datetime.now().strftime('%Y-%m-%d %H%M')
-    folder = os.path.join(out_folder, f"Supervertaler resources {stamp}")
+    folder = os.path.join(out_folder, f"Localize Large resources {stamp}")
     tm_dir = os.path.join(folder, 'TMs')
     tb_dir = os.path.join(folder, 'Termbases')
     os.makedirs(tm_dir, exist_ok=True)
@@ -173,8 +173,8 @@ def backup_all_resources(db_manager, tm_metadata_mgr, termbase_mgr, out_folder: 
 
 def _write_readme(summary: Dict, tool_version: str) -> None:
     lines: List[str] = [
-        "Supervertaler resource backup",
-        f"Written {datetime.now().strftime('%Y-%m-%d %H:%M')} by Supervertaler Workbench {tool_version}".rstrip(),
+        "Localize Large resource backup",
+        f"Written {datetime.now().strftime('%Y-%m-%d %H:%M')} by Localize Large {tool_version}".rstrip(),
         "",
         "TMs/        one TMX 1.4 file per translation memory (each entry keeps its own",
         "            language pair, dates, author and note)",
@@ -183,7 +183,7 @@ def _write_readme(summary: Dict, tool_version: str) -> None:
         "            are marked TRUE in the Non-translatable column",
         "",
         "To restore: import the TMX files as TMs and the TSV files as termbases in",
-        "Supervertaler (or any CAT tool that reads TMX and tab-separated glossaries).",
+        "Localize Large (or any CAT tool that reads TMX and tab-separated glossaries).",
         "",
         f"Translation memories ({len(summary['tms'])}):",
     ]

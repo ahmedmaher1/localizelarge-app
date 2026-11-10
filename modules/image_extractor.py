@@ -1,6 +1,6 @@
 """
 ═══════════════════════════════════════════════════════════════════════════════
-Image Extractor Module for Supervertaler
+Image Extractor Module for Localize Large
 ═══════════════════════════════════════════════════════════════════════════════
 
 Purpose:

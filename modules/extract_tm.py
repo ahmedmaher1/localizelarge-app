@@ -5,7 +5,7 @@ This module implements TM extraction that saves relevant segments from existing 
 to a .svtm file (SQLite database) next to the project file. Unlike the in-memory
 ProjectTM, this persists across sessions.
 
-File format: .svtm (Supervertaler TM) - SQLite database internally
+File format: .svtm (Localize Large TM) - SQLite database internally
 Filename pattern: {ProjectName}_Extract.svtm
 """
 
@@ -432,9 +432,9 @@ class ExtractTM:
         tmx_header = f'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE tmx SYSTEM "tmx14.dtd">
 <tmx version="1.4">
-  <header creationtool="Supervertaler" creationtoolversion="1.0"
+  <header creationtool="Localize Large" creationtoolversion="1.0"
           datatype="plaintext" segtype="sentence"
-          adminlang="en" srclang="{source_lang}" o-tmf="Supervertaler">
+          adminlang="en" srclang="{source_lang}" o-tmf="Localize Large">
   </header>
   <body>
 '''

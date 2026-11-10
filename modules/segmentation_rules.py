@@ -2,7 +2,7 @@
 Segmentation rules
 ==================
 
-User-definable rules for the segmenter Supervertaler runs itself (issue #191):
+User-definable rules for the segmenter Localize Large runs itself (issue #191):
 plain-text and Markdown imports with "Split lines into sentences" ticked, text
 pasted into New Project, and Add Segments from pasted text. DOCX and the other
 document formats are split by the Okapi engine with its own SRX rules and are
@@ -255,7 +255,7 @@ def parse_srx(data: str) -> Dict[str, List[Rule]]:
     return result
 
 
-def build_srx(rules: List[Rule], name: str = "Supervertaler") -> str:
+def build_srx(rules: List[Rule], name: str = "Localize Large") -> str:
     """An SRX 2.0 document with the enabled rules as one language rule that
     applies to every language."""
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',

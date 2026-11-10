@@ -3,7 +3,7 @@ Superlookup Engine
 ==================
 System-wide translation lookup that works anywhere on your computer.
 Captures text from any application and provides:
-- TM matches from Supervertaler database
+- TM matches from Localize Large database
 - Glossary term lookups
 - MT/AI translations
 - Web search integration

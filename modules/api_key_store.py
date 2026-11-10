@@ -1,5 +1,5 @@
 """
-The API keys every Supervertaler product shares, in two copies during step 1
+The API keys every Localize Large product shares, in two copies during step 1
 of "API keys locked to the computer" (Plugin Core,
 docs/design/api-key-protection.md). Plugin Core's ``ApiKeyStore`` is the
 reference: the same files, the same format, the same lock, the same rules.
@@ -15,7 +15,7 @@ into the locked copy and removes it.
 ``%APPDATA%/Supervertaler/api-keys.locked.json``: the same ids, each value
 locked by Windows to this Windows account (DPAPI), so a copy of it opens for
 no other account. On a Mac one Keychain item (Linux: the Secret Service),
-service ``Supervertaler``, account ``api-keys``, holding the same map with
+service ``Localize Large``, account ``api-keys``, holding the same map with
 plain values; when there is none, the plain copies stay as before (M7).
 
 **Step 1** (design note §5): a read takes the plain file's key when it has
@@ -71,9 +71,9 @@ _gate = threading.RLock()
 
 _ALIASES = {"anthropic": "claude", "xai": "grok", "x.ai": "grok", "custom": "custom_openai"}
 
-_PLAIN_COMMENT = ("API keys shared by Supervertaler for Trados, Supervertaler for memoQ and "
-                  "Supervertaler Sidekick. One key per provider; edit by hand or in any product's settings.")
-_LOCKED_COMMENT = ("Supervertaler API keys, locked by Windows to this Windows account. They cannot be "
+_PLAIN_COMMENT = ("API keys shared by Supervertaler for Trados, Localize Large for memoQ and "
+                  "Localize Large Sidekick. One key per provider; edit by hand or in any product's settings.")
+_LOCKED_COMMENT = ("Localize Large API keys, locked by Windows to this Windows account. They cannot be "
                    "read on another computer or by another account. Change them in any product's settings.")
 
 # The names users know the providers by: core's, then the ones only
@@ -665,11 +665,11 @@ class _LockedFile:
 
 class _Keychain:
     """A Mac's Keychain (Linux: the Secret Service), through keyring: one item,
-    service "Supervertaler", account "api-keys", holding the whole map with plain
+    service "Localize Large", account "api-keys", holding the whole map with plain
     values. One item rather than one per provider, so that macOS asks at most
     one "allow?" question, not one per key (§3)."""
 
-    SERVICE, MAIN, NEW = "Supervertaler", "api-keys", "api-keys.new"
+    SERVICE, MAIN, NEW = "Localize Large", "api-keys", "api-keys.new"
 
     def __init__(self, backend):
         self.backend = backend
@@ -764,10 +764,10 @@ def keychain_missing_notice() -> Optional[str]:
     if sys.platform == "win32" or _store() is not None:
         return None
     if sys.platform == "darwin":
-        return ("Your Mac's Keychain isn't available to Supervertaler, so your keys stay in "
-                "Supervertaler's settings file as before.")
-    return ("Your computer's secret store isn't available to Supervertaler, so your keys stay in "
-            "Supervertaler's settings file as before.")
+        return ("Your Mac's Keychain isn't available to Localize Large, so your keys stay in "
+                "Localize Large's settings file as before.")
+    return ("Your computer's secret store isn't available to Localize Large, so your keys stay in "
+            "Localize Large's settings file as before.")
 
 
 # ─── Reading ─────────────────────────────────────────────────────────────────

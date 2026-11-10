@@ -2,11 +2,11 @@
 Trados Bridge Client
 ====================
 
-Client for the Supervertaler Bridge (a localhost HTTP API exposed by the
+Client for the Localize Large Bridge (a localhost HTTP API exposed by the
 Supervertaler for Trados plugin – see Core/SupervertalerBridge.cs in that repo).
 
 Discovery flow:
-  1. Resolve the shared user-data root (same `%APPDATA%\\Supervertaler\\config.json`
+  1. Resolve the shared user-data root (same `%APPDATA%\\Localize Large\\config.json`
      pointer that llm_clients.load_api_keys() reads).
   2. Look for the handshake file at  <root>/trados/runtime/bridge.json
      written by the plugin while it's running.  Contains:
@@ -55,12 +55,12 @@ def _resolve_user_data_root() -> Path:
     """
     # Pointer file location is OS-specific
     if sys.platform == "win32":
-        pointer = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "Supervertaler" / "config.json"
+        pointer = Path(os.environ.get("APPDATA", os.path.expanduser("~"))) / "Localize Large" / "config.json"
     elif sys.platform == "darwin":
-        pointer = Path.home() / "Library" / "Application Support" / "Supervertaler" / "config.json"
+        pointer = Path.home() / "Library" / "Application Support" / "Localize Large" / "config.json"
     else:
         xdg = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
-        pointer = xdg / "Supervertaler" / "config.json"
+        pointer = xdg / "Localize Large" / "config.json"
 
     if pointer.exists():
         try:
@@ -71,7 +71,7 @@ def _resolve_user_data_root() -> Path:
         except Exception:
             pass
 
-    return Path.home() / "Supervertaler"
+    return Path.home() / "Localize Large"
 
 
 def _bridge_handshake_path() -> Path:
@@ -414,7 +414,7 @@ if QObject is not None:
     class TradosBridgePoller(QObject):
         """
         Singleton coordinator that drives a single off-main-thread probe
-        of the Trados Supervertaler Bridge and broadcasts availability changes
+        of the Trados Localize Large Bridge and broadcasts availability changes
         to any number of subscribers via ``availability_changed``.
 
         Replaces the previous "every ChatViewWidget runs its own 3 s

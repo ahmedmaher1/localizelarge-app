@@ -457,7 +457,7 @@ class PhraseDOCXHandler:
     def _tagged_text_to_runs(self, text: str) -> list:
         """
         Parse text with HTML formatting tags and return a list of runs with formatting info.
-        Compatible with Supervertaler's memoQ format.
+        Compatible with Localize Large's memoQ format.
         """
         import re
 

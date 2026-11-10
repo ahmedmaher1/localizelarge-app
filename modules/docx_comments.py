@@ -3,7 +3,7 @@ DOCX comment extraction
 ========================
 
 Reads Word review comments out of a .docx so they can be imported into
-Supervertaler as *actual comments* (anchored, author-tagged) rather than
+Localize Large as *actual comments* (anchored, author-tagged) rather than
 as translatable segments.
 
 A Word comment has three relevant pieces, spread across two XML parts:
@@ -17,7 +17,7 @@ A Word comment has three relevant pieces, spread across two XML parts:
       <w:commentRangeStart w:id="3"/> ...runs... <w:commentRangeEnd w:id="3"/>
   The text of the runs between start and end is the highlighted span the
   reviewer attached the comment to. We use that span to find the matching
-  Supervertaler segment.
+  Localize Large segment.
 
 This module is read-only and has no Okapi/Qt dependency.
 """
@@ -205,7 +205,7 @@ def parse_docx_comments(docx_path: str) -> List[Dict[str, Any]]:
     return result
 
 
-# ── Matching comments to Supervertaler segments ──────────────────────────────
+# ── Matching comments to Localize Large segments ──────────────────────────────
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
 

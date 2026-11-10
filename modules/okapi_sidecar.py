@@ -1,5 +1,5 @@
 """
-Supervertaler Okapi Sidecar Client
+Localize Large Okapi Sidecar Client
 ===================================
 
 Manages the lifecycle of the local Okapi sidecar process and provides
@@ -49,7 +49,7 @@ class OkapiSidecarError(Exception):
 
 class OkapiSidecar:
     """
-    Client for the Supervertaler Okapi Sidecar REST service.
+    Client for the Localize Large Okapi Sidecar REST service.
 
     The sidecar runs as a local subprocess on 127.0.0.1 (never exposed
     to the network).  All document processing happens on the user's
@@ -103,7 +103,7 @@ class OkapiSidecar:
             port:        TCP port for the sidecar (default 8090).
             sidecar_dir: Path to the directory containing the sidecar JAR
                          and bundled JRE.  If None, auto-detected relative
-                         to the Supervertaler installation.
+                         to the Localize Large installation.
         """
         self.port = port
         self.base_url = f"http://127.0.0.1:{port}"
@@ -303,7 +303,7 @@ class OkapiSidecar:
 
     def _stop_foreign_sidecar(self) -> None:
         """Stop a sidecar we did not spawn (typically a stale JVM left
-        running from a previous Supervertaler session, holding the port
+        running from a previous Localize Large session, holding the port
         with an outdated JAR loaded into memory).
 
         Tries the polite POST /shutdown endpoint first; falls back to
@@ -418,7 +418,7 @@ class OkapiSidecar:
             options:     Optional per-file-type import toggles (dict of
                          booleans, e.g. {"word_comments": False,
                          "word_hidden": False}). Absent keys fall back to
-                         the sidecar's Supervertaler defaults. See
+                         the sidecar's Localize Large defaults. See
                          FilterService.applyFilterParameters for the keys.
 
         Returns:
@@ -740,7 +740,7 @@ class OkapiSidecar:
     def download_install(self, progress_callback=None) -> bool:
         """Lazy-download the sidecar for the current platform.
 
-        Used by pip-installed copies of Supervertaler that don't ship the
+        Used by pip-installed copies of Localize Large that don't ship the
         sidecar bundled alongside the application (the desktop EXE release
         ships JAR + JRE in `_internal/okapi-sidecar/`).
 

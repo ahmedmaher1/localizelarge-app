@@ -1,5 +1,5 @@
 """
-LLM Clients Module for Supervertaler
+LLM Clients Module for Localize Large
 =====================================
 
 Specialized independent module for interacting with various LLM providers.
@@ -1147,7 +1147,7 @@ class LLMClient:
         if self.provider == "openrouter":
             client_kwargs["default_headers"] = {
                 "HTTP-Referer": "https://supervertaler.com",
-                "X-Title": "Supervertaler"
+                "X-Title": "Localize Large"
             }
         if self.http_proxy:
             import httpx
@@ -1437,7 +1437,7 @@ class LLMClient:
         if self.provider == "openrouter":
             client_kwargs["default_headers"] = {
                 "HTTP-Referer": "https://supervertaler.com",
-                "X-Title": "Supervertaler"
+                "X-Title": "Localize Large"
             }
         if self.http_proxy:
             import httpx
@@ -2013,7 +2013,7 @@ def main():
     print(f"Translation: {result}")
 
 
-# Wrapper functions for easy integration with Supervertaler
+# Wrapper functions for easy integration with Localize Large
 def get_openai_translation(text: str, source_lang: str, target_lang: str, context: str = "") -> Dict:
     """
     Get OpenAI translation with metadata

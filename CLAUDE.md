@@ -1,75 +1,52 @@
-# Supervertaler – Claude Code Reference
+# Localize Large — reference for AI-assisted development
 
-> Concise project reference for AI-assisted development. Check `CHANGELOG.md` for latest version and recent work.
+Localize Large is a Windows desktop CAT tool (PyQt6) for in-house localization teams. It is
+a fork of Supervertaler Workbench 1.10.376 by Michael Beijer (MIT), commit `f83e520`. The
+build plan has eight phases; `CHANGELOG.md` and `docs/` show what is done.
 
-## Project Overview
-
-Supervertaler is a desktop CAT (Computer-Assisted Translation) tool built with PyQt6. It combines AI translation (multiple LLM providers), translation memory, terminology management, and quality assurance in a single application.
-
-## Key Paths
+## Layout
 
 | What | Path |
-|------|------|
-| Main app (monolithic) | `Supervertaler.py` |
-| Modules | `modules/` |
-| Version (source of truth) | `pyproject.toml` |
-| Changelog | `CHANGELOG.md` |
-| Website (landing) | `docs/index.html` |
-| Website (Workbench page) | `docs/workbench/index.html` |
-| Website (Trados page) | `docs/trados/index.html` |
-| Website CSS | `docs/styles.css` |
-| Help – Desktop (GitBook) | `docs/help/supervertaler/` |
-| Help – Trados (GitBook) | Moved to `Supervertaler-for-Trados` repo `docs/` |
-| Help – Desktop (old, git-synced) | `docs/superdocs/` |
+|---|---|
+| Main window (one very large file; read and edit by line range only) | `Supervertaler.py` |
+| Base modules | `modules/` |
+| **New code** | `localizelarge/` |
+| Every data path | `localizelarge/paths.py` |
+| Project file format (`.llproj`) | `localizelarge/project_format.py` |
+| About dialog | `localizelarge/about.py` |
+| Okapi sidecar (Java, Javalin REST) | `okapi-sidecar/` |
 | Tests | `tests/` |
-| Settings | `settings/settings.json` |
-| Dependencies | `requirements.txt` |
+| Version (source of truth) | `pyproject.toml` |
+| Removed features and why | `docs/REMOVED.md` |
 
-### Important modules
+## Rules
 
-- `modules/termlens_widget.py` – TermLens inline terminology display (`TermLensWidget`)
-- `modules/llm_clients.py` – LLM provider abstraction
-- `modules/termbase_manager.py` – glossary/termbase CRUD
-- `modules/database_manager.py` – SQLite database layer
-- `modules/translation_results_panel.py` – match panel UI
-- `modules/shortcut_manager.py` – keyboard shortcut system
-- `modules/simple_segmenter.py` – sentence segmentation (`SimpleSegmenter`, `MarkdownSegmenter`)
-- `modules/platform_helpers.py` – cross-platform utilities (Windows/macOS/Linux)
+1. Search with grep before editing. Never read `Supervertaler.py` whole.
+2. New code goes in `localizelarge/`. The monolith gets thin hooks only: a menu action, a
+   panel, a call.
+3. Change every user-visible string, path, user agent, URL and file extension to Localize
+   Large. Python module and class names that users never see may keep "supervertaler".
+4. Never remove the attribution to Michael Beijer or the MIT text in `NOTICE`.
+5. Do not copy code from OmegaT or any other GPL CAT tool. Never add AGPL code. Record each
+   new dependency, version and license in `THIRD_PARTY_LICENSES.md` in the same commit.
+6. Nothing builds a data path by hand; ask `localizelarge/paths.py`. Never read or write a
+   Supervertaler folder.
+7. No silent network calls. A new connection must be listed in
+   `docs/security/network-connections.json` in the same commit.
+8. Never claim a feature in docs or UI that is not built and tested.
+9. Each change ends with passing tests. A feature is done only when a test covers it.
 
-## Settings Architecture
-
-Primary config: `settings/settings.json` with top-level sections: `api_keys`, `general`, `ui`, `features`.
-
-Satellite files under `settings/`: `themes.json`, `shortcuts.json`, `recent_projects.json`, `find_replace_history.json`, `superlookup_history.json`, `voice_commands.json`, `model_version_cache.json`.
-
-Legacy settings files are auto-migrated at startup and renamed to `.migrated`.
-
-## Pitfalls
-
-1. `Supervertaler.py` is very large – always read/edit by line range, never full-file.
-2. Qt table access: use `cellWidget()` for editors, `item()` for plain items.
-3. Block signals during programmatic text updates to avoid cascades.
-4. Style issues can be timing-related (hidden widgets, deferred visibility).
-5. XML namespace formats (SDLXLIFF): always use namespace dicts.
-6. **Never add `"global": True` to a shortcut whose chord Supervertaler for
-   Trados also uses.** A global hotkey is registered at OS level and fires
-   whichever application is in front, so it reaches Trados as well – and many
-   users run both products side by side. The two apps share 17 chords quite
-   deliberately (Alt+↓, Ctrl+Alt+T, Alt+1…9 and so on do the same job in each),
-   which is safe *only* while the Workbench side stays in-app and focus decides
-   the winner. Promoting one of those to global turns a parallel into a
-   collision. Two of these shipped in one day: Ctrl+Alt+A (Always-On vs Add term
-   with abbreviation) and Ctrl+Alt+V (voice PTT vs voice toggle). The second was
-   the nastier kind – Workbench's was a *hold* and Trados's a *toggle*, so
-   releasing the key stopped only Workbench's and left the Trados listener
-   latched on with nothing visible having started it.
-   Run `python tools/shortcut_overlap.py` before changing any binding: it prints
-   the current intersection and exits non-zero if a global one collides.
-
-## Testing
+## Tests
 
 ```bash
-pytest tests/
+HOME=$(mktemp -d) QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=120
 ```
 
-Manual smoke test: import DOCX → translate → export, save/load `.svproj`, TM + termbase matching, AI translation, SDLPPX round-trip.
+Always use a temporary home (and on Windows temporary `APPDATA` and `LOCALAPPDATA`), so no
+real data is touched.
+
+## Identity
+
+Name "Localize Large"; app ID `com.localizelarge.app`; executable `LocalizeLarge.exe`;
+project files `.llproj` (opens `.svproj`); quality packs `.llqp`; version 1.0.0; website
+`localizelarge.com`; support `contact@localizelarge.com`.

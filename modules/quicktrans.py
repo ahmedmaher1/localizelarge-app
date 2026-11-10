@@ -2,7 +2,7 @@
 QuickTrans - Instant translation popup (GT4T-style)
 
 A popup window that shows translations from all enabled MT engines and LLMs.
-Part of the Supervertaler tool suite. Triggered by Ctrl+M (in-app) or Ctrl+Alt+Q (global).
+Part of the Localize Large tool suite. Triggered by Ctrl+M (in-app) or Ctrl+Alt+Q (global).
 
 Features:
 - Shows source text at the top
@@ -669,10 +669,10 @@ class MTQuickPopup(QuickTransProviderMixin, QDialog):
 
     def setup_ui(self):
         """Setup the popup UI"""
-        self.setWindowTitle("⚡ Supervertaler QuickTrans")
+        self.setWindowTitle("⚡ Localize Large QuickTrans")
         if self._external_mode:
             # External mode (global hotkey): use Tool window type so the
-            # Supervertaler taskbar icon doesn't flash when the popup appears.
+            # Localize Large taskbar icon doesn't flash when the popup appears.
             # Tool windows don't get their own taskbar entry and don't activate
             # the parent application.
             self.setWindowFlags(
@@ -693,7 +693,7 @@ class MTQuickPopup(QuickTransProviderMixin, QDialog):
         self.setMinimumHeight(200)
 
         # Restore saved size and position or use defaults
-        settings = QSettings("Supervertaler", "MTQuickPopup")
+        settings = QSettings("Localize Large", "MTQuickPopup")
         saved_width = settings.value("width", 650, type=int)
         saved_height = settings.value("height", 400, type=int)
         self.resize(saved_width, saved_height)
@@ -730,7 +730,7 @@ class MTQuickPopup(QuickTransProviderMixin, QDialog):
         container_layout.setContentsMargins(12, 12, 12, 12)
         container_layout.setSpacing(8)
 
-        # The window title bar already shows "Supervertaler QuickTrans", so the
+        # The window title bar already shows "Localize Large QuickTrans", so the
         # action buttons (Run in SuperLookup, settings) sit on the Source row
         # below rather than in a separate header that repeats the title.
 
@@ -1411,7 +1411,7 @@ class MTQuickPopup(QuickTransProviderMixin, QDialog):
     def closeEvent(self, event):
         """Clean up worker on close and save window size and position"""
         # Save window size and position for next time
-        settings = QSettings("Supervertaler", "MTQuickPopup")
+        settings = QSettings("Localize Large", "MTQuickPopup")
         settings.setValue("width", self.width())
         settings.setValue("height", self.height())
         settings.setValue("x", self.x())

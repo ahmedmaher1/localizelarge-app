@@ -1,5 +1,5 @@
 """
-Local LLM Setup Module for Supervertaler
+Local LLM Setup Module for Localize Large
 =========================================
 
 Provides setup wizard, status checking, and model management for local LLM

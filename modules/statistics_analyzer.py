@@ -1,4 +1,4 @@
-"""Statistics analyzer for Supervertaler Workbench.
+"""Statistics analyzer for Localize Large.
 
 Analyzes a project against one or more TMs and produces a breakdown by match
 category: Repetitions, 101%, 100%, 95-99%, 85-94%, 75-84%, 50-74%, No match.

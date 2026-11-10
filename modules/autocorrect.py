@@ -19,7 +19,7 @@ Currently shipped rules:
 * :class:`EllipsisRule`          — ``...`` → ``…``.
 * :class:`EnDashRule`            — ``--`` → ``–``.
 * :class:`EmDashRule`            — ``---`` → ``—`` (opt-in; off by
-  default to match the Supervertaler house style which prefers en-dashes).
+  default to match the Localize Large house style which prefers en-dashes).
 * :class:`FrenchNbspRule`        — insert a NARROW NO-BREAK SPACE (U+202F)
   before ``:`` ``;`` ``!`` ``?`` and adjacent to French guillemets when
   the target language is French. Auto-enabled for ``fr*`` targets.
@@ -204,7 +204,7 @@ _TAG_LOOKBACK_CHARS = 40
 
 # Characters the engine should treat as whitespace for the purposes of
 # smart-quote opening/closing context. Includes the on-screen markers
-# Supervertaler uses when "Show Invisibles" is enabled — without these,
+# Localize Large uses when "Show Invisibles" is enabled — without these,
 # typing  Hallo " with the space marker on would yield the closing quote
 # shape because the engine would see `·` (middle dot) before the quote
 # rather than a real space. The set mirrors the marker chars wired into
@@ -221,7 +221,7 @@ _WHITESPACE_LIKE = frozenset(
 
 
 def _is_whitespace_like(ch: str) -> bool:
-    """Whitespace, NBSPs, or any of Supervertaler's invisible-display markers."""
+    """Whitespace, NBSPs, or any of Localize Large's invisible-display markers."""
     if not ch:
         return False
     return ch in _WHITESPACE_LIKE or ch.isspace()

@@ -1,5 +1,5 @@
 """
-Chat Backend for Supervertaler
+Chat Backend for Localize Large
 ================================
 
 Shared conversation state and LLM communication layer.

@@ -47,7 +47,7 @@ class SegmentationRulesWidget(QWidget):
         layout.setSpacing(15)
 
         info = QLabel(
-            "These rules decide where Supervertaler splits text into segments when it does "
+            "These rules decide where Localize Large splits text into segments when it does "
             "the splitting itself: plain-text and Markdown imports with “Split lines into "
             "sentences” ticked, text pasted into New Project, and Add Segments. DOCX and the "
             "other document formats are split by the Okapi engine with its own rules and are "
@@ -313,7 +313,7 @@ class SegmentationRulesWidget(QWidget):
         invalid = sum(1 for rule in imported if rule_error(rule))
         message = f"Imported {len(imported)} rules from “{name}”."
         if invalid:
-            message += f"\n\n{invalid} of them use a pattern Supervertaler cannot read and are ignored (marked in red)."
+            message += f"\n\n{invalid} of them use a pattern Localize Large cannot read and are ignored (marked in red)."
         if self.builtin_cb.isChecked():
             message += ("\n\nTip: untick “Use the built-in sentence rules” to let the imported "
                         "rules decide on their own.")

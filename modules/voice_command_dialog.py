@@ -85,7 +85,7 @@ class KeystrokeCaptureEdit(QLineEdit):
 # user gets links/bold/code styling for free.
 _ACTION_CHEAT_SHEETS = {
     "internal": (
-        "<b>Internal actions</b> are built into Supervertaler. Use the "
+        "<b>Internal actions</b> are built into Localize Large. Use the "
         "<b>Preset</b> dropdown above, or type one of these names directly:"
         "<ul style='margin-top:2px; margin-bottom:0;'>"
         "<li><code>navigate_next</code>, <code>navigate_previous</code>, "
@@ -147,7 +147,7 @@ class VoiceCommandEditDialog(QDialog):
     CATEGORIES = ["navigation", "editing", "translation", "lookup", "file",
                   "view", "voice", "memoq", "trados", "custom"]
     ACTION_TYPES = [
-        ("internal", "Internal Action (Supervertaler)"),
+        ("internal", "Internal Action (Localize Large)"),
         ("keystroke", "Keystroke (e.g., ctrl+s)"),
         ("ahk_inline", "AutoHotkey Code"),
         ("ahk_script", "AutoHotkey Script File"),

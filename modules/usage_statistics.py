@@ -1,5 +1,5 @@
 """
-Minimal, opt-in anonymous usage statistics for Supervertaler Workbench.
+Minimal, opt-in anonymous usage statistics for Localize Large.
 
 When the user opts in, a single lightweight ping is sent once per session
 on app startup. The payload contains only:
@@ -146,9 +146,9 @@ def show_opt_in_dialog(parent=None) -> bool:
     from PyQt6.QtCore import QUrl
 
     msg = QMessageBox(parent)
-    msg.setWindowTitle("Supervertaler Workbench")
+    msg.setWindowTitle("Localize Large")
     msg.setIcon(QMessageBox.Icon.Question)
-    msg.setText("<b>Help improve Supervertaler</b>")
+    msg.setText("<b>Help improve Localize Large</b>")
     msg.setInformativeText(
         "Would you like to share anonymous usage statistics to help "
         "improve the app?\n\n"

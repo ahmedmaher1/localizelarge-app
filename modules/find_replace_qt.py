@@ -1,5 +1,5 @@
 """
-Find & Replace Module for Supervertaler (PyQt6)
+Find & Replace Module for Localize Large (PyQt6)
 
 This module provides enhanced Find & Replace functionality including:
 - History dropdowns for recent search/replace terms
@@ -474,7 +474,7 @@ class FindReplaceSetsManager(QWidget):
     def _import_set(self):
         """Import a F&R set from a .svfr file."""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Import F&R Set", "", "Supervertaler F&R Sets (*.svfr);;All Files (*)"
+            self, "Import F&R Set", "", "Localize Large F&R Sets (*.svfr);;All Files (*)"
         )
         if file_path:
             try:
@@ -496,7 +496,7 @@ class FindReplaceSetsManager(QWidget):
         default_name = f"{self.current_set.name}.svfr"
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Export F&R Set", default_name,
-            "Supervertaler F&R Sets (*.svfr);;All Files (*)"
+            "Localize Large F&R Sets (*.svfr);;All Files (*)"
         )
         if not file_path:
             return

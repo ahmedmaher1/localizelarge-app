@@ -1,5 +1,5 @@
 """
-Token Usage & Costs report dialog for Supervertaler Workbench.
+Token Usage & Costs report dialog for Localize Large.
 
 Reads the JSONL usage ledger (modules.usage_log), totals it grouped by
 project/client/model/etc. over a date range, and exports the detailed ledger

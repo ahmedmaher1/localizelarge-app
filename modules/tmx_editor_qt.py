@@ -1,7 +1,7 @@
 """
 TMX Editor Module - PyQt6 Edition
 
-Professional Translation Memory Editor for Qt version of Supervertaler.
+Professional Translation Memory Editor for Qt version of Localize Large.
 Based on the tkinter version, converted to PyQt6.
 
 Key Features:
@@ -440,7 +440,7 @@ class TmxEditorUIQt(QWidget):
         self.setup_ui()
         
         if standalone:
-            self.setWindowTitle("TMX Editor - Supervertaler")
+            self.setWindowTitle("TMX Editor - Localize Large")
             self.resize(1200, 700)
     
     def setup_ui(self):
@@ -2585,7 +2585,7 @@ if __name__ == "__main__":
     # Create QApplication
     app = QApplication(sys.argv)
     app.setApplicationName("TMX Editor")
-    app.setOrganizationName("Supervertaler")
+    app.setOrganizationName("Localize Large")
     
     # Create database manager
     from modules.database_manager import DatabaseManager

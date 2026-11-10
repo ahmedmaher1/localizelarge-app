@@ -85,8 +85,8 @@ def test_java_unicode_properties_are_translated():
 def test_srx_round_trip_and_import():
     rules = [Rule(True, "<>", "", comment="game delimiter"), Rule(False, r"\bnp\.", r"\s")]
     parsed = parse_srx(build_srx(rules))
-    assert list(parsed) == ["Supervertaler"]
-    assert [(r.is_break, r.before, r.after) for r in parsed["Supervertaler"]] == [
+    assert list(parsed) == ["Localize Large"]
+    assert [(r.is_break, r.before, r.after) for r in parsed["Localize Large"]] == [
         (True, "<>", ""), (False, r"\bnp\.", r"\s")]
 
     omegat = """<?xml version="1.0" encoding="UTF-8"?>

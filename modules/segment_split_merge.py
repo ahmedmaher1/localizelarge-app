@@ -1,4 +1,4 @@
-"""Segment split & merge logic for Supervertaler Workbench.
+"""Segment split & merge logic for Localize Large.
 
 Pure, UI-free helpers that operate on a list of Segment-like objects (anything
 with ``id``, ``source``, ``target``, ``status``, ``comments`` and the structural
@@ -9,7 +9,7 @@ Segments are cloned with ``copy.deepcopy`` so this module never needs to import
 the Segment dataclass (which lives in Supervertaler.py).
 
 Eligibility note: the caller is responsible for only invoking these on projects
-whose segmentation Supervertaler owns (monolingual DOCX / Okapi / TXT-MD). For
+whose segmentation Localize Large owns (monolingual DOCX / Okapi / TXT-MD). For
 bilingual CAT round-trip formats (sdlxliff, memoQ / Trados / Phrase / Déjà Vu
 bilingual, PO) the external tool owns the segment slots, so split/merge must be
 disabled — see ``structure_editable`` below.
@@ -50,7 +50,7 @@ _BILINGUAL_ORIGIN_ATTRS = (
 
 
 def structure_editable(project) -> bool:
-    """True when the project's segmentation is owned by Supervertaler.
+    """True when the project's segmentation is owned by Localize Large.
 
     Monolingual DOCX / Okapi (IDML, HTML, PPTX, XLSX, …) / TXT-MD imports and
     brand-new projects are editable. Bilingual CAT imports are not.

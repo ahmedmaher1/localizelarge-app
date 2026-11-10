@@ -249,7 +249,7 @@ class _AutoPromptContextDialog(QDialog):
         layout = QVBoxLayout(self)
 
         intro = QLabel(
-            "Supervertaler had the AI read the document and detect the "
+            "Localize Large had the AI read the document and detect the "
             "context below. Confirm it, or correct it and add a short "
             "briefing so the generated prompt matches your document."
         )
@@ -571,7 +571,7 @@ class ChatMessageDelegate(QStyledItemDelegate):
         path = QPainterPath()
         path.addRoundedRect(bubble_rect, 10, 10)
 
-        # Supervertaler blue gradient
+        # Localize Large blue gradient
         gradient = QLinearGradient(bubble_rect.topLeft(), bubble_rect.bottomRight())
         gradient.setColorAt(0, QColor("#5D7BFF"))
         gradient.setColorAt(1, QColor("#4F6FFF"))
@@ -1028,7 +1028,7 @@ class UnifiedPromptManagerQt:
         
         Args:
             parent_app: Reference to main application (needs .user_data_path, .log() method)
-            standalone: If True, running standalone. If False, embedded in Supervertaler
+            standalone: If True, running standalone. If False, embedded in Localize Large
         """
         self.parent_app = parent_app
         self.standalone = standalone
@@ -1193,7 +1193,7 @@ class UnifiedPromptManagerQt:
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(2)
 
-        # Sub-tabs: Prompt Manager, Supervertaler Sidekick, Variables
+        # Sub-tabs: Prompt Manager, Localize Large Sidekick, Variables
         self.sub_tabs = QTabWidget()
         self.sub_tabs.tabBar().setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.sub_tabs.tabBar().setDrawBase(False)
@@ -1207,7 +1207,7 @@ class UnifiedPromptManagerQt:
         variables_tab = self._create_placeholders_tab()
         self.sub_tabs.addTab(variables_tab, "📝 Variables")
 
-        # Supervertaler Sidekick – created here but added to the right panel
+        # Localize Large Sidekick – created here but added to the right panel
         # in Supervertaler.py so it's visible alongside the translation grid.
         self.assistant_tab = self._create_ai_assistant_tab()
 
@@ -1228,8 +1228,8 @@ class UnifiedPromptManagerQt:
 
     def receive_text_for_assistant(self, text: str, from_external: bool = False):
         """
-        Switch to the Supervertaler Sidekick sub-tab, insert text into the chat input,
-        and focus the input field. Called from QuickLauncher "Supervertaler Sidekick".
+        Switch to the Localize Large Sidekick sub-tab, insert text into the chat input,
+        and focus the input field. Called from QuickLauncher "Localize Large Sidekick".
 
         Pressing Escape while in the Assistant tab will return the user to the Grid tab,
         or re-activate the external app if launched via the global hotkey.
@@ -1253,7 +1253,7 @@ class UnifiedPromptManagerQt:
                     from modules.platform_helpers import activate_foreground_window
                     activate_foreground_window(source_window)
                     print("[Assistant] Returned focus to external app")
-                    # Also switch back to Grid so Supervertaler isn't left on the Assistant
+                    # Also switch back to Grid so Localize Large isn't left on the Assistant
                     if hasattr(pa, 'main_tabs'):
                         pa.main_tabs.setCurrentIndex(0)
                     return
@@ -3018,7 +3018,7 @@ class UnifiedPromptManagerQt:
 
     def set_image_context_widget(self, widget):
         """Install the parent app's Image Context widget as page 1 of
-        the right-panel stack. Called once at startup from Supervertaler
+        the right-panel stack. Called once at startup from Localize Large
         after the prompt manager is created."""
         if not hasattr(self, '_right_stack') or self._right_stack is None:
             return
@@ -3402,7 +3402,7 @@ class UnifiedPromptManagerQt:
             self.main_widget,
             "Select External Prompt File",
             "",
-            "Prompt Files (*.md *.svprompt *.txt);;Markdown Prompts (*.md);;Supervertaler Prompts (*.svprompt);;Text Files (*.txt);;All Files (*.*)"
+            "Prompt Files (*.md *.svprompt *.txt);;Markdown Prompts (*.md);;Localize Large Prompts (*.svprompt);;Text Files (*.txt);;All Files (*.*)"
         )
         
         if not file_path:
@@ -5407,7 +5407,7 @@ If the text refers to figures (e.g., 'Figure 1A'), relevant images may be provid
         prompt = f"""You are a prompt engineering specialist for professional translation. Your task is to generate
 a comprehensive, expert-level translation prompt and save it using the ACTION system.
 
-This prompt will be used in Supervertaler, a CAT (Computer-Assisted Translation) tool. Supervertaler
+This prompt will be used in Localize Large, a CAT (Computer-Assisted Translation) tool. Localize Large
 delivers the source text as NUMBERED BATCHES of segments (typically dozens of segments per request;
 in some contexts a single segment). The prompt must account for this batched, segment-numbered
 delivery - do NOT describe delivery as "one segment at a time" or "in isolation".
@@ -5537,7 +5537,7 @@ SPECIAL DOMAIN INSTRUCTIONS:
    default to literal surface structure – never interpretation."
 
 3. SUPERVERTALER INPUT HANDLING:
-   "Supervertaler delivers the source text as a numbered batch of segments (in some contexts a
+   "Localize Large delivers the source text as a numbered batch of segments (in some contexts a
    single segment). You must: translate EVERY delivered segment, keep segment count and order
    exactly aligned with the input, and preserve segment boundaries. You MAY use context visible
    within the delivered batch (e.g. resolving an antecedent that appears a few segments earlier),
@@ -5618,7 +5618,7 @@ conventions, reference-numeral handling, embodiment language, etc.).
 ''' if detected_domain == 'patent' else ""}=== TRANSLATOR-COMMENT METHODOLOGY (REQUIRED IN EVERY GENERATED PROMPT) ===
 
 Every prompt you generate MUST embed the following silent-correction-with-flagged-
-comment methodology. This is a project-wide Supervertaler standard for all
+comment methodology. This is a project-wide Localize Large standard for all
 AutoPrompt-generated prompts, required regardless of source language or domain.
 Do not omit it because the source looks clean — defects appear in nearly every
 real document, and the methodology must be in the prompt so the translator AI
@@ -6255,7 +6255,7 @@ Output ONLY the delimiters and prompt content. No text before ===PROMPT_START===
         parts = []
 
         # System context
-        parts.append("You are an AI assistant for Supervertaler, a professional translation tool.")
+        parts.append("You are an AI assistant for Localize Large, a professional translation tool.")
         parts.append("\nAVAILABLE RESOURCES:")
 
         # Current document/project info
@@ -6335,7 +6335,7 @@ Output ONLY the delimiters and prompt content. No text before ===PROMPT_START===
         context = self._build_ai_context(user_text)
 
         # Trados-aware mode: prepend the active Trados project context
-        # (fetched via the localhost Supervertaler Bridge) when the bridge is
+        # (fetched via the localhost Localize Large Bridge) when the bridge is
         # reachable AND the user hasn't toggled the Trados chip off.
         # Failure here is silently swallowed – the message is sent anyway
         # without Trados grounding rather than being blocked on a
@@ -6358,7 +6358,7 @@ Output ONLY the delimiters and prompt content. No text before ===PROMPT_START===
             trados_block = ""
 
         # Choose system prompt
-        system_prompt = """You are an AI assistant for Supervertaler, a professional translation workbench.
+        system_prompt = """You are an AI assistant for Localize Large, a professional translation workbench.
 
 You can execute actions using a special format. When you need to create, modify, or manage prompts, output ACTION blocks in this EXACT format:
 
@@ -6454,7 +6454,7 @@ IMPORTANT:
         try:
             self.log_message(f"[AI Assistant] Sending request ({len(prompt)} chars)")
 
-            ai_system_prompt = "You are an AI assistant for Supervertaler, a professional translation workbench."
+            ai_system_prompt = "You are an AI assistant for Localize Large, a professional translation workbench."
 
             response_text, metadata = self.chat_backend.send_ai_request(
                 prompt, ai_system_prompt, is_analysis=False
@@ -6762,7 +6762,7 @@ IMPORTANT:
                 if new_path and new_path in self.library.prompts:
                     self._set_primary_prompt(new_path)
                 # v1.10.156: persist the new active-prompt selection to the
-                # .svproj NOW, not on the next auto-save. Without this, a
+                # .llproj NOW, not on the next auto-save. Without this, a
                 # restart inside the auto-save window (default 5 min)
                 # silently lost the AutoPrompt activation — exactly what
                 # users reported when they saw "[None selected]" after

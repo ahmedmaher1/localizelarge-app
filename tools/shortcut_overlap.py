@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report keyboard-shortcut overlaps between Supervertaler Workbench and
+"""Report keyboard-shortcut overlaps between Localize Large and
 Supervertaler for Trados, and fail if any of them is a real collision.
 
 WHY THIS EXISTS

@@ -1,5 +1,5 @@
 """
-Persistent token-usage ledger for Supervertaler Workbench.
+Persistent token-usage ledger for Localize Large.
 
 Writes one metadata-only JSON line per AI call to a monthly file under
 ``<user_data>/workbench/usage/usage-YYYY-MM.jsonl`` — the SAME schema as the

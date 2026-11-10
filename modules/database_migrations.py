@@ -1,7 +1,7 @@
 """
 Database Migration Functions
 
-Handles schema updates and data migrations for the Supervertaler database.
+Handles schema updates and data migrations for the Localize Large database.
 """
 
 import sqlite3

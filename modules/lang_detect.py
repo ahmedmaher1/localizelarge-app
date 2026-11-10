@@ -36,7 +36,7 @@ _STOPWORDS = {
            "para", "com", "não", "se", "por", "mais", "como", "são", "dos"},
 }
 
-# Language names / codes (as Supervertaler stores them) → canonical code.
+# Language names / codes (as Localize Large stores them) → canonical code.
 _LANG_CODE = {
     "english": "en", "engels": "en",
     "dutch": "nl", "nederlands": "nl",

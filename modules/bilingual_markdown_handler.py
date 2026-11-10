@@ -1,6 +1,6 @@
 """Bilingual *Re-importable Text* handler — AI-friendly bracketed export/import.
 
-Added in v1.10.231. Ports the "[SEGMENT NNNN]" round-trip from the Supervertaler
+Added in v1.10.231. Ports the "[SEGMENT NNNN]" round-trip from the Localize Large
 for Trados plugin to the Workbench.
 
 **Why "Text", not "Markdown".** The header has a couple of decorative touches,
@@ -64,7 +64,7 @@ Design notes / deliberate differences from the Trados original
   applied it. Here it is applied: if the editor changed the status line it wins;
   otherwise a segment whose target changed is marked ``draft``.
 
-The module is intentionally free of any Qt or Supervertaler imports so it can be
+The module is intentionally free of any Qt or Localize Large imports so it can be
 unit-tested in isolation; the calling code in ``Supervertaler.py`` owns all the
 dialog/grid work and the status vocabulary mapping.
 """
@@ -247,7 +247,7 @@ def build_markdown(
     lines.append(f"  Source file:  {source_file_name}")
     lines.append(f"  Languages:    {source_lang_display} -> {target_lang_display}")
     lines.append(f"  Segments:     {total}")
-    lines.append(f"  Tool:         Supervertaler Workbench {tool_version}")
+    lines.append(f"  Tool:         Localize Large {tool_version}")
     lines.append("")
     lines.append("  HOW TO EDIT THIS FILE")
     lines.append(f"  - Do not change the [SEGMENT N] markers or the {src_code}: source lines.")
@@ -259,7 +259,7 @@ def build_markdown(
     lines.append("  - Edit or add a comment on the Comment: line (leave it blank if none).")
     if status_choices:
         lines.append(f"  - You may set Status: to one of: {', '.join(status_choices)}.")
-    lines.append("  - Then re-import into Supervertaler to update the project.")
+    lines.append("  - Then re-import into Localize Large to update the project.")
     lines.append(rule)
     lines.append("")
 

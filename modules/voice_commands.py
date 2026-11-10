@@ -1,5 +1,5 @@
 """
-Voice commands for Supervertaler Workbench.
+Voice commands for Localize Large.
 
 Vosk listens in grammar mode: it can only hear the phrases in the
 command list (or "[unk]"), so speech that is not a command is ignored
@@ -895,7 +895,7 @@ class _VADListenerThread(QObject):
             except ImportError:
                 self.error_occurred.emit(
                     "Vosk is not installed.\n\n"
-                    "Re-install Supervertaler:\n"
+                    "Re-install Localize Large:\n"
                     "  pip install --upgrade supervertaler"
                 )
                 self._running = False

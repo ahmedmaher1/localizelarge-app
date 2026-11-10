@@ -865,7 +865,7 @@ class UnifiedPromptLibrary:
 
     @staticmethod
     def _get_default_prompt_definitions() -> List[Dict]:
-        """Return the list of default prompts shipped with Supervertaler Workbench."""
+        """Return the list of default prompts shipped with Localize Large."""
         return [
             # ─── Default Translation Prompt ──────────────────────
             {

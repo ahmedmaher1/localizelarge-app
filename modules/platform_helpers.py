@@ -1,5 +1,5 @@
 """
-Platform Helpers for Supervertaler
+Platform Helpers for Localize Large
 ===================================
 Cross-platform utilities for file operations, window management,
 subprocess flags, global hotkeys, and keystroke automation.
@@ -106,7 +106,7 @@ def hide_subprocess_console_windows():
     Use this when calling third-party libraries that internally spawn
     helpers via ``subprocess.run([...])`` without giving us a way to pass
     creationflags ourselves – e.g. OpenAI's whisper library shelling out
-    to ffmpeg for audio decoding. With Supervertaler running console-less
+    to ffmpeg for audio decoding. With Localize Large running console-less
     (Supervertaler.exe / pythonw.exe), every such helper would otherwise
     flash a black cmd window for ~100 ms.
 
@@ -661,7 +661,7 @@ def send_unicode_text(text: str) -> bool:
 # Windows reports the AltGr key as Ctrl+Alt, so a hotkey registered for
 # Ctrl+Alt+L with RegisterHotKey also fires on AltGr+L – and swallows the key.
 # On a Polish keyboard AltGr+L types "ł", AltGr+C "ć", AltGr+O "ó"; on a German
-# one AltGr+Q types "@". With Supervertaler running, those characters could not
+# one AltGr+Q types "@". With Localize Large running, those characters could not
 # be typed in ANY application. When such a hotkey fires while the right Alt key
 # is physically down and the foreground window's keyboard layout turns
 # AltGr+key into a character, that character is typed instead of running the
@@ -1165,8 +1165,8 @@ class _MacNSEventHotkey:
       * Monitor-only — does not consume the keystroke. Other apps
         receiving the same hotkey still respond (a non-issue for our
         ⌃⌘L/M/K combos because nothing else binds them).
-      * Only the *global* monitor is installed (fires when Supervertaler
-        is NOT frontmost). When Supervertaler IS frontmost, Qt's
+      * Only the *global* monitor is installed (fires when Localize Large
+        is NOT frontmost). When Localize Large IS frontmost, Qt's
         QShortcut handles the same key via the local-shortcut path. This
         avoids double-firing.
 
@@ -1174,7 +1174,7 @@ class _MacNSEventHotkey:
       * ``pyobjc-framework-Cocoa`` installed.
       * Accessibility permission on whichever binary launched Python.
         For Terminal launches, that's Terminal.app (or iTerm2.app).
-        For the bundled .app, it's Supervertaler itself.
+        For the bundled .app, it's Localize Large itself.
     """
 
     def __init__(self):
