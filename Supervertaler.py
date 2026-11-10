@@ -1854,6 +1854,7 @@ class Project:
     # Scratchpad for private translator notes (stored only in .llproj, never exported to CAT tools)
     scratchpad_notes: str = ""
     import_engine: str = ""  # "okapi" or "" (standard/built-in)
+    quality: Dict[str, Any] = None  # {"issues": [...], "profile": {...}}; see localizelarge/quality/project_store.py
     import_options: Optional[Dict[str, Any]] = None  # per-file-type Okapi import toggles; reused at export/merge
 
     def __post_init__(self):
@@ -1921,6 +1922,11 @@ class Project:
             result['spellcheck_settings'] = self.spellcheck_settings
         if self.ui_settings:
             result['ui_settings'] = self.ui_settings
+        # Quality issues and the quality profile (QA, glossary, MQM)
+        from localizelarge.quality import project_store as _ll_quality_store
+        _saved_quality = _ll_quality_store.to_saved(self)
+        if _saved_quality:
+            result['quality'] = _saved_quality
         
         # Add source file paths
         if self.original_docx_path:
@@ -2012,6 +2018,8 @@ class Project:
         # Store UI settings if they exist
         if 'ui_settings' in data:
             project.ui_settings = data['ui_settings']
+        if isinstance(data.get('quality'), dict):
+            project.quality = data['quality']
         # Store original DOCX path if it exists
         if 'original_docx_path' in data:
             project.original_docx_path = data['original_docx_path']

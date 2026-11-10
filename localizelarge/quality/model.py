@@ -197,6 +197,6 @@ class IssueList:
         for item in data or []:
             try:
                 issues.append(Issue.from_dict(item))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, AttributeError):
                 continue        # a record this version cannot read is left out, not fatal
         return cls(issues)

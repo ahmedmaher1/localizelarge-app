@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://localizelarge.com/schemas/issues.schema.json",
+  "title": "Localize Large quality report",
+  "type": "object",
+  "required": ["format", "formatVersion", "project", "profile", "score", "counts", "issues"],
+  "properties": {
+    "format": {"const": "localizelarge-quality-report"},
+    "formatVersion": {"type": "integer", "minimum": 1},
+    "generator": {"type": "string"},
+    "project": {
+      "type": "object",
+      "required": ["name", "sourceLang", "targetLang", "files", "evaluator", "date"],
+      "properties": {
+        "name": {"type": "string"},
+        "sourceLang": {"type": "string"},
+        "targetLang": {"type": "string"},
+        "files": {"type": "array", "items": {"type": "string"}},
+        "evaluator": {"type": "string"},
+        "date": {"type": "string"},
+        "segmentCount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "required": ["name", "version", "source"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "source": {"type": "string"},
+        "scoring": {"type": "object"}
+      }
+    },
+    "score": {
+      "type": "object",
+      "required": ["model", "evaluationWordCount", "absolutePenaltyTotal", "score", "threshold", "passed"],
+      "properties": {
+        "model": {"enum": ["raw", "calibrated"]},
+        "evaluationWordCount": {"type": "integer", "minimum": 0},
+        "issueCount": {"type": "integer", "minimum": 0},
+        "absolutePenaltyTotal": {"type": "number", "minimum": 0},
+        "perWordPenaltyTotal": {"type": ["number", "null"]},
+        "normedPenaltyTotal": {"type": ["number", "null"]},
+        "rawScore": {"type": ["number", "null"]},
+        "calibratedScore": {"type": ["number", "null"]},
+        "score": {"type": ["number", "null"]},
+        "threshold": {"type": "number"},
+        "passed": {"type": ["boolean", "null"]}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["byCategory", "bySeverity"],
+      "properties": {
+        "byCategory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["category", "label", "neutral", "minor", "major", "critical", "weight", "penalty"],
+            "properties": {
+              "category": {"type": "string"},
+              "label": {"type": "string"},
+              "neutral": {"type": "integer"},
+              "minor": {"type": "integer"},
+              "major": {"type": "integer"},
+              "critical": {"type": "integer"},
+              "weight": {"type": "number"},
+              "penalty": {"type": "number"}
+            }
+          }
+        },
+        "bySeverity": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "byOrigin": {"type": "object", "additionalProperties": {"type": "integer"}},
+        "byStatus": {"type": "object", "additionalProperties": {"type": "integer"}}
+      }
+    },
+    "ai": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider": {"type": "string"},
+          "model": {"type": "string"},
+          "date": {"type": "string"},
+          "segments": {"type": "integer"},
+          "issuesKept": {"type": "integer"},
+          "issuesDropped": {"type": "integer"},
+          "inputTokens": {"type": ["integer", "null"]},
+          "outputTokens": {"type": ["integer", "null"]},
+          "estimatedCostUsd": {"type": ["number", "null"]}
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "segment_id", "origin", "rule_id", "category", "severity", "side", "start", "end",
+                     "text_hash", "message", "suggestion", "comment", "status", "author", "created_at",
+                     "segmentNumber", "source", "target", "quote", "needsCheck", "counted"],
+        "properties": {
+          "id": {"type": "string"},
+          "segment_id": {"type": "integer"},
+          "origin": {"enum": ["qa", "glossary", "human", "ai"]},
+          "rule_id": {"type": "string"},
+          "category": {"type": "string"},
+          "categoryLabel": {"type": "string"},
+          "severity": {"enum": ["neutral", "minor", "major", "critical"]},
+          "side": {"enum": ["source", "target"]},
+          "start": {"type": ["integer", "null"], "minimum": 0},
+          "end": {"type": ["integer", "null"], "minimum": 0},
+          "text_hash": {"type": "string"},
+          "message": {"type": "string"},
+          "suggestion": {"type": ["string", "null"]},
+          "comment": {"type": ["string", "null"]},
+          "status": {"enum": ["open", "accepted", "rejected", "fixed"]},
+          "author": {"type": "string"},
+          "created_at": {"type": "string"},
+          "segmentNumber": {"type": ["integer", "null"]},
+          "file": {"type": "string"},
+          "source": {"type": "string"},
+          "target": {"type": "string"},
+          "quote": {"type": "string"},
+          "needsCheck": {"type": "boolean"},
+          "counted": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}
