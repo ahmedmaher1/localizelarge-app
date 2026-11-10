@@ -1,6 +1,0 @@
-# supervertaler.com – everyone welcome, including AI agents.
-# Supervertaler integrates AI assistants, so this site is deliberately open
-# to AI crawlers and real-time AI readers. Machine-readable index: /llms.txt
-
-User-agent: *
-Allow: /
