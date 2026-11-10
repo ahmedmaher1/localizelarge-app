@@ -20,11 +20,11 @@ Localize Large is based on Supervertaler Workbench by Michael Beijer (MIT Licens
 
 ## What works today
 
-Inherited from the base and working: projects, DOCX and other imports through the Okapi
-sidecar, translation memory, termbases, AI translation, find and replace, spellcheck, the
+Inherited from the base and working: projects, translation memory, termbases, AI
+translation, find and replace, spellcheck, the analysis report (HTML, XLSX, CSV), the
 file-based bilingual formats (memoQ, Trados, Phrase, CafeTran, Déjà Vu).
 
-Done for Localize Large so far (Phases 1 to 3 of 8):
+Done for Localize Large so far (Phases 1 to 4 of 8):
 
 - **Identity.** The new name and icon, fixed data folders, the `.llproj` project format
   (older `.svproj` files open and are saved as `.llproj`), the About dialog.
@@ -36,9 +36,18 @@ Done for Localize Large so far (Phases 1 to 3 of 8):
   address and a LanguageTool server you enter, and logs host names only. The app says where
   text goes. See `docs/security/`.
 
-Not done yet: the extra file formats, the better fuzzy matching and TBX glossaries
-(Phase 4), the quality features (Phase 5), quality packs (Phase 6), the AI provider rework
-(Phase 7) and the Windows release build (Phase 8). There is no downloadable build yet.
+- **File formats.** DOCX, XLSX, PPTX, ODT, ODS, ODP, HTML, XLIFF 1.2 and 2.0, PO, IDML,
+  Markdown, JSON, YAML, Java properties, CSV, plain text, XML, WebVTT and SRT, each with a
+  round-trip test (import, translate, export, import again).
+- **Translation memory.** Fuzzy scores where 100% means the same text; a lookup in a
+  100,000-unit memory takes about 0.12 s (`docs/PERFORMANCE.md`).
+- **Glossaries.** TBX-Basic import and export; XLSX and CSV import with column mapping.
+- **Segmentation.** Okapi's default rules for every language, with your own rules in front.
+- **Right-to-left.** Arabic, Hebrew, Persian and Urdu in the grid and the editor.
+
+Not done yet: the quality features (Phase 5), quality packs (Phase 6), the AI provider
+rework (Phase 7) and the release work (Phase 8: SBOM, signing, user guide, test on a clean
+Windows 11 machine). A preview ZIP can be built for testing; nothing is published.
 
 ## Where it keeps data
 

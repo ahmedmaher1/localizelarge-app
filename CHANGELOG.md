@@ -53,6 +53,12 @@ License). The history of that project is in its own repository.
 - Importing a file twice adds nothing twice: new variants and missing details are merged
   into the entries that are already there.
 
+### Right-to-left languages
+
+- With an Arabic, Hebrew, Persian or Urdu target (or source), the grid cells and the
+  editor for that side run right to left and align right. Latin words, numbers and inline
+  tags inside the text stay in reading order.
+
 ### Security
 
 - The Okapi file-format service listens on `127.0.0.1` only, on a free port chosen at each

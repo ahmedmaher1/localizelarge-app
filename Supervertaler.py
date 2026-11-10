@@ -151,6 +151,7 @@ def get_resource_path(relative_path: str) -> Path:
 
 from localizelarge import paths as _ll_paths  # the one owner of every data path
 from localizelarge import project_format as _ll_project_format
+from localizelarge import rtl as _ll_rtl  # right-to-left editors
 
 
 def _ll_default_model(provider: str) -> str:
@@ -2952,8 +2953,10 @@ class _GridStyleBatch:
         return False
 
 
-class ReadOnlyGridTextEditor(QTextEdit):
+class ReadOnlyGridTextEditor(_ll_rtl.DirectionMixin, QTextEdit):
     """Read-only QTextEdit for source cells - allows easy text selection"""
+
+    ll_side = "source"  # right-to-left when the source language is
     
     # Class variable for tag highlight color (shared across all instances)
     tag_highlight_color = '#7f0001'  # Default memoQ dark red
@@ -3033,6 +3036,7 @@ class ReadOnlyGridTextEditor(QTextEdit):
         text_option = QTextOption()
         text_option.setWrapMode(wrap_mode)
         doc.setDefaultTextOption(text_option)
+        _ll_rtl.apply_direction(self, self.ll_is_rtl())  # the new option is left-to-right
 
         # Set minimum height to 0 - let content determine size
         self.setMinimumHeight(0)
@@ -4846,8 +4850,10 @@ class TagHighlighter(QSyntaxHighlighter):
             self.setFormat(match.start(1), len(match.group(1)), self.md_heading_format)
 
 
-class EditableGridTextEditor(QTextEdit):
+class EditableGridTextEditor(_ll_rtl.DirectionMixin, QTextEdit):
     """Editable QTextEdit for target cells - allows text selection and editing"""
+
+    ll_side = "target"  # right-to-left when the target language is
     
     # Class variable for tag highlight color (shared across all instances)
     tag_highlight_color = '#7f0001'  # Default memoQ dark red
@@ -4954,6 +4960,7 @@ class EditableGridTextEditor(QTextEdit):
         text_option = QTextOption()
         text_option.setWrapMode(wrap_mode)
         doc.setDefaultTextOption(text_option)
+        _ll_rtl.apply_direction(self, self.ll_is_rtl())  # the new option is left-to-right
 
         # Set minimum height to 0 - let content determine size
         self.setMinimumHeight(0)
@@ -9280,6 +9287,10 @@ class SupervertalerQt(QMainWindow):
 
         # Initialize Okapi sidecar (local file-processing service)
         self.okapi_sidecar = None
+        # The editors ask this for the project's languages (right-to-left layout).
+        _ll_rtl.set_language_provider(lambda: (
+            getattr(getattr(self, 'current_project', None), 'source_lang', '') or '',
+            getattr(getattr(self, 'current_project', None), 'target_lang', '') or ''))
         self._init_okapi_sidecar_deferred()
 
         # Load font sizes from preferences (after UI is fully initialized)
@@ -29476,7 +29487,7 @@ class SupervertalerQt(QMainWindow):
         source_label = QLabel(self.tr("Source:"))
         source_label.setStyleSheet("font-weight: bold;")
         editor_layout.addWidget(source_label)
-        tab_source_editor = QTextEdit()
+        tab_source_editor = _ll_rtl.make_text_edit("source")
         tab_source_editor.setReadOnly(True)
         tab_source_editor.setMaximumHeight(100)
         tab_source_editor.setStyleSheet("")
@@ -29486,7 +29497,7 @@ class SupervertalerQt(QMainWindow):
         target_label = QLabel(self.tr("Target:"))
         target_label.setStyleSheet("font-weight: bold;")
         editor_layout.addWidget(target_label)
-        tab_target_editor = QTextEdit()
+        tab_target_editor = _ll_rtl.make_text_edit("target")
         tab_target_editor.setMaximumHeight(100)
         tab_target_editor.textChanged.connect(self.on_tab_target_change)
         editor_layout.addWidget(tab_target_editor)

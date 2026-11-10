@@ -1,7 +1,7 @@
 # Building and releasing the Windows ZIP
 
 **Status:** the build pipeline exists. No release has been made. Version 1.0.0 is not
-finished: Phases 4 to 8 of the build plan are still to do. A build made today is a preview
+finished: Phases 5 to 8 of the build plan are still to do. A build made today is a preview
 for testing, not something to publish.
 
 ## Build
