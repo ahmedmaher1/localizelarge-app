@@ -8,6 +8,7 @@ Measured figures only. A target with no figure has not been measured yet.
 | Import a 5,000-segment DOCX in under 30 s | not measured yet | |
 | All QA checks on 5,000 segments in under 10 s | not measured yet (Phase 5) | |
 | TM lookup in a 100,000-unit TM in under 300 ms | median 121 ms, slowest 270 ms, over 50 lookups; each lookup found its near match | `python tools/bench_tm.py 100000`, same container, 2026-11-10 |
+| Glossary checks: 50,000 entries, under 1 s per 1,000 segments (plan 5b) | 0.18 s for 1,000 segments; building the index once takes 0.36 s | `tests/test_ll_glossary_check.py`, same container, 2026-11-10 |
 | Grid scrolling smooth with 20,000 segments | not measured yet | |
 
 ## TM lookup

@@ -17,6 +17,7 @@ import re
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Optional
 
 ORIGINS = ("qa", "glossary", "human", "ai")
@@ -43,6 +44,7 @@ def now_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+@lru_cache(maxsize=1)
 def current_author() -> str:
     """The name of the person at the keyboard (the Windows user name)."""
     try:
