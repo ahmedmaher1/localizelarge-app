@@ -61,11 +61,7 @@ MT_SETTINGS_PLACE = "Settings → MT Settings"
 # values in the same section (ollama_endpoint, the two regions) stay in
 # settings.json only.
 SHARED_KEY_IDS = {
-    'openai': 'openai', 'claude': 'claude', 'gemini': 'gemini', 'mistral': 'mistral',
-    'deepseek': 'deepseek', 'openrouter': 'openrouter',
-    'google_translate': 'google', 'deepl': 'deepl', 'microsoft_translate': 'microsoft',
-    'modernmt': 'modernmt', 'mymemory': 'mymemory',
-    'amazon_translate': 'amazon_translate', 'amazon_translate_secret': 'amazon_translate_secret',
+    'openai': 'openai', 'claude': 'claude', 'gemini': 'gemini',
 }
 _MT_NAMES = {'google_translate', 'deepl', 'microsoft_translate', 'modernmt', 'mymemory',
              'amazon_translate', 'amazon_translate_secret'}
@@ -343,7 +339,7 @@ def _sanitize_ollama_endpoint(endpoint: str) -> str:
 @dataclass
 class LLMConfig:
     """Configuration for LLM client"""
-    provider: Literal["openai", "claude", "gemini", "mistral", "deepseek", "openrouter"]
+    provider: Literal["openai", "claude", "gemini", "ollama"]
     model: str
     api_key: str
     temperature: Optional[float] = None  # Auto-detected if None
@@ -358,140 +354,11 @@ class LLMClient:
         "openai": "gpt-6.1-sol",  # GPT-6.1 Sol - the middle of OPENAI_MODELS, not its first
         "claude": "claude-sonnet-5-5",  # Claude Sonnet 5.5 (older IDs still selectable)
         "gemini": "gemini-3.1-flash-lite",  # Gemini 3.1 Flash-Lite
-        "mistral": "mistral-large-latest",  # Mistral Large (flagship)
-        "deepseek": "deepseek-v4-pro",  # DeepSeek V4 Pro (flagship)
         "ollama": "translategemma:12b",  # Local LLM via Ollama - purpose-built translation model
-        "custom_openai": "custom-model",  # Custom OpenAI-compatible endpoint
-        "openrouter": "anthropic/claude-sonnet-5.5"  # OpenRouter gateway (200+ models): the first of OPENROUTER_MODELS
     }
 
-    # Available Mistral models with descriptions
-    MISTRAL_MODELS = {
-        "mistral-large-latest": {
-            "name": "Mistral Large",
-            "description": "Flagship model – top-tier reasoning and multilingual quality",
-            "strengths": ["Multilingual", "Complex reasoning", "High accuracy"],
-            "use_case": "Recommended for most translation tasks"
-        },
-        "mistral-small-latest": {
-            "name": "Mistral Small",
-            "description": "Fast and cost-effective – great for high-volume translation",
-            "strengths": ["Fast", "Cost-effective", "Multilingual"],
-            "use_case": "Best for large projects where speed and cost matter"
-        }
-    }
-    
-    # Available DeepSeek models with descriptions
-    DEEPSEEK_MODELS = {
-        "deepseek-v4-pro": {
-            "name": "DeepSeek V4 Pro",
-            "description": "Flagship – top-tier reasoning and multilingual quality",
-            "strengths": ["Multilingual", "Complex reasoning", "High accuracy"],
-            "use_case": "Recommended for most translation tasks"
-        },
-        "deepseek-v4-flash": {
-            "name": "DeepSeek V4 Flash",
-            "description": "Fast and cost-effective – great for high-volume translation",
-            "strengths": ["Fast", "Cost-effective", "Multilingual"],
-            "use_case": "Best for large projects where speed and cost matter"
-        }
-    }
-
-    # Available OpenRouter models (curated selection): the Trados and memoQ
-    # plugins' list (LlmModels.OpenRouterModels in their shared core, IDs
-    # checked there against openrouter.ai/api/v1/models), in the same order;
-    # the first is the default. Superseded entries (Claude Sonnet 5 and Opus 5,
-    # Gemini 3.1 Pro, Gemini 3 Flash) left the list but not pricing.json, so a
-    # saved one still runs, is still costed, and Settings shows it as "your
-    # current model". Qwen 3.6 Plus (Free) left because OpenRouter withdrew it:
-    # choosing it failed.
-    # OpenRouter is an API gateway – users can also type any model ID from openrouter.ai/models
-    OPENROUTER_MODELS = {
-        "anthropic/claude-sonnet-5.5": {
-            "name": "Claude Sonnet 5.5",
-            "description": "Newest Sonnet – near-Opus quality at Sonnet cost, 1M context",
-            "strengths": ["General translation", "Multilingual", "Fast"],
-            "use_case": "Recommended for most translation tasks"
-        },
-        "anthropic/claude-opus-5.5": {
-            "name": "Claude Opus 5.5",
-            "description": "Anthropic's newest Opus – 1M context, top choice for hard legal/technical work",
-            "strengths": ["Legal translation", "Technical documents", "Complex reasoning", "1M context"],
-            "use_case": "Specialised legal/technical translation, long-context jobs"
-        },
-        "anthropic/claude-fable-5.1": {
-            "name": "Claude Fable 5.1",
-            "description": "Anthropic's most capable model, at 2.5x Opus pricing",
-            "strengths": ["Hardest translation problems", "Deepest reasoning", "1M context"],
-            "use_case": "The hardest work, when cost is secondary"
-        },
-        "openai/gpt-6-astra": {
-            "name": "GPT-6 Astra",
-            "description": "OpenAI's most capable model – 1M context",
-            "strengths": ["Complex reasoning", "Multilingual", "Highest accuracy"],
-            "use_case": "The hardest work, when cost is secondary"
-        },
-        "openai/gpt-6.1-sol": {
-            "name": "GPT-6.1 Sol",
-            "description": "Close to Astra's quality at a fifth of its price – 1M context",
-            "strengths": ["Complex reasoning", "Multilingual", "High accuracy"],
-            "use_case": "Recommended OpenAI model for most translation tasks"
-        },
-        "openai/gpt-6-luna": {
-            "name": "GPT-6 Luna",
-            "description": "OpenAI's cheapest – for high-volume work",
-            "strengths": ["Fast", "Cost-effective", "Multilingual"],
-            "use_case": "High-volume translation"
-        },
-        "google/gemini-3.8-flash": {
-            "name": "Gemini 3.8 Flash",
-            "description": "Google's newest Flash – strong quality at low cost, 1M context",
-            "strengths": ["Fast", "Cost-effective", "Multilingual"],
-            "use_case": "High-volume translation"
-        },
-        "google/gemini-4-argon": {
-            "name": "Gemini 4 Argon",
-            "description": "Google's most capable model, 1M context",
-            "strengths": ["Multilingual", "Large context", "Highest accuracy"],
-            "use_case": "Hard translation work"
-        },
-        "google/gemma-4-31b-it": {
-            "name": "Gemma 4 31B",
-            "description": "Open-source – strong multilingual quality, 256K context",
-            "strengths": ["Open model", "Multilingual", "Cost-effective"],
-            "use_case": "General translation at low cost"
-        },
-        "google/gemma-4-26b-a4b-it": {
-            "name": "Gemma 4 26B MoE",
-            "description": "Open-source – near-31B quality at a fraction of the cost",
-            "strengths": ["Open model", "Fast", "Cost-effective"],
-            "use_case": "High-volume translation"
-        },
-        "mistralai/mistral-small-2603": {
-            "name": "Mistral Small 4",
-            "description": "Very fast and cheap – strong European languages",
-            "strengths": ["European languages", "Fast", "Cost-effective"],
-            "use_case": "European language translation"
-        },
-        "qwen/qwen3.8-27b:free": {
-            "name": "Qwen 3.8 27B (Free)",
-            "description": "Free and rate-limited – providers of free models may keep what you send, so not for confidential work",
-            "strengths": ["Free", "Multilingual"],
-            "use_case": "Testing, never confidential work"
-        },
-        "deepseek/deepseek-v4-pro": {
-            "name": "DeepSeek V4 Pro",
-            "description": "DeepSeek flagship – strong multilingual, competitive pricing",
-            "strengths": ["Multilingual", "Complex reasoning", "Cost-effective"],
-            "use_case": "General translation via OpenRouter"
-        },
-        "deepseek/deepseek-v4-flash": {
-            "name": "DeepSeek V4 Flash",
-            "description": "DeepSeek fast – great for high-volume translation",
-            "strengths": ["Fast", "Cost-effective", "Multilingual"],
-            "use_case": "High-volume translation via OpenRouter"
-        }
-    }
+    # The only providers Localize Large v1 talks to.
+    SUPPORTED_PROVIDERS = ("openai", "claude", "gemini", "ollama")
 
     # Available Ollama models with descriptions (for UI display)
     # Last audited: February 2026
@@ -795,26 +662,18 @@ class LLMClient:
         self.base_url = base_url
         self.http_proxy = http_proxy  # e.g. "http://user:pass@127.0.0.1:8080"
 
+        if self.provider not in self.SUPPORTED_PROVIDERS:
+            raise ValueError(
+                f"Unsupported AI provider: {provider}. "
+                "Localize Large works with Claude, OpenAI, Gemini and Ollama.")
         if not self.model:
             raise ValueError(f"Unknown provider: {provider}")
 
         # Validate API key for cloud providers (not needed for Ollama)
-        if self.provider not in ("ollama", "custom_openai") and not self.api_key:
+        if self.provider != "ollama" and not self.api_key:
             # A key that can't be read on this computer says so (M2), so a
             # missing key is never sent to the provider as a blank one.
             raise ValueError(api_key_problem(self.provider) or f"API key required for provider: {provider}")
-
-        # For Mistral, set the base URL if not already specified
-        if self.provider == "mistral" and not self.base_url:
-            self.base_url = "https://api.mistral.ai/v1"
-
-        # For DeepSeek, set the base URL if not already specified
-        if self.provider == "deepseek" and not self.base_url:
-            self.base_url = "https://api.deepseek.com/v1"
-
-        # For OpenRouter, set the base URL and extra headers
-        if self.provider == "openrouter" and not self.base_url:
-            self.base_url = "https://openrouter.ai/api/v1"
 
         # Auto-detect temperature based on model
         self.temperature = self._get_temperature()
@@ -1091,8 +950,8 @@ class LLMClient:
             images = None
 
         _t0 = time.perf_counter()
-        if self.provider in ("openai", "custom_openai", "mistral", "deepseek", "openrouter"):
-            result, usage = self._call_openai_with_usage(prompt, max_tokens=max_tokens, images=images if self.provider in ("openai", "custom_openai") else None, system_prompt=system_prompt, enable_prompt_caching=enable_prompt_caching)
+        if self.provider == "openai":
+            result, usage = self._call_openai_with_usage(prompt, max_tokens=max_tokens, images=images, system_prompt=system_prompt, enable_prompt_caching=enable_prompt_caching)
         elif self.provider == "claude":
             result, usage = self._call_claude_with_usage(prompt, max_tokens=max_tokens, images=images, system_prompt=system_prompt, enable_prompt_caching=enable_prompt_caching)
         elif self.provider == "gemini":
@@ -1144,11 +1003,6 @@ class LLMClient:
         client_kwargs = {"api_key": self.api_key, "timeout": timeout_seconds}
         if self.base_url:
             client_kwargs["base_url"] = self.base_url
-        if self.provider == "openrouter":
-            client_kwargs["default_headers"] = {
-                "HTTP-Referer": "https://supervertaler.com",
-                "X-Title": "Localize Large"
-            }
         if self.http_proxy:
             import httpx
             client_kwargs["http_client"] = httpx.Client(proxy=self.http_proxy, timeout=timeout_seconds)
@@ -1434,11 +1288,6 @@ class LLMClient:
         client_kwargs = {"api_key": self.api_key, "timeout": timeout_seconds}
         if self.base_url:
             client_kwargs["base_url"] = self.base_url
-        if self.provider == "openrouter":
-            client_kwargs["default_headers"] = {
-                "HTTP-Referer": "https://supervertaler.com",
-                "X-Title": "Localize Large"
-            }
         if self.http_proxy:
             import httpx
             client_kwargs["http_client"] = httpx.Client(proxy=self.http_proxy, timeout=timeout_seconds)
@@ -2139,92 +1988,6 @@ def _convert_lang_name_to_code(lang_name: str) -> str:
         'Korean': 'ko'
     }
     return lang_map.get(lang_name, lang_name.lower()[:2])
-
-def get_google_translation(text: str, source_lang: str, target_lang: str) -> Dict:
-    """
-    Get Google Cloud Translation API translation with metadata
-    
-    Args:
-        text: Text to translate
-        source_lang: Source language code (e.g., 'en', 'nl', 'auto')
-        target_lang: Target language code (e.g., 'en', 'nl')
-    
-    Returns:
-        Dict with translation, confidence, and metadata
-    """
-    try:
-        api_keys = load_api_keys()
-        google_api_key = api_keys.get('google_translate')
-        
-        if not google_api_key:
-            return {
-                'translation': None,
-                'error': api_key_problem('google_translate') or 'No API key set for Google Translate.',
-                'success': False
-            }
-        
-        # Use Google Cloud Translation API (Basic/v2) via REST
-        try:
-            import requests
-            
-            # Use REST API directly with API key
-            url = "https://translation.googleapis.com/language/translate/v2"
-            
-            # Handle 'auto' source language
-            params = {
-                'key': google_api_key,
-                'q': text,
-                'target': target_lang
-            }
-            
-            if source_lang and source_lang != 'auto':
-                params['source'] = source_lang
-            
-            # Make API request
-            response = requests.post(url, params=params)
-            
-            if response.status_code == 200:
-                result = response.json()
-                if 'data' in result and 'translations' in result['data']:
-                    translation_data = result['data']['translations'][0]
-                    return {
-                        'translation': translation_data['translatedText'],
-                        'confidence': 'High',
-                        'detected_source_language': translation_data.get('detectedSourceLanguage', source_lang),
-                        'provider': 'Google Cloud Translation',
-                        'success': True,
-                        'metadata': {
-                            'model': 'nmt',  # Neural Machine Translation
-                            'input': text
-                        }
-                    }
-                else:
-                    return {
-                        'translation': None,
-                        'error': f'Unexpected Google API response format: {result}',
-                        'success': False
-                    }
-            else:
-                return {
-                    'translation': None,
-                    'error': f'Google API error: {response.status_code} - {response.text}',
-                    'success': False
-                }
-                
-        except ImportError:
-            # Fallback if requests is not installed
-            return {
-                'translation': None,
-                'error': 'Requests library not installed. Install: pip install requests',
-                'success': False
-            }
-    except Exception as e:
-        return {
-            'translation': None,
-            'error': f'Google Translate error: {str(e)}',
-            'success': False
-        }
-
 
 if __name__ == "__main__":
     main()

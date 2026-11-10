@@ -7712,8 +7712,8 @@ class PreTranslationWorker(QThread):
                 self.translation_complete.emit(self.success_count, self.error_count)
                 return
 
-            # For TM and MT, process segments individually
-            if self.provider_type in ['TM', 'MT']:
+            # TM pre-translation processes segments one by one
+            if self.provider_type == 'TM':
                 for idx, (row_index, segment) in enumerate(self.segments):
                     if self._cancelled:
                         break
@@ -7722,10 +7722,7 @@ class PreTranslationWorker(QThread):
                         start_time = time.time()
                         
                         # Get translation
-                        if self.provider_type == 'TM':
-                            translation = self._translate_from_tm(segment)
-                        else:  # MT
-                            translation = self._translate_with_mt(segment)
+                        translation = self._translate_from_tm(segment)
                         
                         elapsed = time.time() - start_time
                         
@@ -7906,29 +7903,6 @@ class PreTranslationWorker(QThread):
             print(f"TM translation error: {e}")
             import traceback
             traceback.print_exc()
-            return None
-    
-    def _translate_with_mt(self, segment):
-        """Translate a single segment using MT."""
-        # This would call parent_app's MT methods
-        # Implementation depends on which MT provider is selected
-        try:
-            # Get source/target languages
-            source_lang = getattr(self.parent_app.current_project, 'source_lang', 'en')
-            target_lang = getattr(self.parent_app.current_project, 'target_lang', 'nl')
-            
-            # Load API keys
-            api_keys = self.parent_app.load_api_keys()
-            
-            # Call appropriate MT service
-            if self.provider_name == 'Google Translate':
-                return self.parent_app.call_google_translate(segment.source, source_lang, target_lang, api_keys.get('google_translate'))
-            elif self.provider_name == 'DeepL':
-                return self.parent_app.call_deepl(segment.source, source_lang, target_lang, api_keys.get('deepl'))
-            # Add other MT providers as needed
-            return None
-        except Exception as e:
-            print(f"MT translation error: {e}")
             return None
     
     def _translate_with_llm(self, segment):
@@ -22162,10 +22136,6 @@ class SupervertalerQt(QMainWindow):
         lang_tab = self._create_language_pair_tab()
         settings_tabs.addTab(scroll_area_wrapper(lang_tab), self.tr("🌐 Language Pair"))
 
-        # ===== TAB 4: MT Settings =====
-        mt_tab = self._create_mt_settings_tab()
-        settings_tabs.addTab(scroll_area_wrapper(mt_tab), self.tr("🌐 MT Settings"))
-
         # ===== TAB 5: QuickTrans Settings =====
         # Prior to v1.10.10 this was a stub pointing users to
         # Sidekick → SuperLookup → SuperLookup Settings → QuickTrans
@@ -23029,9 +22999,6 @@ class SupervertalerQt(QMainWindow):
             ("OpenAI:", "openai", "sk-proj-..."),
             ("Claude (Anthropic):", "claude", "sk-ant-api03-..."),
             ("Gemini (Google AI):", "gemini", "AIza..."),
-            ("Mistral AI:", "mistral", "..."),
-            ("DeepSeek:", "deepseek", "sk-..."),
-            ("OpenRouter:", "openrouter", "sk-or-..."),
             ("Ollama Endpoint:", "ollama_endpoint", "http://localhost:11434"),
         ]
 
@@ -23533,125 +23500,25 @@ class SupervertalerQt(QMainWindow):
         ))
         layout.addWidget(save_btn)
         
+        # Localize Large v1 works with Claude, OpenAI, Gemini and Ollama only.
+        # The controls of the other providers are hidden and never selected,
+        # and the AI client refuses those providers
+        # (LLMClient.SUPPORTED_PROVIDERS). See docs/REMOVED.md.
+        for _w in (mistral_radio, deepseek_radio, openrouter_radio, custom_radio,
+                   mistral_model_label, mistral_combo, deepseek_model_label, deepseek_combo,
+                   openrouter_model_label, openrouter_combo, custom_model_label, profile_label,
+                   custom_profile_combo, add_profile_btn, remove_profile_btn,
+                   custom_endpoint_label, custom_endpoint_input, custom_model_name_label,
+                   custom_model_input, custom_key_label, custom_key_input, custom_key_toggle,
+                   custom_info, mistral_enable_cb, openrouter_enable_cb, custom_enable_cb):
+            if isinstance(_w, QRadioButton) and _w.isChecked():
+                openai_radio.setChecked(True)
+            _w.setVisible(False)
+
         layout.addStretch()
         
         return tab
     
-    def _create_mt_settings_tab(self):
-        """Create MT Settings tab content"""
-        from PyQt6.QtWidgets import QCheckBox, QGroupBox, QPushButton
-        
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-        
-        enabled_providers = self.load_provider_enabled_states()
-        
-        # Enable/Disable MT Providers
-        mt_provider_group = QGroupBox(self.tr("Machine Translation Providers"))
-        mt_provider_layout = QVBoxLayout()
-        
-        mt_info = QLabel(
-            "Enable or disable individual MT providers. Localize Large will use the first available enabled provider in priority order:\n"
-            "1. Google Translate, 2. DeepL, 3. Microsoft Translator, 4. Amazon Translate, 5. ModernMT, 6. MyMemory"
-        )
-        mt_info.setWordWrap(True)
-        mt_info.setStyleSheet("font-size: 9pt; color: #666; padding: 5px;")
-        mt_provider_layout.addWidget(mt_info)
-        
-        google_translate_enable_cb = CheckmarkCheckBox(self.tr("Enable Google Translate"))
-        google_translate_enable_cb.setChecked(enabled_providers.get('mt_google_translate', True))
-        mt_provider_layout.addWidget(google_translate_enable_cb)
-        
-        deepl_enable_cb = CheckmarkCheckBox(self.tr("Enable DeepL"))
-        deepl_enable_cb.setChecked(enabled_providers.get('mt_deepl', True))
-        mt_provider_layout.addWidget(deepl_enable_cb)
-        
-        microsoft_enable_cb = CheckmarkCheckBox(self.tr("Enable Microsoft Translator"))
-        microsoft_enable_cb.setChecked(enabled_providers.get('mt_microsoft', True))
-        mt_provider_layout.addWidget(microsoft_enable_cb)
-        
-        amazon_enable_cb = CheckmarkCheckBox(self.tr("Enable Amazon Translate"))
-        amazon_enable_cb.setChecked(enabled_providers.get('mt_amazon', True))
-        mt_provider_layout.addWidget(amazon_enable_cb)
-        
-        modernmt_enable_cb = CheckmarkCheckBox(self.tr("Enable ModernMT"))
-        modernmt_enable_cb.setChecked(enabled_providers.get('mt_modernmt', True))
-        mt_provider_layout.addWidget(modernmt_enable_cb)
-        
-        mymemory_enable_cb = CheckmarkCheckBox(self.tr("Enable MyMemory (Free tier)"))
-        mymemory_enable_cb.setChecked(enabled_providers.get('mt_mymemory', True))
-        mt_provider_layout.addWidget(mymemory_enable_cb)
-        
-        mt_provider_group.setLayout(mt_provider_layout)
-        layout.addWidget(mt_provider_group)
-        
-        # Inline MT API Keys
-        mt_api_keys_group = QGroupBox(self.tr("🔑 MT API Keys"))
-        mt_keys_form = QFormLayout()
-        mt_keys_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-        current_keys = self.load_api_keys()
-        from modules.llm_clients import unreadable_key_notes
-        key_notes = unreadable_key_notes()
-        if not hasattr(self, '_api_key_inputs'):
-            self._api_key_inputs = {}
-
-        mt_key_fields = [
-            ("Google Translate:", "google_translate", "AIza...", True),
-            ("DeepL:", "deepl", "your-deepl-key", True),
-            ("Microsoft Translate:", "microsoft_translate", "your-azure-key", True),
-            ("Microsoft Region:", "microsoft_translate_region", "global", False),
-            ("Amazon Access Key:", "amazon_translate", "AKIA...", True),
-            ("Amazon Secret Key:", "amazon_translate_secret", "your-secret", True),
-            ("Amazon Region:", "amazon_translate_region", "us-east-1", False),
-            ("ModernMT:", "modernmt", "your-modernmt-key", True),
-            ("MyMemory:", "mymemory", "your-mymemory-key", True),
-        ]
-
-        for label, key_name, placeholder, is_secret in mt_key_fields:
-            row = QHBoxLayout()
-            key_input = QLineEdit()
-            key_input.setPlaceholderText(placeholder)
-            key_input.setText(current_keys.get(key_name, ''))
-            if is_secret:
-                key_input.setEchoMode(QLineEdit.EchoMode.Password)
-            row.addWidget(key_input)
-
-            if is_secret:
-                toggle_btn = QPushButton(self.tr("Show"))
-                toggle_btn.setFixedWidth(50)
-                toggle_btn.setCheckable(True)
-                toggle_btn.clicked.connect(
-                    lambda checked, inp=key_input, btn=toggle_btn:
-                        (inp.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password),
-                         btn.setText("Hide" if checked else "Show"))
-                )
-                row.addWidget(toggle_btn)
-
-            container = QWidget()
-            container.setLayout(row)
-            mt_keys_form.addRow(label, self._with_key_note(container, key_name, key_input, key_notes))
-            self._api_key_inputs[key_name] = key_input
-
-        mt_api_keys_group.setLayout(mt_keys_form)
-        layout.addWidget(mt_api_keys_group)
-        
-        # Save button
-        save_btn = QPushButton(self.tr("💾 Save MT Settings"))
-        save_btn.setProperty("settings_save_button", True)  # clicked for the user by the auto-saver (issue #214)
-        save_btn.setStyleSheet("font-weight: bold; padding: 8px;")
-        save_btn.clicked.connect(lambda: self._save_mt_settings_from_ui(
-            google_translate_enable_cb, deepl_enable_cb, microsoft_enable_cb,
-            amazon_enable_cb, modernmt_enable_cb, mymemory_enable_cb
-        ))
-        layout.addWidget(save_btn)
-        
-        layout.addStretch()
-
-        return tab
-
     # _create_quicktrans_stub_tab and _open_quicktrans_in_sidekick
     # were removed in v1.10.10. Pre-retirement they advertised that
     # QuickTrans settings lived inside Sidekick and provided a button
@@ -23678,206 +23545,22 @@ class SupervertalerQt(QMainWindow):
         # Header info
         header_info = QLabel(
             f"⚡ <b>QuickTrans</b> - Configure which providers appear in the QuickTrans popup ({format_shortcut_for_display('Meta+Ctrl+Q') if IS_MACOS else format_shortcut_for_display('Ctrl+Alt+Q')} — system-wide hotkey, works inside Workbench too).<br>"
-            "Enable MT engines and/or LLMs to get instant translation suggestions."
+            "Enable AI providers to get instant translation suggestions."
         )
         header_info.setTextFormat(Qt.TextFormat.RichText)
         header_info.setStyleSheet("font-size: 9pt; color: #444; padding: 10px; background-color: #E3F2FD; border-radius: 4px;")
         header_info.setWordWrap(True)
         layout.addWidget(header_info)
 
-        # ===== MT Providers Group =====
-        mt_group = QGroupBox(self.tr("🌐 Machine Translation Providers"))
-        mt_layout = QVBoxLayout()
-
-        mt_info = QLabel(self.tr("Select which MT engines to query. Only enabled providers with valid API keys are shown."))
-        mt_info.setWordWrap(True)
-        mt_info.setStyleSheet("font-size: 8pt; color: #666; padding-bottom: 8px;")
-        mt_layout.addWidget(mt_info)
-
-        # MT provider checkboxes
         self._mtql_checkboxes = {}
-
-        mt_providers = [
-            ("gt", "Google Translate", "mt_google_translate", "google_translate"),
-            ("dl", "DeepL", "mt_deepl", "deepl"),
-            ("ms", "Microsoft Translator", "mt_microsoft", "microsoft_translate"),
-            ("at", "Amazon Translate", "mt_amazon", "amazon_translate"),
-            ("mmt", "ModernMT", "mt_modernmt", "modernmt"),
-            ("mm", "MyMemory (Free)", "mt_mymemory", None),
-        ]
-
-        for code, name, enabled_key, api_key_name in mt_providers:
-            # Check if provider is available (has API key or doesn't need one)
-            has_key = api_key_name is None or bool(api_keys.get(api_key_name))
-            is_enabled_globally = enabled_providers.get(enabled_key, True)
-
-            checkbox = CheckmarkCheckBox(name)
-            # Default: use global MT enabled state
-            checkbox.setChecked(mt_quick_settings.get(f"mtql_{code}", is_enabled_globally and has_key))
-            checkbox.setEnabled(has_key)
-
-            if not has_key:
-                checkbox.setToolTip(f"API key not configured for {name}")
-                checkbox.setStyleSheet("color: #999;")
-            else:
-                checkbox.setToolTip(f"Include {name} in QuickTrans results")
-
-            self._mtql_checkboxes[f"mtql_{code}"] = checkbox
-            mt_layout.addWidget(checkbox)
-
-        # ----- Custom MT endpoint(s) -----
-        # A dedicated OpenAI-compatible MT endpoint (e.g. a local MT proxy),
-        # independent of the AI custom endpoint, so MT and AI can point at
-        # different services at once. Each profile becomes its own QuickTrans
-        # result. self._custom_mt_profiles is the source of truth so the save
-        # handler can persist without closure/reload mismatches.
-        from PyQt6.QtWidgets import QComboBox, QPushButton, QLineEdit, QHBoxLayout
-
-        _mt_settings = self.load_llm_settings()
-        self._custom_mt_profiles = [dict(p) for p in (_mt_settings.get('custom_mt_profiles') or [])]
-        _active_mt_name = _mt_settings.get('custom_mt_active_profile', '')
-
-        _cmt_header = QLabel(self.tr("Custom MT endpoint"))
-        _cmt_header.setStyleSheet("font-weight: bold; padding-top: 8px;")
-        mt_layout.addWidget(_cmt_header)
-
-        cmt_enable = CheckmarkCheckBox(self.tr("Custom MT endpoint (OpenAI-compatible)"))
-        cmt_enable.setChecked(mt_quick_settings.get("mtql_custom_mt", False))
-        cmt_enable.setToolTip(
-            "Query a custom OpenAI-compatible MT endpoint (e.g. a local MT proxy).\n"
-            "Each profile below appears as its own QuickTrans result.")
-        self._mtql_checkboxes["mtql_custom_mt"] = cmt_enable
-        mt_layout.addWidget(cmt_enable)
-
-        _prof_row = QHBoxLayout()
-        _prof_lbl = QLabel(self.tr("Profile:")); _prof_lbl.setMinimumWidth(90)
-        _prof_row.addWidget(_prof_lbl)
-        self._custom_mt_profile_combo = QComboBox()
-        self._custom_mt_profile_combo.setMinimumWidth(180)
-        for _p in self._custom_mt_profiles:
-            self._custom_mt_profile_combo.addItem(_p.get('name', 'Unnamed'))
-        if _active_mt_name:
-            _ai = self._custom_mt_profile_combo.findText(_active_mt_name)
-            if _ai >= 0:
-                self._custom_mt_profile_combo.setCurrentIndex(_ai)
-        _prof_row.addWidget(self._custom_mt_profile_combo)
-        _cmt_add_btn = QPushButton("+"); _cmt_add_btn.setFixedWidth(30)
-        _cmt_add_btn.setToolTip(self.tr("Add a new Custom MT endpoint profile"))
-        _cmt_del_btn = QPushButton("−"); _cmt_del_btn.setFixedWidth(30)
-        _cmt_del_btn.setToolTip(self.tr("Remove the selected profile"))
-        _prof_row.addWidget(_cmt_add_btn); _prof_row.addWidget(_cmt_del_btn)
-        _prof_row.addStretch()
-        mt_layout.addLayout(_prof_row)
-
-        self._custom_mt_endpoint_input = QLineEdit()
-        self._custom_mt_endpoint_input.setPlaceholderText(self.tr("http://127.0.0.1:1234/v1"))
-        self._custom_mt_model_input = QLineEdit()
-        self._custom_mt_model_input.setPlaceholderText(self.tr("model / engine name (e.g. google, sogou, cnpat)"))
-        self._custom_mt_key_input = QLineEdit()
-        self._custom_mt_key_input.setPlaceholderText(self.tr("API key for this endpoint (optional)"))
-        self._custom_mt_key_input.setEchoMode(QLineEdit.EchoMode.Password)
-        for _lbl_text, _w in (("Endpoint URL:", self._custom_mt_endpoint_input),
-                              ("Model / engine:", self._custom_mt_model_input),
-                              ("API key:", self._custom_mt_key_input)):
-            _r = QHBoxLayout()
-            _rl = QLabel(_lbl_text); _rl.setMinimumWidth(90)
-            _r.addWidget(_rl); _r.addWidget(_w)
-            mt_layout.addLayout(_r)
-
-        self._custom_mt_show_cb = CheckmarkCheckBox(self.tr("Show this profile in QuickTrans"))
-        self._custom_mt_show_cb.setChecked(True)
-        self._custom_mt_show_cb.setToolTip(
-            "Tick to include THIS profile as a result in the QuickTrans popup.\n"
-            "Untick to keep the profile configured but hidden. (The 'Custom MT\n"
-            "endpoint' checkbox above is the master on/off for all profiles.)")
-        mt_layout.addWidget(self._custom_mt_show_cb)
-
-        self._custom_mt_raw_cb = CheckmarkCheckBox(self.tr("Send raw text only (MT mode)"))
-        self._custom_mt_raw_cb.setChecked(True)
-        self._custom_mt_raw_cb.setToolTip(
-            "On (recommended for MT proxies): send just the source text, with the\n"
-            "language direction in the system message, so a bare MT endpoint never\n"
-            "translates the instruction wrapper. Turn off if the endpoint is an\n"
-            "instruction-following LLM that should see a full 'translate this' prompt.")
-        mt_layout.addWidget(self._custom_mt_raw_cb)
-
-        # Remove whitespace AND control/non-printable characters (e.g. a stray
-        # NUL pasted into a field, which makes requests reject the URL).
-        def _cmt_clean(s):
-            return ''.join(ch for ch in (s or '') if ord(ch) >= 0x20).strip()
-
-        def _cmt_populate(index):
-            if 0 <= index < len(self._custom_mt_profiles):
-                _pp = self._custom_mt_profiles[index]
-                self._custom_mt_endpoint_input.setText(_pp.get('endpoint', ''))
-                self._custom_mt_model_input.setText(_pp.get('model', ''))
-                self._custom_mt_key_input.setText(_pp.get('api_key', ''))
-                self._custom_mt_raw_cb.setChecked(bool(_pp.get('raw_mode', True)))
-                self._custom_mt_show_cb.setChecked(bool(_pp.get('enabled', True)))
-            else:
-                self._custom_mt_endpoint_input.clear()
-                self._custom_mt_model_input.clear()
-                self._custom_mt_key_input.clear()
-                self._custom_mt_raw_cb.setChecked(True)
-                self._custom_mt_show_cb.setChecked(True)
-
-        def _cmt_sync():
-            _i = self._custom_mt_profile_combo.currentIndex()
-            if 0 <= _i < len(self._custom_mt_profiles):
-                self._custom_mt_profiles[_i]['endpoint'] = _cmt_clean(self._custom_mt_endpoint_input.text())
-                self._custom_mt_profiles[_i]['model'] = _cmt_clean(self._custom_mt_model_input.text())
-                self._custom_mt_profiles[_i]['api_key'] = _cmt_clean(self._custom_mt_key_input.text())
-                self._custom_mt_profiles[_i]['raw_mode'] = self._custom_mt_raw_cb.isChecked()
-                self._custom_mt_profiles[_i]['enabled'] = self._custom_mt_show_cb.isChecked()
-
-        def _cmt_add():
-            from PyQt6.QtWidgets import QInputDialog, QMessageBox
-            name, ok = QInputDialog.getText(
-                self, "New Custom MT Profile",
-                "Profile name (e.g. 'Local proxy', 'CNPAT patent'):")
-            if ok and name.strip():
-                name = name.strip()
-                if any(p.get('name') == name for p in self._custom_mt_profiles):
-                    QMessageBox.warning(self, "Duplicate Name", f"A profile named '{name}' already exists.")
-                    return
-                self._custom_mt_profiles.append({'name': name, 'endpoint': '', 'model': '', 'api_key': '', 'raw_mode': True, 'enabled': True})
-                self._custom_mt_profile_combo.addItem(name)
-                self._custom_mt_profile_combo.setCurrentIndex(self._custom_mt_profile_combo.count() - 1)
-
-        def _cmt_del():
-            from PyQt6.QtWidgets import QMessageBox
-            _i = self._custom_mt_profile_combo.currentIndex()
-            if _i < 0 or _i >= len(self._custom_mt_profiles):
-                return
-            name = self._custom_mt_profile_combo.currentText()
-            if QMessageBox.question(
-                    self, "Remove Profile", f"Remove profile '{name}'?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            ) == QMessageBox.StandardButton.Yes:
-                self._custom_mt_profiles.pop(_i)
-                self._custom_mt_profile_combo.removeItem(_i)
-
-        self._custom_mt_profile_combo.currentIndexChanged.connect(_cmt_populate)
-        self._custom_mt_endpoint_input.editingFinished.connect(_cmt_sync)
-        self._custom_mt_model_input.editingFinished.connect(_cmt_sync)
-        self._custom_mt_key_input.editingFinished.connect(_cmt_sync)
-        self._custom_mt_raw_cb.toggled.connect(lambda _checked: _cmt_sync())
-        self._custom_mt_show_cb.toggled.connect(lambda _checked: _cmt_sync())
-        _cmt_add_btn.clicked.connect(_cmt_add)
-        _cmt_del_btn.clicked.connect(_cmt_del)
-        if self._custom_mt_profile_combo.count() > 0:
-            _cmt_populate(self._custom_mt_profile_combo.currentIndex())
-
-        mt_group.setLayout(mt_layout)
-        layout.addWidget(mt_group)
 
         # ===== LLM Providers Group =====
         llm_group = QGroupBox(self.tr("🤖 AI/LLM Providers"))
         llm_layout = QVBoxLayout()
 
         llm_info = QLabel(
-            "Enable AI models for translation suggestions. LLMs may provide more context-aware translations but are slower.<br>"
-            "<b>Note:</b> LLM calls cost more than MT APIs. Use sparingly for quick lookups."
+            "Enable AI models for translation suggestions.<br>"
+            "<b>Note:</b> calls to a cloud provider are billed by that provider."
         )
         llm_info.setTextFormat(Qt.TextFormat.RichText)
         llm_info.setWordWrap(True)
@@ -23917,31 +23600,6 @@ class SupervertalerQt(QMainWindow):
                 ("gemini-3.1-pro-preview", "Gemini 3.1 Pro (Previous Pro)"),
                 ("gemini-4-argon", "Gemini 4 Argon (Top Quality)"),
                 ("gemma-4-26b-a4b-it", "Gemma 4 26B MoE (Open)"),
-            ]),
-            ("mistral", "Mistral AI", "mistral", [
-                ("mistral-large-latest", "Mistral Large (Recommended)"),
-                ("mistral-small-latest", "Mistral Small (Fast)"),
-            ]),
-            ("deepseek", "DeepSeek", "deepseek", [
-                ("deepseek-v4-pro", "DeepSeek V4 Pro (Recommended)"),
-                ("deepseek-v4-flash", "DeepSeek V4 Flash (Fast)"),
-            ]),
-            # The same models as LLMClient.OPENROUTER_MODELS, in the same order.
-            ("openrouter", "OpenRouter (200+ models)", "openrouter", [
-                ("anthropic/claude-sonnet-5.5", "Claude Sonnet 5.5 (Recommended)"),
-                ("anthropic/claude-opus-5.5", "Claude Opus 5.5 (Premium)"),
-                ("anthropic/claude-fable-5.1", "Claude Fable 5.1 (Maximum)"),
-                ("openai/gpt-6-astra", "GPT-6 Astra (OpenAI's most capable)"),
-                ("openai/gpt-6.1-sol", "GPT-6.1 Sol (OpenAI recommended)"),
-                ("openai/gpt-6-luna", "GPT-6 Luna (OpenAI's cheapest)"),
-                ("google/gemini-3.8-flash", "Gemini 3.8 Flash (Fast Gemini)"),
-                ("google/gemini-4-argon", "Gemini 4 Argon (Smartest Gemini)"),
-                ("google/gemma-4-31b-it", "Gemma 4 31B (Open)"),
-                ("google/gemma-4-26b-a4b-it", "Gemma 4 26B MoE (Open)"),
-                ("mistralai/mistral-small-2603", "Mistral Small 4 (European Languages)"),
-                ("qwen/qwen3.8-27b:free", "Qwen 3.8 27B (Free)"),
-                ("deepseek/deepseek-v4-pro", "DeepSeek V4 Pro"),
-                ("deepseek/deepseek-v4-flash", "DeepSeek V4 Flash (Fast)"),
             ]),
         ]
 
@@ -23993,32 +23651,7 @@ class SupervertalerQt(QMainWindow):
             llm_row.addStretch()
             llm_layout.addLayout(llm_row)
 
-        # Custom OpenAI-compatible provider (shows active profile info)
-        custom_row = QHBoxLayout()
-        custom_cb = CheckmarkCheckBox(self.tr("Custom (OpenAI-Compatible)"))
-        custom_cb.setChecked(mt_quick_settings.get("mtql_custom_openai", False))
-        custom_cb.setToolTip(self.tr("Use your custom OpenAI-compatible endpoint (configured in AI Settings)"))
-        self._mtql_checkboxes["mtql_custom_openai"] = custom_cb
-        custom_row.addWidget(custom_cb)
-
         llm_settings = self.load_llm_settings()
-        profile = self._get_active_custom_profile(llm_settings)
-        profile_display = ""
-        if profile:
-            profile_display = f"{profile.get('name', 'Custom')} – {profile.get('model', '')}"
-        else:
-            profile_display = mt_quick_settings.get("mtql_custom_openai_model", llm_settings.get('custom_openai_model', ''))
-
-        custom_model_edit = QLineEdit()
-        custom_model_edit.setMinimumWidth(200)
-        custom_model_edit.setPlaceholderText(self.tr("Uses active profile from AI Settings"))
-        custom_model_edit.setText(profile_display)
-        custom_model_edit.setReadOnly(True)
-        custom_model_edit.setStyleSheet("color: #666; background: #f5f5f5;")
-        self._mtql_llm_combos["mtql_custom_openai_model"] = custom_model_edit
-        custom_row.addWidget(custom_model_edit)
-        custom_row.addStretch()
-        llm_layout.addLayout(custom_row)
 
         # Ollama (local LLM – always available, no API key needed)
         ollama_row = QHBoxLayout()
@@ -24072,23 +23705,6 @@ class SupervertalerQt(QMainWindow):
 
         general_settings['mt_quick_lookup'] = mt_quick_settings
         self.save_general_settings(general_settings)
-
-        # Persist Custom MT endpoint profiles to llm_settings (kept separate from
-        # the AI custom endpoint). The enable flag itself rides in mt_quick_settings
-        # via self._mtql_checkboxes['mtql_custom_mt'] above.
-        if getattr(self, '_custom_mt_profile_combo', None) is not None:
-            idx = self._custom_mt_profile_combo.currentIndex()
-            if 0 <= idx < len(self._custom_mt_profiles):
-                _clean = lambda s: ''.join(ch for ch in (s or '') if ord(ch) >= 0x20).strip()
-                self._custom_mt_profiles[idx]['endpoint'] = _clean(self._custom_mt_endpoint_input.text())
-                self._custom_mt_profiles[idx]['model'] = _clean(self._custom_mt_model_input.text())
-                self._custom_mt_profiles[idx]['api_key'] = _clean(self._custom_mt_key_input.text())
-                self._custom_mt_profiles[idx]['raw_mode'] = self._custom_mt_raw_cb.isChecked()
-                self._custom_mt_profiles[idx]['enabled'] = self._custom_mt_show_cb.isChecked()
-            llm_settings = self.load_llm_settings()
-            llm_settings['custom_mt_profiles'] = self._custom_mt_profiles
-            llm_settings['custom_mt_active_profile'] = self._custom_mt_profile_combo.currentText()
-            self.save_llm_settings(llm_settings)
 
         self.log("✓ QuickTrans settings saved")
         QMessageBox.information(self, "Settings Saved", "QuickTrans settings have been saved.")
@@ -27128,27 +26744,6 @@ class SupervertalerQt(QMainWindow):
         key_input.textEdited.connect(lambda _text, lbl=label: lbl.hide())
         return box
 
-    def _save_mt_settings_from_ui(self, google_cb, deepl_cb, microsoft_cb, amazon_cb, modernmt_cb, mymemory_cb):
-        """Save MT settings from UI"""
-        # Save API keys from inline fields
-        self._save_api_keys_from_ui()
-
-        enabled_states = {
-            'mt_google_translate': google_cb.isChecked(),
-            'mt_deepl': deepl_cb.isChecked(),
-            'mt_microsoft': microsoft_cb.isChecked(),
-            'mt_amazon': amazon_cb.isChecked(),
-            'mt_modernmt': modernmt_cb.isChecked(),
-            'mt_mymemory': mymemory_cb.isChecked()
-        }
-        # Merge with existing LLM settings
-        existing = self.load_provider_enabled_states()
-        enabled_states.update({k: v for k, v in existing.items() if k.startswith('llm_')})
-        self.save_provider_enabled_states(enabled_states)
-        
-        self.log("✓ MT settings saved")
-        QMessageBox.information(self, "Settings Saved", "MT settings have been saved successfully.")
-    
     def _save_general_settings_from_ui(self, restore_cb, allow_replace_cb, auto_propagate_cb,
                                        llm_spin=None, mt_spin=None, tm_limit_spin=None, tb_spin=None,
                                        auto_open_log_cb=None, auto_insert_100_cb=None, tm_save_mode_combo=None, tb_highlight_cb=None,
@@ -49208,8 +48803,6 @@ class SupervertalerQt(QMainWindow):
                     # Fetch LLM translation for current segment (async, updates panel when ready)
                     self._fetch_llm_translation_async(segment.source, segment, current_row)
                     
-                    # Fetch MT translation for current segment (async, updates panel when ready)
-                    self._fetch_mt_translation_async(segment.source, segment, current_row)
                     
                     # Display matches (LLM and MT will be added when ready)
                     total_matches = sum(len(matches) for matches in matches_dict.values())
@@ -56453,12 +56046,6 @@ class SupervertalerQt(QMainWindow):
             suffix = f" (x{count})" if count > 1 else ""
             self.log(f"{msg}{suffix}")
 
-    def insert_compare_panel_mt(self):
-        """Insert the currently shown Compare Panel MT translation (default: Alt+M)."""
-        if self._get_active_match_shortcut_mode() != 'compare':
-            return
-        self._insert_compare_panel_mt_current()
-
     def insert_compare_panel_tm_target(self):
         """Insert the currently shown Compare Panel TM target (default: Alt+T)."""
         if self._get_active_match_shortcut_mode() != 'compare':
@@ -57882,6 +57469,10 @@ class SupervertalerQt(QMainWindow):
                     'api_key': api_keys.get('custom_openai', '')
                 }]
                 saved['custom_openai_active_profile'] = 'Custom Endpoint'
+            # A provider saved by the base app that Localize Large does not
+            # support falls back to the default; the old value is ignored.
+            if saved.get('provider') not in ('openai', 'claude', 'gemini', 'ollama'):
+                saved['provider'] = defaults['provider']
             return saved
         except:
             return defaults
@@ -58004,119 +57595,6 @@ class SupervertalerQt(QMainWindow):
             return {'name': 'Custom Endpoint', 'endpoint': endpoint, 'model': model, 'api_key': ''}
 
         return None
-
-    def _get_custom_mt_profiles(self, settings=None):
-        """Return the list of configured Custom MT endpoint profiles."""
-        if settings is None:
-            settings = self.load_llm_settings()
-        return settings.get('custom_mt_profiles', []) or []
-
-    def _get_active_custom_mt_profile(self, settings=None):
-        """Get the active Custom MT endpoint profile dict (name, endpoint, model, api_key).
-
-        Mirrors _get_active_custom_profile but for the dedicated MT endpoint set,
-        which is independent of the AI custom endpoint. Returns None if none set.
-        """
-        if settings is None:
-            settings = self.load_llm_settings()
-        profiles = self._get_custom_mt_profiles(settings)
-        active_name = settings.get('custom_mt_active_profile', '')
-        for p in profiles:
-            if p.get('name') == active_name:
-                return p
-        return profiles[0] if profiles else None
-
-    def call_custom_mt(self, text: str, source_lang: str, target_lang: str, profile=None) -> str:
-        """Translate via a Custom MT endpoint (OpenAI-compatible, e.g. a local MT
-        proxy). `profile` is a {name, endpoint, model, api_key} dict; when omitted
-        the active Custom MT profile is used. Returns the translated string, or a
-        bracketed error message on failure (the QuickTrans convention)."""
-        try:
-            from modules.llm_clients import LLMClient
-
-            if profile is None:
-                profile = self._get_active_custom_mt_profile()
-            if not profile:
-                return "[Custom MT: no endpoint configured]"
-
-            # Strip whitespace AND any control/non-printable characters (a stray
-            # NUL or similar pasted into the field would otherwise make requests
-            # reject the URL with "Invalid non-printable ASCII character").
-            def _clean(s):
-                return ''.join(ch for ch in (s or '') if ord(ch) >= 0x20).strip()
-
-            endpoint = _clean(profile.get('endpoint'))
-            if not endpoint:
-                return "[Custom MT: no endpoint configured]"
-
-            model = _clean(profile.get('model')) or 'custom-model'
-            api_keys = self.load_api_keys()
-            api_key = ((profile.get('api_key') or '').strip()
-                       or api_keys.get('custom_mt', '')
-                       or api_keys.get('custom_openai', '')
-                       or 'not-needed')
-            http_proxy = self._get_proxy_url() if hasattr(self, '_get_proxy_url') else None
-
-            client = LLMClient(
-                api_key=api_key,
-                provider='custom_openai',
-                model=model,
-                base_url=endpoint,
-                http_proxy=http_proxy,
-            )
-
-            # Raw MT mode (default for MT endpoints): send ONLY the source text as
-            # the user message, with the language direction in the system message.
-            # A bare MT proxy that simply translates the user message then receives
-            # clean text instead of the instruction wrapper, while still learning
-            # the target language from the system message. Turn it off for an
-            # endpoint that is really an instruction-following LLM.
-            raw_mode = bool(profile.get('raw_mode', True))
-            if raw_mode:
-                prompt = text
-                system_prompt = (
-                    f"Translate from {source_lang} to {target_lang}. "
-                    "Output only the translated text — no quotes, notes, or explanations."
-                )
-            else:
-                prompt = (
-                    f"Translate the following text from {source_lang} to {target_lang}.\n"
-                    f"Output ONLY the translation, nothing else. "
-                    f"No explanations, no alternatives, no notes, no quotation marks.\n\n"
-                    f"{text}"
-                )
-                system_prompt = (
-                    "You are a translation engine. Output only the translated text. "
-                    "Never add explanations, alternatives, notes, or commentary. "
-                    "Never wrap the output in quotes. "
-                    "If the text is already in the target language, output it unchanged."
-                )
-
-            result = client.translate(
-                text="",
-                source_lang=source_lang,
-                target_lang=target_lang,
-                custom_prompt=prompt,
-                system_prompt=system_prompt,
-            )
-            if result:
-                result = result.strip()
-                if ((result.startswith('"') and result.endswith('"'))
-                        or (result.startswith("'") and result.endswith("'"))):
-                    result = result[1:-1]
-            return result or "[Custom MT: no translation returned]"
-        except Exception as e:
-            msg = str(e)
-            low = msg.lower()
-            is_conn = ('connection' in low or 'refused' in low
-                       or 'max retries' in low or 'failed to establish' in low
-                       or 'connection' in type(e).__name__.lower())
-            if is_conn:
-                host = locals().get('endpoint', '') or ''
-                if any(h in host for h in ('127.0.0.1', 'localhost', '0.0.0.0')):
-                    return "[MT proxy not running. Start it.]"
-                return "[Custom MT: endpoint unreachable.]"
-            return f"[Custom MT error: {msg}]"
 
     def create_llm_client(self, provider, model, api_keys, settings=None):
         """Create an LLMClient with proper base_url and proxy handling."""
@@ -60144,55 +59622,17 @@ class SupervertalerQt(QMainWindow):
             api_keys = self.load_api_keys()
             enabled_providers = self.load_provider_enabled_states()
 
-            # Show available MT providers
-            mt_providers_available = []
-            if enabled_providers.get('mt_google_translate', True) and api_keys.get('google_translate'):
-                mt_providers_available.append('Google Translate')
-            if enabled_providers.get('mt_deepl', True) and api_keys.get('deepl'):
-                mt_providers_available.append('DeepL')
-            if enabled_providers.get('mt_microsoft', True) and (api_keys.get('microsoft_translate') or api_keys.get('azure_translate')):
-                mt_providers_available.append('Microsoft Translator')
-            if enabled_providers.get('mt_amazon', True) and (api_keys.get('amazon_translate') or api_keys.get('aws_translate')):
-                mt_providers_available.append('Amazon Translate')
-            if enabled_providers.get('mt_modernmt', True) and api_keys.get('modernmt'):
-                mt_providers_available.append('ModernMT')
-            if enabled_providers.get('mt_mymemory', True):
-                mt_providers_available.append('MyMemory')
-
-            mt_label_text = "🌐 MT (Machine Translation)"
-            if mt_providers_available:
-                mt_label_text += f" - {', '.join(mt_providers_available)}"
-            else:
-                mt_label_text += " - No MT providers configured"
-
-            mt_checkbox = CheckmarkCheckBox(mt_label_text)
-            mt_checkbox.setEnabled(len(mt_providers_available) > 0)
-            provider_layout.addWidget(mt_checkbox)
-
             # Make checkboxes mutually exclusive
             def on_tm_toggled(checked):
                 if checked:
                     llm_checkbox.setChecked(False)
-                    mt_checkbox.setChecked(False)
         
             def on_llm_toggled(checked):
                 if checked:
                     tm_checkbox.setChecked(False)
-                    mt_checkbox.setChecked(False)
-
-            def on_mt_toggled(checked):
-                if checked:
-                    tm_checkbox.setChecked(False)
-                    llm_checkbox.setChecked(False)
 
             tm_checkbox.toggled.connect(on_tm_toggled)
             llm_checkbox.toggled.connect(on_llm_toggled)
-            mt_checkbox.toggled.connect(on_mt_toggled)
-
-            if not mt_providers_available:
-                mt_warning = QLabel(self.tr("⚠️ Configure MT API keys in Settings → MT Settings to enable"))
-                mt_warning.setStyleSheet("color: #ff6b6b; font-size: 9pt; padding-left: 25px;")
-                provider_layout.addWidget(mt_warning)
 
             provider_group.setLayout(provider_layout)
             dialog_layout.addWidget(provider_group)
@@ -60341,7 +59781,6 @@ class SupervertalerQt(QMainWindow):
 
             # Determine which provider was selected
             use_tm = tm_checkbox.isChecked()
-            use_mt = mt_checkbox.isChecked()
             retry_until_complete = retry_checkbox.isChecked()
             tm_exact_only = tm_exact_only_checkbox.isChecked()
             auto_confirm_tm = auto_confirm_checkbox.isChecked()
@@ -60382,16 +59821,6 @@ class SupervertalerQt(QMainWindow):
                 confirm_str = ", auto-confirm 100%" if auto_confirm_tm else ""
                 self.log(f"📖 Using Translation Memory for batch pre-translation{mode_str}{confirm_str}")
             
-            elif use_mt:
-                # Use MT provider
-                translation_provider_type = 'MT'
-                translation_provider_name = mt_providers_available[0] if mt_providers_available else None
-                if not translation_provider_name:
-                    QMessageBox.critical(
-                        self, "No MT Provider",
-                        "No Machine Translation provider available. Please configure MT API keys in Settings."
-                    )
-                    return
             else:
                 # Use LLM provider
                 translation_provider_type = 'LLM'
@@ -60428,9 +59857,7 @@ class SupervertalerQt(QMainWindow):
         segments_needing_translation = segments_to_translate
 
         # Create provider info string for dialog
-        if translation_provider_type == 'MT':
-            provider_info = f"Provider: {translation_provider_name} (Machine Translation)"
-        elif translation_provider_type == 'TM':
+        if translation_provider_type == 'TM':
             mode = "Exact matches only" if tm_exact_only else "with fuzzy matching"
             provider_info = f"Provider: Translation Memory ({mode})"
         else:
@@ -60991,477 +60418,6 @@ class SupervertalerQt(QMainWindow):
         
         # Use QTimer to run async (small delay to avoid blocking)
         QTimer.singleShot(100, fetch_and_update)
-    
-    def _fetch_mt_translation_async(self, source_text: str, segment, row_index: int):
-        """Fetch Machine Translation asynchronously and add to results panel"""
-        if not source_text or not source_text.strip():
-            return
-        
-        # Check if we have MT API keys configured
-        api_keys = self.load_api_keys()
-        if not api_keys:
-            return  # No API keys configured, skip MT
-        
-        # Check enabled providers
-        enabled_providers = self.load_provider_enabled_states()
-        
-        # Try MT providers in priority order (first available and enabled wins)
-        # Priority: Google Translate > DeepL > Microsoft > Amazon > ModernMT > MyMemory
-        mt_provider = None
-        mt_api_key = None
-        
-        if enabled_providers.get('mt_google_translate', True) and api_keys.get('google_translate'):
-            mt_provider = 'google_translate'
-            mt_api_key = api_keys['google_translate']
-        elif enabled_providers.get('mt_deepl', True) and api_keys.get('deepl'):
-            mt_provider = 'deepl'
-            mt_api_key = api_keys['deepl']
-        elif enabled_providers.get('mt_microsoft', True) and (api_keys.get('microsoft_translate') or api_keys.get('azure_translate')):
-            mt_provider = 'microsoft'
-            mt_api_key = api_keys.get('microsoft_translate') or api_keys.get('azure_translate')
-        elif enabled_providers.get('mt_amazon', True) and (api_keys.get('amazon_translate') or api_keys.get('aws_translate')):
-            mt_provider = 'amazon'
-            mt_api_key = api_keys.get('amazon_translate') or api_keys.get('aws_translate')
-        elif enabled_providers.get('mt_modernmt', True) and api_keys.get('modernmt'):
-            mt_provider = 'modernmt'
-            mt_api_key = api_keys['modernmt']
-        elif enabled_providers.get('mt_mymemory', True) and api_keys.get('mymemory'):
-            mt_provider = 'mymemory'
-            mt_api_key = api_keys.get('mymemory')  # Optional, MyMemory works without key
-        # Note: MyMemory can work without a key, but we only use it if explicitly configured
-        else:
-            return  # No MT API keys available or all providers disabled
-        
-        # Get languages
-        source_lang = getattr(self.current_project, 'source_lang', 'en')
-        target_lang = getattr(self.current_project, 'target_lang', 'nl')
-        
-        # Use QTimer to run in background (non-blocking)
-        def fetch_and_update():
-            try:
-                from modules.translation_results_panel import TranslationMatch
-                
-                # Call appropriate MT service
-                if mt_provider == 'google_translate':
-                    translation = self.call_google_translate(source_text, source_lang, target_lang, mt_api_key)
-                    provider_name = 'Google Translate'
-                elif mt_provider == 'deepl':
-                    translation = self.call_deepl(source_text, source_lang, target_lang, mt_api_key)
-                    provider_name = 'DeepL'
-                elif mt_provider == 'microsoft':
-                    translation = self.call_microsoft_translate(source_text, source_lang, target_lang, mt_api_key)
-                    provider_name = 'Microsoft Translator'
-                elif mt_provider == 'amazon':
-                    # Amazon requires region, check for amazon_translate_region or use default
-                    region = api_keys.get('amazon_translate_region', 'us-east-1')
-                    translation = self.call_amazon_translate(source_text, source_lang, target_lang, mt_api_key, region)
-                    provider_name = 'Amazon Translate'
-                elif mt_provider == 'modernmt':
-                    translation = self.call_modernmt(source_text, source_lang, target_lang, mt_api_key)
-                    provider_name = 'ModernMT'
-                elif mt_provider == 'mymemory':
-                    translation = self.call_mymemory(source_text, source_lang, target_lang, mt_api_key)
-                    provider_name = 'MyMemory'
-                else:
-                    return
-                
-                if translation and not translation.startswith('['):  # Skip error messages
-                    if hasattr(self, 'assistance_widget') and self.assistance_widget:
-                        # Check if this segment is still selected
-                        current_row = self.table.currentRow()
-                        if current_row == row_index:
-                            # Map provider to code
-                            provider_code_map = {
-                                'Google Translate': 'GT',
-                                'DeepL': 'DL',
-                                'Microsoft Translator': 'MS',
-                                'Amazon Translate': 'AT',
-                                'ModernMT': 'MMT',
-                                'MyMemory': 'MM'
-                            }
-                            provider_code = provider_code_map.get(provider_name, 'MT')
-                            
-                            # Create MT match
-                            mt_match = TranslationMatch(
-                                source=source_text,
-                                target=translation,
-                                relevance=95,  # High relevance for MT
-                                metadata={
-                                    'provider': provider_name,
-                                    'timestamp': datetime.now().isoformat()
-                                },
-                                match_type='MT',
-                                compare_source=source_text,
-                                provider_code=provider_code
-                            )
-                            
-                            # Update all results panels with MT match
-                            if hasattr(self, 'results_panels'):
-                                current_matches = {"MT": [mt_match]}
-                                for panel in self.results_panels:
-                                    try:
-                                        # Get current matches and add MT
-                                        if hasattr(panel, 'matches_by_type'):
-                                            existing_matches = panel.matches_by_type.copy()
-                                            existing_matches["MT"] = [mt_match]
-                                            panel.set_matches(existing_matches)
-                                        else:
-                                            panel.set_matches(current_matches)
-                                    except Exception as e:
-                                        self.log(f"Error updating panel with MT: {e}")
-                            self.log(f"✓ MT translation ({provider_name}) added to results pane")
-            except Exception as e:
-                # Silently fail - don't interrupt workflow
-                self.log(f"MT translation failed (silent): {str(e)}")
-        
-        # Use QTimer to run async (small delay to avoid blocking, slightly after LLM)
-        QTimer.singleShot(150, fetch_and_update)
-    
-    def call_google_translate(self, text: str, source_lang: str, target_lang: str, api_key: str = None) -> str:
-        """Call Google Cloud Translation API using REST API"""
-        try:
-            import requests
-            import html
-            
-            if not api_key:
-                api_keys = self.load_api_keys()
-                api_key = api_keys.get("google_translate")
-            
-            if not api_key:
-                return f"[{self._api_key_problem('google_translate') or 'Google Cloud Translation requires API key'}]"
-            
-            # Map full language names to ISO codes
-            lang_name_to_code = {
-                'english': 'en', 'dutch': 'nl', 'german': 'de', 'french': 'fr',
-                'spanish': 'es', 'italian': 'it', 'portuguese': 'pt', 'russian': 'ru',
-                'chinese': 'zh', 'japanese': 'ja', 'korean': 'ko', 'arabic': 'ar',
-                'polish': 'pl', 'swedish': 'sv', 'norwegian': 'no', 'danish': 'da',
-                'finnish': 'fi', 'greek': 'el', 'turkish': 'tr', 'czech': 'cs',
-                'hungarian': 'hu', 'romanian': 'ro', 'bulgarian': 'bg', 'ukrainian': 'uk',
-                'hebrew': 'he', 'thai': 'th', 'vietnamese': 'vi', 'indonesian': 'id',
-                'malay': 'ms', 'hindi': 'hi', 'bengali': 'bn', 'tamil': 'ta',
-            }
-            
-            # Convert language - try name mapping first, then code extraction
-            src_lower = source_lang.lower().strip()
-            tgt_lower = target_lang.lower().strip()
-            
-            src_code = lang_name_to_code.get(src_lower, src_lower.split('-')[0].split('_')[0])
-            tgt_code = lang_name_to_code.get(tgt_lower, tgt_lower.split('-')[0].split('_')[0])
-            
-            # Call REST API directly
-            url = "https://translation.googleapis.com/language/translate/v2"
-            params = {
-                'key': api_key,
-                'q': text,
-                'source': src_code,
-                'target': tgt_code,
-                'format': 'text'
-            }
-            
-            response = requests.post(url, params=params, timeout=10, proxies=self._get_proxy_dict())
-            response.raise_for_status()
-
-            result = response.json()
-            translated_text = result['data']['translations'][0]['translatedText']
-            # Unescape HTML entities like &quot; &amp; etc.
-            return html.unescape(translated_text)
-
-        except ImportError:
-            return "[Google Translate requires: pip install requests]"
-        except Exception as e:
-            return f"[Google Translate error: {str(e)}]"
-    
-    def call_deepl(self, text: str, source_lang: str, target_lang: str, api_key: str = None) -> str:
-        """Call DeepL API"""
-        try:
-            import deepl
-
-            if not api_key:
-                api_keys = self.load_api_keys()
-                api_key = api_keys.get("deepl")
-
-            if not api_key:
-                return f"[{self._api_key_problem('deepl') or 'DeepL requires API key'}]"
-
-            translator = deepl.Translator(api_key, proxy=self._get_proxy_dict())
-
-            # Map full language names to ISO codes
-            lang_name_to_code = {
-                'english': 'en', 'dutch': 'nl', 'german': 'de', 'french': 'fr',
-                'spanish': 'es', 'italian': 'it', 'portuguese': 'pt', 'russian': 'ru',
-                'chinese': 'zh', 'japanese': 'ja', 'korean': 'ko', 'arabic': 'ar',
-                'polish': 'pl', 'swedish': 'sv', 'norwegian': 'no', 'danish': 'da',
-                'finnish': 'fi', 'greek': 'el', 'turkish': 'tr', 'czech': 'cs',
-                'hungarian': 'hu', 'romanian': 'ro', 'bulgarian': 'bg', 'ukrainian': 'uk',
-            }
-
-            # Convert source language - try name mapping first, then code extraction
-            src_lower = source_lang.lower().strip()
-            src_base = lang_name_to_code.get(src_lower, src_lower.split('-')[0].split('_')[0])
-            src_code = src_base.upper()
-
-            # Convert target language - try name mapping first, then handle DeepL variants
-            tgt_lower = target_lang.lower().strip()
-            tgt_base = lang_name_to_code.get(tgt_lower, tgt_lower)
-            tgt_upper = tgt_base.upper().replace('_', '-')
-
-            # DeepL target language mapping - some require specific variants
-            deepl_target_map = {
-                # English variants (EN alone is deprecated)
-                'EN': 'EN-US',      # Default to US English
-                'EN-US': 'EN-US',
-                'EN-GB': 'EN-GB',
-                'EN-AU': 'EN-GB',   # Map Australian to British
-                'EN-CA': 'EN-US',   # Map Canadian to US
-                # Portuguese variants
-                'PT': 'PT-PT',      # Default to European Portuguese
-                'PT-PT': 'PT-PT',
-                'PT-BR': 'PT-BR',
-                # Chinese variants
-                'ZH': 'ZH-HANS',    # Default to Simplified
-                'ZH-CN': 'ZH-HANS',
-                'ZH-TW': 'ZH-HANT',
-                'ZH-HANS': 'ZH-HANS',
-                'ZH-HANT': 'ZH-HANT',
-            }
-
-            # Check if full code matches first, then base code
-            if tgt_upper in deepl_target_map:
-                tgt_code = deepl_target_map[tgt_upper]
-            else:
-                # Extract base code and check
-                base_code = tgt_upper.split('-')[0]
-                if base_code in deepl_target_map:
-                    tgt_code = deepl_target_map[base_code]
-                else:
-                    # Use base code as-is for other languages
-                    tgt_code = base_code
-
-            result = translator.translate_text(text, source_lang=src_code, target_lang=tgt_code)
-            return result.text
-
-        except ImportError:
-            return "[DeepL requires: pip install deepl]"
-        except Exception as e:
-            return f"[DeepL error: {str(e)}]"
-    
-    def call_microsoft_translate(self, text: str, source_lang: str, target_lang: str, api_key: str = None, region: str = None) -> str:
-        """Call Microsoft Azure Translator API"""
-        try:
-            import requests
-
-            api_keys = self.load_api_keys()
-            if not api_key:
-                api_key = api_keys.get("microsoft_translate") or api_keys.get("azure_translate")
-            if not region:
-                region = api_keys.get("microsoft_translate_region") or api_keys.get("azure_region") or "global"
-
-            if not api_key:
-                return f"[{self._api_key_problem('microsoft_translate') or 'Microsoft Translator requires API key'}]"
-
-            # Map full language names to ISO codes
-            lang_name_to_code = {
-                'english': 'en', 'dutch': 'nl', 'german': 'de', 'french': 'fr',
-                'spanish': 'es', 'italian': 'it', 'portuguese': 'pt', 'russian': 'ru',
-                'chinese': 'zh', 'japanese': 'ja', 'korean': 'ko', 'arabic': 'ar',
-                'polish': 'pl', 'swedish': 'sv', 'norwegian': 'no', 'danish': 'da',
-                'finnish': 'fi', 'greek': 'el', 'turkish': 'tr', 'czech': 'cs',
-                'hungarian': 'hu', 'romanian': 'ro', 'bulgarian': 'bg', 'ukrainian': 'uk',
-                'hebrew': 'he', 'thai': 'th', 'vietnamese': 'vi', 'indonesian': 'id',
-            }
-
-            # Convert language - try name mapping first, then code extraction
-            src_lower = source_lang.lower().strip()
-            tgt_lower = target_lang.lower().strip()
-
-            src_code = lang_name_to_code.get(src_lower, src_lower.split('-')[0].split('_')[0])
-            tgt_code = lang_name_to_code.get(tgt_lower, tgt_lower.split('-')[0].split('_')[0])
-            
-            # Microsoft Translator API v3.0
-            endpoint = f"https://api.cognitive.microsofttranslator.com/translate"
-            params = {
-                'api-version': '3.0',
-                'from': src_code,
-                'to': tgt_code
-            }
-            headers = {
-                'Ocp-Apim-Subscription-Key': api_key,
-                'Ocp-Apim-Subscription-Region': region,
-                'Content-Type': 'application/json'
-            }
-            body = [{'text': text}]
-            
-            response = requests.post(endpoint, params=params, headers=headers, json=body, timeout=10, proxies=self._get_proxy_dict())
-            response.raise_for_status()
-
-            result = response.json()
-            return result[0]['translations'][0]['text']
-
-        except ImportError:
-            return "[Microsoft Translator requires: pip install requests]"
-        except Exception as e:
-            return f"[Microsoft Translator error: {str(e)}]"
-    
-    def call_amazon_translate(self, text: str, source_lang: str, target_lang: str, api_key: str = None, region: str = 'us-east-1') -> str:
-        """Call Amazon Translate API (AWS)"""
-        try:
-            import boto3
-            from botocore.exceptions import ClientError
-            
-            api_keys = self.load_api_keys()
-            if not api_key:
-                api_key = api_keys.get("amazon_translate") or api_keys.get("aws_translate")
-            
-            # AWS also needs secret key
-            secret_key = api_keys.get("amazon_translate_secret") or api_keys.get("aws_secret_key")
-            
-            if not api_key or not secret_key:
-                return "[Amazon Translate requires API key and secret key]"
-            
-            # Get region from settings if not provided
-            if not region or region == 'us-east-1':
-                region = api_keys.get("amazon_translate_region", "us-east-1")
-            
-            # Map full language names to ISO codes
-            lang_name_to_code = {
-                'english': 'en', 'dutch': 'nl', 'german': 'de', 'french': 'fr',
-                'spanish': 'es', 'italian': 'it', 'portuguese': 'pt', 'russian': 'ru',
-                'chinese': 'zh', 'japanese': 'ja', 'korean': 'ko', 'arabic': 'ar',
-                'polish': 'pl', 'swedish': 'sv', 'norwegian': 'no', 'danish': 'da',
-                'finnish': 'fi', 'greek': 'el', 'turkish': 'tr', 'czech': 'cs',
-                'hungarian': 'hu', 'romanian': 'ro', 'bulgarian': 'bg', 'ukrainian': 'uk',
-            }
-            
-            # Convert language - try name mapping first, then code extraction
-            src_lower = source_lang.lower().strip()
-            tgt_lower = target_lang.lower().strip()
-            
-            src_code = lang_name_to_code.get(src_lower, src_lower.split('-')[0].split('_')[0])
-            tgt_code = lang_name_to_code.get(tgt_lower, tgt_lower.split('-')[0].split('_')[0])
-            
-            translate_client = boto3.client(
-                'translate',
-                aws_access_key_id=api_key,
-                aws_secret_access_key=secret_key,
-                region_name=region
-            )
-            
-            result = translate_client.translate_text(
-                Text=text,
-                SourceLanguageCode=src_code,
-                TargetLanguageCode=tgt_code
-            )
-            
-            return result['TranslatedText']
-            
-        except ImportError:
-            return "[Amazon Translate requires: pip install boto3]"
-        except Exception as e:
-            return f"[Amazon Translate error: {str(e)}]"
-    
-    def call_modernmt(self, text: str, source_lang: str, target_lang: str, api_key: str = None) -> str:
-        """Call ModernMT API"""
-        try:
-            import requests
-
-            api_keys = self.load_api_keys()
-            if not api_key:
-                api_key = api_keys.get("modernmt")
-
-            if not api_key:
-                return f"[{self._api_key_problem('modernmt') or 'ModernMT requires API key'}]"
-
-            # Map full language names to ISO codes
-            lang_name_to_code = {
-                'english': 'en', 'dutch': 'nl', 'german': 'de', 'french': 'fr',
-                'spanish': 'es', 'italian': 'it', 'portuguese': 'pt', 'russian': 'ru',
-                'chinese': 'zh', 'japanese': 'ja', 'korean': 'ko', 'arabic': 'ar',
-                'polish': 'pl', 'swedish': 'sv', 'norwegian': 'no', 'danish': 'da',
-                'finnish': 'fi', 'greek': 'el', 'turkish': 'tr', 'czech': 'cs',
-                'hungarian': 'hu', 'romanian': 'ro', 'bulgarian': 'bg', 'ukrainian': 'uk',
-            }
-
-            # Convert language - try name mapping first, then code extraction
-            src_lower = source_lang.lower().strip()
-            tgt_lower = target_lang.lower().strip()
-
-            src_code = lang_name_to_code.get(src_lower, src_lower.split('-')[0].split('_')[0])
-            tgt_code = lang_name_to_code.get(tgt_lower, tgt_lower.split('-')[0].split('_')[0])
-            
-            # ModernMT API endpoint
-            url = "https://api.modernmt.com/translate"
-            headers = {
-                'MMT-ApiKey': api_key,
-                'Content-Type': 'application/json'
-            }
-            data = {
-                'q': text,
-                'source': src_code,
-                'target': tgt_code
-            }
-            
-            response = requests.post(url, headers=headers, json=data, timeout=10, proxies=self._get_proxy_dict())
-            response.raise_for_status()
-
-            result = response.json()
-            return result['data']['translation']
-
-        except ImportError:
-            return "[ModernMT requires: pip install requests]"
-        except Exception as e:
-            return f"[ModernMT error: {str(e)}]"
-    
-    def call_mymemory(self, text: str, source_lang: str, target_lang: str, api_key: str = None) -> str:
-        """Call MyMemory Translation API (free tier available, simple REST API)"""
-        try:
-            import requests
-
-            # MyMemory is free, but API key provides higher limits
-            api_keys = self.load_api_keys()
-            api_key = api_key or api_keys.get("mymemory")  # Optional, works without key
-
-            # Map full language names to ISO codes
-            lang_name_to_code = {
-                'english': 'en', 'dutch': 'nl', 'german': 'de', 'french': 'fr',
-                'spanish': 'es', 'italian': 'it', 'portuguese': 'pt', 'russian': 'ru',
-                'chinese': 'zh', 'japanese': 'ja', 'korean': 'ko', 'arabic': 'ar',
-                'polish': 'pl', 'swedish': 'sv', 'norwegian': 'no', 'danish': 'da',
-                'finnish': 'fi', 'greek': 'el', 'turkish': 'tr', 'czech': 'cs',
-                'hungarian': 'hu', 'romanian': 'ro', 'bulgarian': 'bg', 'ukrainian': 'uk',
-                'hebrew': 'he', 'thai': 'th', 'vietnamese': 'vi', 'indonesian': 'id',
-                'malay': 'ms', 'hindi': 'hi', 'bengali': 'bn', 'tamil': 'ta',
-            }
-
-            # Convert language - try name mapping first, then code extraction
-            src_lower = source_lang.lower().strip()
-            tgt_lower = target_lang.lower().strip()
-
-            src_code = lang_name_to_code.get(src_lower, src_lower.split('-')[0].split('_')[0])
-            tgt_code = lang_name_to_code.get(tgt_lower, tgt_lower.split('-')[0].split('_')[0])
-            
-            # MyMemory API endpoint
-            url = "https://api.mymemory.translated.net/get"
-            params = {
-                'q': text,
-                'langpair': f"{src_code}|{tgt_code}"
-            }
-            if api_key:
-                params['key'] = api_key
-            
-            response = requests.get(url, params=params, timeout=10, proxies=self._get_proxy_dict())
-            response.raise_for_status()
-
-            result = response.json()
-            if result.get('responseStatus') == 200:
-                return result['responseData']['translatedText']
-            else:
-                return f"[MyMemory error: {result.get('responseDetails', 'Unknown error')}]"
-            
-        except ImportError:
-            return "[MyMemory requires: pip install requests]"
-        except Exception as e:
-            return f"[MyMemory error: {str(e)}]"
     
     def load_api_keys(self) -> Dict[str, str]:
         """Every API key Workbench uses: the keys shared with Localize Large for
@@ -62236,470 +61192,6 @@ class SupervertalerQt(QMainWindow):
         """
         pass  # Translation Results panel removed - use QuickTrans (Ctrl+Alt+Q) for MT/LLM
 
-    def _REMOVED_add_mt_and_llm_matches_progressive(self, segment, source_lang, target_lang, source_lang_code, target_lang_code):
-        """REMOVED - kept for reference only, will be deleted in future cleanup."""
-        return  # Dead code below - keeping temporarily for reference
-
-        from modules.translation_results_panel import TranslationMatch
-
-        # MT matches (usually fast ~0.5s each)
-        if self.enable_mt_matching:
-            api_keys = self.load_api_keys()
-            enabled_providers = self.load_provider_enabled_states()
-            
-            # 1. Google Translate
-            if enabled_providers.get('mt_google_translate', True) and api_keys.get('google_translate'):
-                try:
-                    from modules.llm_clients import get_google_translation
-                    
-                    google_result = get_google_translation(
-                        segment.source, 
-                        source_lang_code or 'auto',
-                        target_lang_code or 'en'
-                    )
-                    
-                    if google_result and google_result.get('translation'):
-                        match = TranslationMatch(
-                            source=segment.source,
-                            target=google_result['translation'],
-                            relevance=95,
-                            metadata=google_result.get('metadata', {}),
-                            match_type="MT",
-                            compare_source=segment.source,
-                            provider_code='GT'
-                        )
-                        # Show MT match immediately (deduplicated by panel)
-                        mt_dict = {"MT": [match]}
-                        if hasattr(self, 'results_panels') and self.results_panels:
-                            for panel in self.results_panels:
-                                try:
-                                    panel.add_matches(mt_dict)
-                                except Exception as e:
-                                    self.log(f"Error adding Google Translate match: {e}")
-                        
-                        # 🔄 Update Compare Panel with MT result
-                        if hasattr(self, 'compare_panel_mt'):
-                            # Add to MT matches list for navigation
-                            if not hasattr(self, '_compare_panel_mt_matches'):
-                                self._compare_panel_mt_matches = []
-                            self._compare_panel_mt_matches.append({
-                                'translation': google_result['translation'],
-                                'provider': 'Google Translate'
-                            })
-                            self.set_compare_panel_matches(
-                                segment.id,
-                                segment.source,
-                                tm_matches=getattr(self, '_compare_panel_tm_matches', []),
-                                mt_matches=self._compare_panel_mt_matches
-                            )
-                except Exception as e:
-                    self.log(f"⚠ Error getting Google Translate: {e}")
-            
-            # 2. DeepL
-            if enabled_providers.get('mt_deepl', True) and api_keys.get('deepl'):
-                try:
-                    translation = self.call_deepl(segment.source, source_lang, target_lang, api_keys.get('deepl'))
-                    if translation and not translation.startswith('['):  # Skip error messages
-                        match = TranslationMatch(
-                            source=segment.source,
-                            target=translation,
-                            relevance=94,
-                            metadata={'provider': 'DeepL'},
-                            match_type="MT",
-                            compare_source=segment.source,
-                            provider_code='DL'
-                        )
-                        mt_dict = {"MT": [match]}
-                        if hasattr(self, 'results_panels') and self.results_panels:
-                            for panel in self.results_panels:
-                                try:
-                                    panel.add_matches(mt_dict)
-                                except Exception as e:
-                                    self.log(f"Error adding DeepL match: {e}")
-                        
-                        # Add to Compare Panel MT matches
-                        if hasattr(self, 'compare_panel_mt'):
-                            if not hasattr(self, '_compare_panel_mt_matches'):
-                                self._compare_panel_mt_matches = []
-                            self._compare_panel_mt_matches.append({
-                                'translation': translation,
-                                'provider': 'DeepL'
-                            })
-                            self.set_compare_panel_matches(
-                                segment.id,
-                                segment.source,
-                                tm_matches=getattr(self, '_compare_panel_tm_matches', []),
-                                mt_matches=self._compare_panel_mt_matches
-                            )
-                except Exception as e:
-                    self.log(f"⚠ Error getting DeepL: {e}")
-            
-            # 3. Amazon Translate
-            if enabled_providers.get('mt_amazon', True) and api_keys.get('amazon_translate'):
-                try:
-                    region = api_keys.get('amazon_translate_region', 'us-east-1')
-                    translation = self.call_amazon_translate(segment.source, source_lang, target_lang, api_keys.get('amazon_translate'), region)
-                    if translation and not translation.startswith('['):  # Skip error messages
-                        match = TranslationMatch(
-                            source=segment.source,
-                            target=translation,
-                            relevance=93,
-                            metadata={'provider': 'Amazon Translate'},
-                            match_type="MT",
-                            compare_source=segment.source,
-                            provider_code='AT'
-                        )
-                        mt_dict = {"MT": [match]}
-                        if hasattr(self, 'results_panels') and self.results_panels:
-                            for panel in self.results_panels:
-                                try:
-                                    panel.add_matches(mt_dict)
-                                except Exception as e:
-                                    self.log(f"Error adding Amazon Translate match: {e}")
-                        
-                        # Add to Compare Panel MT matches
-                        if hasattr(self, 'compare_panel_mt'):
-                            if not hasattr(self, '_compare_panel_mt_matches'):
-                                self._compare_panel_mt_matches = []
-                            self._compare_panel_mt_matches.append({
-                                'translation': translation,
-                                'provider': 'Amazon Translate'
-                            })
-                            self.set_compare_panel_matches(
-                                segment.id,
-                                segment.source,
-                                tm_matches=getattr(self, '_compare_panel_tm_matches', []),
-                                mt_matches=self._compare_panel_mt_matches
-                            )
-                except Exception as e:
-                    self.log(f"⚠ Error getting Amazon Translate: {e}")
-            
-            # 4. MyMemory (free, works without API key or with email as key)
-            if enabled_providers.get('mt_mymemory', True):
-                try:
-                    mymemory_key = api_keys.get('mymemory', '')
-                    # MyMemory works without a key, key is optional (email for more requests)
-                    translation = self.call_mymemory(segment.source, source_lang, target_lang, mymemory_key if mymemory_key and mymemory_key != 'xxx' else None)
-                    if translation and not translation.startswith('['):  # Skip error messages
-                        match = TranslationMatch(
-                            source=segment.source,
-                            target=translation,
-                            relevance=85,
-                            metadata={'provider': 'MyMemory (Free)'},
-                            match_type="MT",
-                            compare_source=segment.source,
-                            provider_code='MM'
-                        )
-                        mt_dict = {"MT": [match]}
-                        if hasattr(self, 'results_panels') and self.results_panels:
-                            for panel in self.results_panels:
-                                try:
-                                    panel.add_matches(mt_dict)
-                                except Exception as e:
-                                    self.log(f"Error adding MyMemory match: {e}")
-                        
-                        # Add to Compare Panel MT matches
-                        if hasattr(self, 'compare_panel_mt'):
-                            if not hasattr(self, '_compare_panel_mt_matches'):
-                                self._compare_panel_mt_matches = []
-                            self._compare_panel_mt_matches.append({
-                                'translation': translation,
-                                'provider': 'MyMemory'
-                            })
-                            self.set_compare_panel_matches(
-                                segment.id,
-                                segment.source,
-                                tm_matches=getattr(self, '_compare_panel_tm_matches', []),
-                                mt_matches=self._compare_panel_mt_matches
-                            )
-                except Exception as e:
-                    self.log(f"⚠ Error getting MyMemory: {e}")
-        
-        # LLM matches (slower ~1-3s each)
-        if self.enable_llm_matching:
-            try:
-                api_keys = self.load_api_keys()
-                if not api_keys:
-                    return
-                
-                settings = self.load_llm_settings()
-                
-                # OpenAI
-                if 'openai' in api_keys:
-                    try:
-                        self.log("🧠 PROGRESSIVE LLM: Attempting OpenAI translation...")
-                        from modules.llm_clients import LLMClient
-                        
-                        openai_model = settings.get('openai_model', 'gpt-6.1-sol')
-                        client = LLMClient(
-                            api_key=api_keys['openai'],
-                            provider='openai',
-                            model=openai_model,
-                            http_proxy=self._get_proxy_url()
-                        )
-
-                        translation = client.translate(
-                            text=segment.source,
-                            source_lang=source_lang_code or 'nl',
-                            target_lang=target_lang_code or 'en'
-                        )
-
-                        if translation and translation.strip():
-                            match = TranslationMatch(
-                                source=segment.source,
-                                target=translation.strip(),
-                                relevance=88,
-                                metadata={'model': openai_model, 'provider': 'OpenAI'},
-                                match_type="LLM",
-                                compare_source=segment.source,
-                                provider_code='OA'
-                            )
-                            # Show OpenAI match immediately
-                            llm_dict = {"LLM": [match]}
-                            self.log(f"🧠 PROGRESSIVE LLM: Showing OpenAI match")
-                            if hasattr(self, 'results_panels') and self.results_panels:
-                                for panel in self.results_panels:
-                                    try:
-                                        panel.add_matches(llm_dict)
-                                    except Exception as e:
-                                        self.log(f"Error adding OpenAI match: {e}")
-                    except Exception as e:
-                        self.log(f"⚠ Error getting OpenAI translation: {e}")
-                
-                # Claude
-                if 'anthropic' in api_keys:
-                    try:
-                        self.log("🧠 PROGRESSIVE LLM: Attempting Claude translation...")
-                        from modules.llm_clients import LLMClient
-                        
-                        claude_model = settings.get('anthropic_model', 'claude-3-5-sonnet-20241022')
-                        client = LLMClient(
-                            api_key=api_keys['anthropic'],
-                            provider='anthropic',
-                            model=claude_model,
-                            http_proxy=self._get_proxy_url()
-                        )
-                        
-                        translation = client.translate(
-                            text=segment.source,
-                            source_lang=source_lang_code or 'nl',
-                            target_lang=target_lang_code or 'en'
-                        )
-                        
-                        if translation and translation.strip():
-                            match = TranslationMatch(
-                                source=segment.source,
-                                target=translation.strip(),
-                                relevance=88,
-                                metadata={'model': claude_model, 'provider': 'Claude'},
-                                match_type="LLM",
-                                compare_source=segment.source,
-                                provider_code='CL'
-                            )
-                            # Show Claude match immediately
-                            llm_dict = {"LLM": [match]}
-                            self.log(f"🧠 PROGRESSIVE LLM: Showing Claude match")
-                            if hasattr(self, 'results_panels') and self.results_panels:
-                                for panel in self.results_panels:
-                                    try:
-                                        panel.add_matches(llm_dict)
-                                    except Exception as e:
-                                        self.log(f"Error adding Claude match: {e}")
-                    except Exception as e:
-                        self.log(f"⚠ Error getting Claude translation: {e}")
-                        
-            except Exception as e:
-                self.log(f"⚠ Error in LLM matching: {e}")
-    
-    def _add_mt_and_llm_matches(self, segment, matches_dict, source_lang, target_lang, source_lang_code, target_lang_code):
-        """Add MT and LLM matches to the matches dictionary"""
-        from modules.translation_results_panel import TranslationMatch
-        
-        # 🤖 DIRECT MT SEARCH: Machine Translation matches
-        if self.enable_mt_matching:
-            try:
-                self.log(f"🤖 DIRECT MT SEARCH: Getting machine translation for '{segment.source[:50]}...'")
-                
-                # Use Google Translate via the wrapper function
-                from modules.llm_clients import get_google_translation
-                
-                self.log(f"🤖 DIRECT MT SEARCH: Calling get_google_translation with source_lang='{source_lang_code or 'auto'}', target_lang='{target_lang_code or 'en'}'")
-                
-                google_result = get_google_translation(
-                    segment.source, 
-                    source_lang_code or 'auto',  # Auto-detect if no source lang 
-                    target_lang_code or 'en'     # Default to English if no target lang
-                )
-                
-                self.log(f"🤖 DIRECT MT SEARCH: Google Translate result: {google_result}")
-                
-                if google_result and google_result.get('translation'):
-                    match = TranslationMatch(
-                        source=segment.source,
-                        target=google_result['translation'],
-                        relevance=95,  # High confidence for MT
-                        metadata=google_result.get('metadata', {}),
-                        match_type="MT",
-                        compare_source=segment.source,
-                        provider_code='GT'
-                    )
-                    matches_dict["MT"].append(match)
-                    self.log(f"✓ Added Google Translate match: {google_result['translation'][:50]}...")
-                elif google_result and google_result.get('error'):
-                    self.log(f"⚠ Google Translate error: {google_result.get('error')}")
-                else:
-                    self.log(f"⚠ Google Translate returned no translation")
-                    
-            except Exception as e:
-                self.log(f"⚠ Error getting Google Translate: {e}")
-                import traceback
-                self.log(f"⚠ Traceback: {traceback.format_exc()}")
-        
-        # 🧠 DIRECT LLM SEARCH: Large Language Model matches  
-        if self.enable_llm_matching:
-            try:
-                self.log(f"🧠 DIRECT LLM SEARCH: Getting LLM translations for '{segment.source[:50]}...'")
-                self.log(f"🧠 DIRECT LLM SEARCH: LLM matching is enabled: {self.enable_llm_matching}")
-                
-                # Import LLM wrapper functions
-                from modules.llm_clients import get_openai_translation, get_claude_translation
-                self.log("🧠 DIRECT LLM SEARCH: Successfully imported LLM wrapper functions")
-                
-                # Use existing LLM infrastructure from Prompt Manager
-                api_keys = self.load_api_keys()
-                self.log(f"🧠 DIRECT LLM SEARCH: Loaded API keys: {list(api_keys.keys()) if api_keys else 'None'}")
-                if not api_keys:
-                    self.log("⚠ No API keys found for LLM translation")
-                    return
-                
-                settings = self.load_llm_settings()
-                
-                # Check if we should use prompts for grid translations (configurable)
-                use_prompts_in_grid = settings.get('use_prompts_in_grid', False)  # Default: simple translations
-                self.log(f"🧠 LLM Grid Translations - Use Prompts: {use_prompts_in_grid}")
-                
-                # Get OpenAI translation using existing infrastructure
-                if 'openai' in api_keys:
-                    try:
-                        self.log("🧠 DIRECT LLM SEARCH: Attempting OpenAI translation...")
-                        from modules.llm_clients import LLMClient
-                        self.log("🧠 DIRECT LLM SEARCH: LLMClient imported for OpenAI")
-                        
-                        openai_model = settings.get('openai_model', 'gpt-6.1-sol')
-                        self.log(f"🧠 DIRECT LLM SEARCH: Using OpenAI model: {openai_model}")
-                        client = LLMClient(
-                            api_key=api_keys['openai'],
-                            provider='openai',
-                            model=openai_model,
-                            http_proxy=self._get_proxy_url()
-                        )
-                        self.log("🧠 DIRECT LLM SEARCH: LLMClient initialized for OpenAI")
-                        
-                        translation = client.translate(
-                            text=segment.source,
-                            source_lang=source_lang_code or 'nl',
-                            target_lang=target_lang_code or 'en'
-                        )
-                        self.log(f"🧠 DIRECT LLM SEARCH: OpenAI translation result: {translation[:100] if translation else 'None'}...")
-                        
-                        if translation and translation.strip():
-                            match = TranslationMatch(
-                                source=segment.source,
-                                target=translation.strip(),
-                                relevance=88,  # Good confidence for LLM
-                                metadata={'model': openai_model, 'provider': 'OpenAI'},
-                                match_type="LLM",
-                                compare_source=segment.source,
-                                provider_code='OA'
-                            )
-                            matches_dict["LLM"].append(match)
-                            self.log(f"✓ Added OpenAI match: {translation[:50]}...")
-                        else:
-                            self.log("⚠ OpenAI translation was empty or None")
-                            
-                    except Exception as e:
-                        self.log(f"⚠ Error getting OpenAI translation: {e}")
-                        import traceback
-                        self.log(f"⚠ OpenAI error traceback: {traceback.format_exc()}")
-                
-                # Get Claude translation using existing infrastructure
-                if 'claude' in api_keys:
-                    try:
-                        from modules.llm_clients import LLMClient
-                        
-                        claude_model = settings.get('claude_model', 'claude-sonnet-5-5')
-                        client = LLMClient(
-                            api_key=api_keys['claude'],
-                            provider='claude',
-                            model=claude_model,
-                            http_proxy=self._get_proxy_url()
-                        )
-                        
-                        translation = client.translate(
-                            text=segment.source,
-                            source_lang=source_lang_code or 'nl',
-                            target_lang=target_lang_code or 'en'
-                        )
-                        
-                        if translation and translation.strip():
-                            match = TranslationMatch(
-                                source=segment.source,
-                                target=translation.strip(),
-                                relevance=90,  # High confidence for Claude
-                                metadata={'model': claude_model, 'provider': 'Claude'},
-                                match_type="LLM",
-                                compare_source=segment.source,
-                                provider_code='CL'
-                            )
-                            matches_dict["LLM"].append(match)
-                            self.log(f"✓ Added Claude match: {translation[:50]}...")
-                            
-                    except Exception as e:
-                        self.log(f"⚠ Error getting Claude translation: {e}")
-                
-                # Get Gemini translation using existing infrastructure
-                # Check for both 'gemini' and 'google' keys for backward compatibility
-                gemini_api_key = api_keys.get('gemini') or api_keys.get('google')
-                if gemini_api_key:
-                    try:
-                        self.log("🧠 DIRECT LLM SEARCH: Attempting Gemini translation...")
-                        from modules.llm_clients import LLMClient
-                        self.log("🧠 DIRECT LLM SEARCH: LLMClient imported for Gemini")
-                        
-                        gemini_model = settings.get('gemini_model', 'gemini-3.1-flash-lite')
-                        self.log(f"🧠 DIRECT LLM SEARCH: Using Gemini model: {gemini_model}")
-                        client = LLMClient(
-                            api_key=gemini_api_key,
-                            provider='gemini',
-                            model=gemini_model
-                        )
-                        self.log("🧠 DIRECT LLM SEARCH: LLMClient initialized for Gemini")
-                        
-                        translation = client.translate(
-                            text=segment.source,
-                            source_lang=source_lang_code or 'nl',
-                            target_lang=target_lang_code or 'en'
-                        )
-                        
-                        if translation and translation.strip():
-                            match = TranslationMatch(
-                                source=segment.source,
-                                target=translation.strip(),
-                                relevance=85,  # Good confidence for Gemini
-                                metadata={'model': gemini_model, 'provider': 'Gemini'},
-                                match_type="LLM",
-                                compare_source=segment.source,
-                                provider_code='GM'
-                            )
-                            matches_dict["LLM"].append(match)
-                            self.log(f"✓ Added Gemini match: {translation[:50]}...")
-                            
-                    except Exception as e:
-                        self.log(f"⚠ Error getting Gemini translation: {e}")
-                    
-            except Exception as e:
-                self.log(f"⚠ Error in LLM translation process: {e}")
-    
     def _clean_provider_prefix(self, translation):
         """Remove provider prefixes like [OpenAI], [Claude], etc. from translations"""
         import re

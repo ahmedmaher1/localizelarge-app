@@ -110,3 +110,26 @@ Kept: the file-based bilingual formats (memoQ, Trados, Phrase, CafeTran, Déjà 
 
 F1 and Help open `https://localizelarge.com/docs` in the browser. Per-panel help topics are
 kept on the widgets but all open that one address until the site has a page for each.
+
+### 5. Machine-translation services and extra AI providers
+
+| Removed | Why |
+|---|---|
+| Machine-translation engines: Google Translate, DeepL, Microsoft Translator, Amazon Translate, ModernMT, MyMemory, and custom MT endpoints. Their call code, the "MT Settings" tab, the MT option in the batch-translate dialog and the MT provider group in QuickTrans settings | v1 has no MT engines. Translation is by hand, from the translation memory, or by one of the four AI providers |
+| AI providers Mistral, DeepSeek, OpenRouter and custom OpenAI-compatible endpoints: their model tables, service addresses, API-key rows, and entries in the AI Assistant and QuickTrans | v1 talks to Claude, OpenAI, Gemini and Ollama only |
+| `tests/test_openrouter_models.py` | The code it tested is gone |
+
+The AI client (`modules/llm_clients.py`) now refuses any provider outside the four
+(`LLMClient.SUPPORTED_PROVIDERS`); tests cover this. A provider saved in old settings that
+is not one of the four is ignored and the default is used.
+
+**Disabled, not deleted** (to be deleted in Phase 7, which reworks the provider code):
+
+- In Settings → AI Settings, the radio buttons, model lists and custom-endpoint fields of
+  the removed providers are still built but hidden, and can never be selected.
+- The code that saves and loads custom endpoint profiles, and the settings keys
+  `custom_openai_*`, `custom_mt_*`, `mt_*` and `llm_mistral`/`llm_openrouter`.
+- Two unreachable branches in `llm_clients.py` for OpenRouter prompt caching.
+- The "MT" box of the compare panel and the MT colour table in `modules/quicktrans.py`.
+
+QuickTrans is kept, with AI providers only.

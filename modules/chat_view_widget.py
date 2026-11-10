@@ -566,9 +566,7 @@ class ChatViewWidget(QWidget):
                 "gemini-4-argon": {"name": "Gemini 4 Argon", "description": "Google's most capable, 1M context"},
                 "gemma-4-26b-a4b-it": {"name": "Gemma 4 26B MoE", "description": "Open model, lightweight"},
             }),
-            ("mistral", "Mistral", LLMClient.MISTRAL_MODELS),
             ("ollama", "Ollama (local)", LLMClient.OLLAMA_MODELS),
-            ("openrouter", "OpenRouter", LLMClient.OPENROUTER_MODELS),
         ]
 
         for provider_key, provider_name, models in providers:
@@ -625,7 +623,7 @@ class ChatViewWidget(QWidget):
                 key_name = 'google' if provider_key == 'gemini' else provider_key
                 api_key = api_keys.get(key_name, '')
 
-            if not api_key and provider_key not in ('ollama', 'custom_openai'):
+            if not api_key and provider_key != 'ollama':
                 self._backend.add_message(
                     "system",
                     f"\u26A0 No API key found for {provider_key}. Configure it in Settings."
@@ -650,10 +648,6 @@ class ChatViewWidget(QWidget):
                     http_proxy = parent_app._get_proxy_url()
 
                 base_url = None
-                if provider_key == 'mistral':
-                    base_url = 'https://api.mistral.ai/v1'
-                elif provider_key == 'openrouter':
-                    base_url = 'https://openrouter.ai/api/v1'
 
                 self._backend.llm_client = LLMClient(
                     api_key=api_key,

@@ -223,7 +223,6 @@ def test_tampered_or_garbled_entries_are_unreadable(scratch, bad):
 def test_a_key_stored_nowhere_says_no_key_is_set(scratch):
     assert store.status("mistral") == store.ABSENT
     assert store.missing_key_message("mistral", PLACE) == "No API key set for Mistral. Add one in Settings → AI Settings."
-    assert llm_clients.api_key_problem("deepl") == "No API key set for DeepL. Add one in Settings → MT Settings."
     assert llm_clients.api_key_problem("ollama_endpoint") is None
 
 
