@@ -119,7 +119,12 @@ finally {
 $Roaming = (Get-ChildItem "$SmokeProfile\Roaming").Name -join ","
 $Local = (Get-ChildItem "$SmokeProfile\Local").Name -join ","
 Write-Host "Folders created in APPDATA: $Roaming ; in LOCALAPPDATA: $Local"
-if ($Roaming -ne "LocalizeLarge" -or $Local -ne "LocalizeLarge") { throw "The built app created unexpected folders" }
+if ($Roaming -ne "LocalizeLarge" -or $Local -ne "LocalizeLarge") {
+    Get-ChildItem -Recurse "$SmokeProfile\Roaming", "$SmokeProfile\Local" |
+        Where-Object { $_.FullName -notlike "*\LocalizeLarge*" } |
+        Select-Object -First 60 | ForEach-Object { Write-Host "  unexpected: $($_.FullName)" }
+    throw "The built app created unexpected folders"
+}
 $LogPath = "$SmokeProfile\Local\LocalizeLarge\logs\localizelarge.log"
 $Log = Get-Content $LogPath -Raw
 if ($Log -notmatch "Okapi sidecar started on 127\.0\.0\.1") {
