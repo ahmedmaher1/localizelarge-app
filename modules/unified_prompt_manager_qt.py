@@ -1193,7 +1193,7 @@ class UnifiedPromptManagerQt:
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(2)
 
-        # Sub-tabs: Prompt Manager, Localize Large Sidekick, Variables
+        # Sub-tabs: Prompt Manager, AI Assistant, Variables
         self.sub_tabs = QTabWidget()
         self.sub_tabs.tabBar().setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.sub_tabs.tabBar().setDrawBase(False)
@@ -1207,7 +1207,7 @@ class UnifiedPromptManagerQt:
         variables_tab = self._create_placeholders_tab()
         self.sub_tabs.addTab(variables_tab, "📝 Variables")
 
-        # Localize Large Sidekick – created here but added to the right panel
+        # AI Assistant – created here but added to the right panel
         # in Supervertaler.py so it's visible alongside the translation grid.
         self.assistant_tab = self._create_ai_assistant_tab()
 
@@ -1228,8 +1228,8 @@ class UnifiedPromptManagerQt:
 
     def receive_text_for_assistant(self, text: str, from_external: bool = False):
         """
-        Switch to the Localize Large Sidekick sub-tab, insert text into the chat input,
-        and focus the input field. Called from QuickLauncher "Localize Large Sidekick".
+        Switch to the AI Assistant sub-tab, insert text into the chat input,
+        and focus the input field. Called from QuickLauncher "AI Assistant".
 
         Pressing Escape while in the Assistant tab will return the user to the Grid tab,
         or re-activate the external app if launched via the global hotkey.

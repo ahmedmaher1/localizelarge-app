@@ -53,13 +53,6 @@ class FeatureModule:
 
 # Define all optional feature modules
 FEATURE_MODULES: Dict[str, FeatureModule] = {
-    "voice": FeatureModule(
-        id="voice",
-        name="Voice commands",
-        description=(
-            "Hands-free voice commands, recognised offline by Vosk. "
-            "Running text is left to a dictation tool."
-        ),
         pip_extra="voice",
         packages=["sounddevice", "numpy", "vosk"],
         size_mb=60,
@@ -124,7 +117,7 @@ class FeatureManager:
         fm = FeatureManager(user_data_path)
 
         # Check if a feature can be used
-        if fm.is_feature_usable("voice"):
+        if fm.is_feature_usable("hunspell"):
             ...
 
         # Get all features for Settings UI

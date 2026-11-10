@@ -41,3 +41,16 @@ Phase 2, in the order of the build plan. Still in progress.
 
 Old settings keys for these (`close_to_tray`, `start_minimized_to_tray`, `autohotkey_path`)
 are ignored if present.
+
+"Sidekick", the floating system-wide assistant, was already retired upstream; only the name
+remained. The in-app assistant tab is now called "AI Assistant".
+
+### 2. Voice
+
+| Removed | Why |
+|---|---|
+| Voice commands and the Always-On listener: `modules/voice_commands.py`, `voice_command_dialog.py`, `voice_tab.py`, `vosk_model_manager.py`, `mic_devices.py`, the Voice tab, the Always-On toolbar button and status-bar indicator, the `Ctrl+Alt+O` shortcut | Out of v1 scope. The app never opens the microphone and never downloads a speech model |
+| Their tests (`test_alwayson_listener.py`, `test_voice_*.py`) | The code they tested is gone |
+
+The packages `vosk`, `sounddevice` and `pynput` leave `requirements.txt` at the end of
+Phase 2, with the other removed packages.

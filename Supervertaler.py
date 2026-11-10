@@ -11,7 +11,6 @@ For the classic tkinter edition, see Supervertaler_tkinter.py
 Key Features:
 - Complete Translation Matching: Termbase + TM + MT + Multi-LLM
 - Project Termbases: Dedicated terminology per project with automatic extraction
-- Voice: hands-free voice commands (offline, Vosk)
 - Superimage: Extract images from DOCX files with preview
 - Google Cloud Translation API integration
 - Multi-LLM Support: OpenAI GPT, Claude, Google Gemini
@@ -206,9 +205,7 @@ from modules.superlookup import SuperlookupEngine  # Superlookup engine
 from modules.pseudo_translate_dialog import run_pseudo_translation  # Pseudo-translation export test (dialog + apply)
 from modules.project_assets import write_project_file, read_backup, bundle_round_trip_sources, restore_round_trip_sources, is_in_source_dir, TM_SUBDIR  # Safe saves, round-trip sources, tm/ (issue #228)
 from modules.project_assets import bundle_source, resolve_source_path, ensure_target_dir, nest_in_own_folder  # Project-folder model (issue #228)
-from modules.voice_commands import VoiceCommandManager, VoiceCommand, ContinuousVoiceListener  # Voice commands (Talon-style)
 from modules import inline_codes as _inline_codes  # User-defined inline codes / placeholders (issue #194)
-from modules.voice_command_dialog import VoiceCommandEditDialog  # Voice command edit dialog
 from modules.styled_widgets import CheckmarkCheckBox, TealCheckmarkCheckBox, CheckmarkRadioButton
 from modules.statuses import (
     STATUSES,
@@ -9212,11 +9209,6 @@ class SupervertalerQt(QMainWindow):
         # Shortcut Manager for keyboard shortcuts (including enable/disable)
         self.shortcut_manager = ShortcutManager(Path(self.user_data_path) / "workbench" / "settings" / "shortcuts.json")
         
-        # Voice Command Manager for Talon-style voice commands
-        self.voice_command_manager = VoiceCommandManager(self.user_data_path, main_window=self)
-        
-        # Continuous Voice Listener (always-on mode) - initialized on demand
-        self.voice_listener = None  # Will be ContinuousVoiceListener when enabled
         
         # Figure Context Manager for multimodal AI translation
         from modules.figure_context_manager import FigureContextManager
@@ -9283,14 +9275,6 @@ class SupervertalerQt(QMainWindow):
         self.log(f"Welcome to Localize Large v{__version__}")
         self.log("Localize Large: The Ultimate Translation Workbench.")
 
-        # Bring up the Voice tray icon now (in its inactive/grey
-        # state) so the system tray slot is allocated up-front. Allocating
-        # it on first Always-On activation would cause a one-time bounce
-        # of neighbouring tray icons; doing it at startup folds that into
-        # normal app launch instead.
-        self._ensure_alwayson_tray_icon()
-        # Note: the Workbench tray icon itself is set up later by
-        # _setup_tray_icon(), called from main() after construction.
 
         # Load general settings (including auto-propagation)
         self.load_general_settings()
@@ -9514,7 +9498,6 @@ class SupervertalerQt(QMainWindow):
             self.spellcheck_manager = get_spellcheck_manager(str(self.user_data_path))
             self.fr_history = FindReplaceHistory(str(self.user_data_path))
             self.shortcut_manager = ShortcutManager(Path(self.user_data_path) / "workbench" / "settings" / "shortcuts.json")
-            self.voice_command_manager = VoiceCommandManager(self.user_data_path, main_window=self)
             
             # Update theme manager
             from modules.theme_manager import ThemeManager
@@ -10086,10 +10069,6 @@ class SupervertalerQt(QMainWindow):
             lambda: self._go_to_superlookup(),
         )
         create_shortcut("sidekick_open", "Alt+K", self.open_quicklauncher)
-        create_shortcut(
-            "voice_alwayson_toggle", "Ctrl+Alt+O",
-            self._toggle_alwayson_listening,
-        )
 
         # Lone Ctrl tap – Term Insert Popup (memoQ-style glossary + NT insert list).
         # Implemented as an app-level event filter rather than a QShortcut because
@@ -10414,7 +10393,7 @@ class SupervertalerQt(QMainWindow):
             self.log(f"❌ Error opening QuickLauncher: {e}")
 
     def show_supervertaler_assistant(self, initial_text=None, external_mode=False):
-        """Navigate to the Localize Large Sidekick (AI Assistant tab) and optionally insert text.
+        """Navigate to the AI Assistant (AI Assistant tab) and optionally insert text.
 
         Instead of a separate floating window, this reuses the existing AI Assistant
         inside the AI tab. For external mode, it also brings Localize Large
@@ -10441,7 +10420,7 @@ class SupervertalerQt(QMainWindow):
                     initial_text or "", from_external=external_mode
                 )
 
-            print(f"[Assistant] Navigated to Localize Large Sidekick (external={external_mode})")
+            print(f"[Assistant] Navigated to AI Assistant (external={external_mode})")
 
         except Exception as e:
             print(f"[Assistant] Error navigating to assistant: {e}")
@@ -11021,14 +11000,6 @@ class SupervertalerQt(QMainWindow):
         self.progress_files_label.hide()  # Hidden by default, shown for multi-file projects
         progress_layout.addWidget(self.progress_files_label)
         
-        # Always-on voice indicator
-        self.alwayson_indicator_label = QLabel("")
-        self.alwayson_indicator_label.setStyleSheet("font-size: 11px; font-weight: bold;")
-        self.alwayson_indicator_label.setToolTip(self.tr("Always-on voice listening status\nClick to toggle"))
-        self.alwayson_indicator_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.alwayson_indicator_label.mousePressEvent = lambda e: self._toggle_alwayson_from_statusbar()
-        self.alwayson_indicator_label.hide()  # Hidden until enabled
-        progress_layout.addWidget(self.alwayson_indicator_label)
 
         # Add as permanent widget (stays on right side)
         self.status_bar.addPermanentWidget(progress_frame)
@@ -13270,16 +13241,11 @@ class SupervertalerQt(QMainWindow):
         # is a separate instance.
         # ============================================================
         self._superlookup_top_widget = None
-        self._voice_top_widget = None
 
         from PyQt6.QtWidgets import QWidget as _QW
         superlookup_placeholder = _QW()
         self.main_tabs.addTab(superlookup_placeholder, "🔍 SuperLookup")
         self.superlookup_tab_index = self.main_tabs.count() - 1
-
-        voice_placeholder = _QW()
-        self.main_tabs.addTab(voice_placeholder, "🎤 Voice")
-        self.voice_tab_index = self.main_tabs.count() - 1
 
         # 4. SETTINGS
         settings_tab = self.create_settings_tab()
@@ -13344,7 +13310,7 @@ class SupervertalerQt(QMainWindow):
         return tab
     
     def create_prompt_manager_tab(self) -> QWidget:
-        """Create the AI tab (Prompt Manager, Localize Large Sidekick, Variables)"""
+        """Create the AI tab (Prompt Manager, AI Assistant, Variables)"""
         from modules.unified_prompt_manager_qt import UnifiedPromptManagerQt
         
         # Create Unified Prompt Manager widget (embedded mode, not standalone)
@@ -15004,8 +14970,6 @@ class SupervertalerQt(QMainWindow):
             # until the user actually visits the tab.
             if hasattr(self, 'superlookup_tab_index') and index == self.superlookup_tab_index:
                 self._ensure_superlookup_top_tab()
-            elif hasattr(self, 'voice_tab_index') and index == self.voice_tab_index:
-                self._ensure_voice_top_tab()
 
             if index == 0:  # Grid
                 # Grid refreshes automatically when segments change
@@ -15048,8 +15012,7 @@ class SupervertalerQt(QMainWindow):
         first ``AutoHotkey64.exe`` launch to 1–2 s; subsequent
         launches hit a hot disk cache and run in ~150 ms).
         """
-        for helper in ('_ensure_superlookup_top_tab',
-                       '_ensure_voice_top_tab'):
+        for helper in ('_ensure_superlookup_top_tab',):
             try:
                 fn = getattr(self, helper, None)
                 if callable(fn):
@@ -15087,28 +15050,6 @@ class SupervertalerQt(QMainWindow):
             import traceback
             traceback.print_exc()
 
-    def _ensure_voice_top_tab(self):
-        """Build the Voice top tab on first activation.
-
-        The widget (modules.voice_tab.VoiceTab) reads parent_app
-        properties (shortcut_manager, voice_listener,
-        load_dictation_settings).
-        """
-        if self._voice_top_widget is not None:
-            return
-        try:
-            from modules.voice_tab import VoiceTab
-            widget = VoiceTab(self)
-            self._voice_top_widget = widget
-            placeholder = self.main_tabs.widget(self.voice_tab_index)
-            layout = QVBoxLayout(placeholder)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.addWidget(widget)
-        except Exception as e:
-            self.log(f"⚠ Could not build Voice top tab: {e}")
-            import traceback
-            traceback.print_exc()
-    
     def detach_superlookup(self):
         """Detach Superlookup into a separate window for second screen use"""
         from PyQt6.QtWidgets import QDialog, QVBoxLayout, QPushButton
@@ -27825,403 +27766,6 @@ class SupervertalerQt(QMainWindow):
 
         return tab
 
-    def _populate_voice_commands_table(self):
-        """Refresh the Voice command table in Sidekick (if open).
-
-        Called whenever the underlying voice_command_manager has changed
-        (commands added, edited, removed, or reset).
-        """
-        if not hasattr(self, 'voice_command_manager'):
-            return
-        # Refresh the in-Workbench Voice top tab's command table if
-        # it's been built (it's lazy-constructed on first activation).
-        # Pre-v1.10.4 this also refreshed Sidekick's voice tab; with
-        # Sidekick retired only the top tab needs poking.
-        voice_widget = getattr(self, '_voice_top_widget', None)
-        if voice_widget is not None and hasattr(voice_widget, '_populate_table'):
-            try:
-                voice_widget._populate_table()
-            except Exception:
-                pass
-
-    def _reset_voice_commands(self):
-        """Reset voice commands to defaults"""
-        reply = QMessageBox.question(
-            self, "Reset Commands",
-            "Reset all voice commands to defaults?\n\nThis will remove any custom commands you've added.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        
-        if reply == QMessageBox.StandardButton.Yes:
-            self.voice_command_manager.commands = self.voice_command_manager._default_commands()
-            self.voice_command_manager.save_commands()
-            self._populate_voice_commands_table()
-            QMessageBox.information(self, "Reset Complete", "Voice commands have been reset to defaults.")
-
-    def _open_voice_scripts_folder(self):
-        """Open the voice scripts folder"""
-        import subprocess
-        scripts_folder = self.user_data_path / "workbench" / "voice_scripts"
-        scripts_folder.mkdir(parents=True, exist_ok=True)
-        subprocess.Popen(['explorer', str(scripts_folder)])
-
-    def _toggle_alwayson_listening(self):
-        """Toggle always-on voice listening mode"""
-        if self.voice_listener and self.voice_listener.is_listening:
-            # Stop listening
-            self.voice_listener.stop()
-            self.voice_listener = None
-            self._update_alwayson_ui("stopped")
-            self.log("🔇 Always-on listening stopped")
-            self.status_bar.showMessage("🔇 Always-on listening stopped", 3000)
-        else:
-            # Start listening
-            try:
-                # The voice settings still live under the historical
-                # ``dictation_settings`` key in the unified settings file.
-                voice_settings = self.load_dictation_settings()
-                self.voice_listener = ContinuousVoiceListener(
-                    command_manager=self.voice_command_manager,
-                    user_data_path=str(self.user_data_path) if hasattr(self, 'user_data_path') else None,
-                    mic_device=voice_settings.get('mic_device'),
-                )
-
-                # Set sensitivity from persisted settings (the Voice tab
-                # writes this key directly via _set_voice_settings).
-                sensitivity = voice_settings.get('alwayson_sensitivity', 'medium')
-                if sensitivity in ('low', 'medium', 'high'):
-                    self.voice_listener.set_sensitivity(sensitivity)
-
-                # Connect signals
-                self.voice_listener.speech_detected.connect(self._on_alwayson_speech)
-                self.voice_listener.command_detected.connect(self._on_alwayson_command)
-                self.voice_listener.no_command_matched.connect(self._on_alwayson_no_match)
-                self.voice_listener.status_update.connect(self._on_alwayson_status)
-                self.voice_listener.error_occurred.connect(self._on_alwayson_error)
-                self.voice_listener.vad_status_changed.connect(self._on_alwayson_vad_status)
-                self.voice_listener.listening_started.connect(lambda: self._update_alwayson_ui("listening"))
-                self.voice_listener.listening_stopped.connect(lambda: self._update_alwayson_ui("stopped"))
-                self.voice_listener.stopped_unexpectedly.connect(self._on_alwayson_listener_died)
-
-                self.voice_listener.start()
-                self.log("🎧 Always-on listening started (Vosk – offline, commands only)")
-
-            except Exception as e:
-                import traceback
-                self.log(f"❌ Failed to start always-on listening: {e}")
-                self.log(traceback.format_exc())
-                QMessageBox.critical(self, "Always-On Error", f"Failed to start always-on listening:\n\n{e}")
-
-    def _update_alwayson_ui(self, status: str):
-        """Update the always-on UI elements"""
-        # Update settings panel UI (if visible)
-        if hasattr(self, 'alwayson_status_label'):
-            if status == "listening" or status == "waiting":
-                self.alwayson_status_label.setText(self.tr("🟢 Listening for speech..."))
-                self.alwayson_status_label.setStyleSheet("font-size: 9pt; padding: 5px; color: #2E7D32;")
-                self.alwayson_toggle_btn.setText(self.tr("⏹️ Stop Always-On Listening"))
-                self.alwayson_toggle_btn.setStyleSheet("padding: 8px 15px; background-color: #FFCDD2;")
-            elif status == "recording":
-                self.alwayson_status_label.setText(self.tr("🔴 Recording..."))
-                self.alwayson_status_label.setStyleSheet("font-size: 9pt; padding: 5px; color: #C62828;")
-            elif status == "processing":
-                self.alwayson_status_label.setText(self.tr("⏳ Processing..."))
-                self.alwayson_status_label.setStyleSheet("font-size: 9pt; padding: 5px; color: #F57C00;")
-            else:  # stopped or other
-                self.alwayson_status_label.setText(self.tr("⚪ Not active"))
-                self.alwayson_status_label.setStyleSheet("font-size: 9pt; padding: 5px;")
-                self.alwayson_toggle_btn.setText(self.tr("▶️ Start Always-On Listening"))
-                self.alwayson_toggle_btn.setStyleSheet("padding: 8px 15px;")
-        
-        # Update status bar indicator (always visible when active)
-        if hasattr(self, 'alwayson_indicator_label'):
-            if status == "listening" or status == "waiting":
-                self.alwayson_indicator_label.setText(self.tr("🎤 ALWAYS-ON"))
-                self.alwayson_indicator_label.setStyleSheet("font-size: 11px; font-weight: bold; color: #2E7D32; background-color: #C8E6C9; padding: 2px 6px; border-radius: 3px;")
-                self.alwayson_indicator_label.setToolTip(self.tr("Always-on voice listening ACTIVE\nClick to stop"))
-                self.alwayson_indicator_label.show()
-            elif status == "recording":
-                self.alwayson_indicator_label.setText(self.tr("🔴 REC"))
-                self.alwayson_indicator_label.setStyleSheet("font-size: 11px; font-weight: bold; color: white; background-color: #C62828; padding: 2px 6px; border-radius: 3px;")
-                self.alwayson_indicator_label.setToolTip(self.tr("Recording speech..."))
-                self.alwayson_indicator_label.show()
-            elif status == "processing":
-                self.alwayson_indicator_label.setText("⏳ ...")
-                self.alwayson_indicator_label.setStyleSheet("font-size: 11px; font-weight: bold; color: #F57C00; background-color: #FFF3E0; padding: 2px 6px; border-radius: 3px;")
-                self.alwayson_indicator_label.setToolTip(self.tr("Processing speech..."))
-                self.alwayson_indicator_label.show()
-            else:  # stopped or other
-                self.alwayson_indicator_label.hide()
-        
-        # Update grid toolbar button (if exists)
-        if hasattr(self, 'grid_alwayson_btn'):
-            if status == "listening" or status == "waiting":
-                self.grid_alwayson_btn.setText(self.tr("🎧 Always-On: ON"))
-                self.grid_alwayson_btn.setChecked(True)
-                self.grid_alwayson_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #2E7D32;
-                        color: white;
-                        font-weight: bold;
-                        padding: 3px 5px;
-                        border-radius: 3px;
-                    }
-                    QPushButton:checked {
-                        background-color: #2E7D32;
-                    }
-                """)
-            elif status == "recording":
-                self.grid_alwayson_btn.setText(self.tr("🔴 REC"))
-                self.grid_alwayson_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #C62828;
-                        color: white;
-                        font-weight: bold;
-                        padding: 3px 5px;
-                        border-radius: 3px;
-                    }
-                    QPushButton:checked {
-                        background-color: #C62828;
-                    }
-                """)
-            elif status == "processing":
-                self.grid_alwayson_btn.setText("⏳ ...")
-                self.grid_alwayson_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #F57C00;
-                        color: white;
-                        font-weight: bold;
-                        padding: 3px 5px;
-                        border-radius: 3px;
-                    }
-                    QPushButton:checked {
-                        background-color: #F57C00;
-                    }
-                """)
-            else:  # stopped or other
-                self.grid_alwayson_btn.setText(self.tr("🎧 Always-On: OFF"))
-                self.grid_alwayson_btn.setChecked(False)
-                self.grid_alwayson_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #757575;
-                        color: white;
-                        font-weight: bold;
-                        padding: 3px 5px;
-                        border-radius: 3px;
-                    }
-                    QPushButton:checked {
-                        background-color: #2E7D32;
-                    }
-                """)
-
-        # Update the in-Workbench Voice top tab's status indicator if
-        # it has been built (lazy on first activation). Pre-v1.10.4
-        # this also poked Sidekick's voice widget; Sidekick is gone.
-        voice_widget = getattr(self, '_voice_top_widget', None)
-        if voice_widget is not None and hasattr(voice_widget, 'set_alwayson_status'):
-            try:
-                voice_widget.set_alwayson_status(status)
-            except Exception:
-                pass
-
-        # System tray icon – visible only while Always-On is active.
-        # Gives the user a persistent "the mic is hot" signal even when
-        # Workbench is hidden.
-        self._update_alwayson_tray_icon(status)
-
-    @staticmethod
-    def _draw_mic_icon(color):
-        """Draw a small microphone glyph as a QIcon, in the given QColor.
-
-        Used by the Always-On tray indicator. Two visual states share the
-        same shape but differ in colour: grey when Always-On is off, red
-        when it's actively listening. Drawing programmatically avoids
-        bundling an extra asset and keeps colour-swaps trivial.
-        """
-        from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QBrush
-        size = 32
-        pix = QPixmap(size, size)
-        pix.fill(QColor(0, 0, 0, 0))
-        p = QPainter(pix)
-        try:
-            p.setRenderHint(QPainter.RenderHint.Antialiasing)
-            qcol = QColor(color) if not isinstance(color, QColor) else color
-            stroke = max(1.5, size * 0.06)
-
-            # Mic body – vertical capsule centred horizontally
-            body_w = size * 0.42
-            body_h = size * 0.50
-            body_x = (size - body_w) / 2
-            body_y = size * 0.10
-            p.setBrush(QBrush(qcol))
-            p.setPen(Qt.PenStyle.NoPen)
-            p.drawRoundedRect(
-                int(body_x), int(body_y), int(body_w), int(body_h),
-                int(body_w / 2), int(body_w / 2),
-            )
-
-            # U-shaped pickup arc cradling the body
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.setPen(QPen(qcol, stroke, Qt.PenStyle.SolidLine,
-                          Qt.PenCapStyle.RoundCap))
-            arc_x = size * 0.16
-            arc_y = size * 0.30
-            arc_w = size * 0.68
-            arc_h = size * 0.50
-            # Qt uses 1/16ths of a degree; 0° is at 3 o'clock, going CCW.
-            p.drawArc(int(arc_x), int(arc_y), int(arc_w), int(arc_h),
-                      200 * 16, 140 * 16)
-
-            # Stand (vertical) + base (horizontal)
-            cx = size / 2
-            p.drawLine(int(cx), int(size * 0.80), int(cx), int(size * 0.90))
-            p.drawLine(int(cx - size * 0.18), int(size * 0.90),
-                       int(cx + size * 0.18), int(size * 0.90))
-        finally:
-            p.end()
-        return QIcon(pix)
-
-    def _ensure_alwayson_tray_icon(self):
-        """Lazily create the QSystemTrayIcon used as a global Always-On
-        toggle and visual state indicator.
-
-        A small microphone glyph drawn programmatically – grey when
-        Always-On is off, red when actively listening. Convention follows
-        OBS / Zoom / Discord (grey = ready/off, red = live).
-
-        The icon is created once and stays visible for the lifetime of
-        the Workbench window. Showing/hiding a tray slot causes Windows
-        to reflow the tray (the "icons bounce" effect), so the slot
-        stays allocated and only the pixmap, tooltip, and menu wording
-        change as state changes.
-
-        Single-click toggles Always-On. Right-click shows a small menu
-        with the same toggle plus an "Open Voice in Sidekick"
-        shortcut.
-        """
-        if hasattr(self, '_alwayson_tray_icon'):
-            return
-        from PyQt6.QtWidgets import QSystemTrayIcon, QMenu
-        from PyQt6.QtGui import QColor
-
-        if not QSystemTrayIcon.isSystemTrayAvailable():
-            self._alwayson_tray_icon = None
-            return
-
-        # Material grey 600 (off) and red 800 (live).
-        self._alwayson_tray_icon_normal = self._draw_mic_icon(QColor(0x75, 0x75, 0x75))
-        self._alwayson_tray_icon_red = self._draw_mic_icon(QColor(0xC6, 0x28, 0x28))
-
-        tray = QSystemTrayIcon(self._alwayson_tray_icon_normal, self)
-        tray.setToolTip(self.tr("Voice – Always-On is OFF. Click to start."))
-
-        menu = QMenu(self)
-        toggle_action = menu.addAction("▶ Start Always-On")
-        toggle_action.triggered.connect(self._toggle_alwayson_listening)
-        menu.addSeparator()
-        open_action = menu.addAction("🎤 Open Voice")
-        open_action.triggered.connect(self._open_voice_in_workbench)
-        tray.setContextMenu(menu)
-        self._alwayson_tray_toggle_action = toggle_action
-
-        tray.activated.connect(self._on_alwayson_tray_activated)
-        self._alwayson_tray_icon = tray
-        tray.show()
-
-    def _on_alwayson_tray_activated(self, reason):
-        """Tray-icon click handler – single-click toggles Always-On."""
-        from PyQt6.QtWidgets import QSystemTrayIcon
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self._toggle_alwayson_listening()
-
-    def _update_alwayson_tray_icon(self, status: str):
-        """Switch the tray icon between inactive/active visuals based on
-        the current listener status. The icon stays visible at all times
-        – only the pixmap, tooltip, and menu wording change."""
-        self._ensure_alwayson_tray_icon()
-        tray = getattr(self, '_alwayson_tray_icon', None)
-        if tray is None:
-            return
-
-        active = status in ("listening", "waiting", "recording", "processing")
-
-        # Skip every tray API call when the active/inactive state hasn't changed.
-        # setIcon() and setToolTip() both trigger a Windows notification-area
-        # repaint that briefly hides the icon. The VAD cycle emits three status
-        # changes per spoken command (recording → processing → listening), all of
-        # which map to the same "active" state, so we can safely ignore them.
-        if getattr(self, '_alwayson_tray_active', None) == active:
-            return
-        self._alwayson_tray_active = active
-
-        tray.setIcon(
-            self._alwayson_tray_icon_red if active
-            else self._alwayson_tray_icon_normal
-        )
-        tray.setToolTip(
-            "Voice – Always-On listening. Click to stop." if active
-            else "Voice – Always-On is OFF. Click to start."
-        )
-        action = getattr(self, '_alwayson_tray_toggle_action', None)
-        if action is not None:
-            action.setText("⏹ Stop Always-On" if active else "▶ Start Always-On")
-
-    def _on_alwayson_speech(self, text: str):
-        """Handle raw speech from always-on listener"""
-        self.log(f"🎤 Heard: {text}")
-
-    def _on_alwayson_command(self, heard: str, result: str):
-        """A command ran (or failed to): log it, flash it in the status
-        bar and list it under "What I heard" on the Voice tab."""
-        self.log(f"🎤 Command: {heard} → {result}")
-        self.status_bar.showMessage(f"🎤 {result}", 3000)
-        self._add_to_voice_heard_list(heard, result, ok=not result.startswith("✗"))
-
-    def _on_alwayson_no_match(self, text: str):
-        """Speech from the always-on listener that matched no command.
-
-        It is reported and never typed. Voice only runs commands;
-        running text belongs to a dictation tool (Wispr Flow, Windows
-        voice typing). Up to v1.10.373 such speech was typed into the
-        active app, so Vosk's leftovers ("[unk] project tm next add
-        [unk]") landed in whatever window had focus.
-        """
-        self.log(f"💬 No command matched, not typed: {text!r}")
-        self.status_bar.showMessage(f"🎤 No command matched: “{text}”", 3000)
-        self._add_to_voice_heard_list(text, "no command matched", ok=None)
-
-    def _add_to_voice_heard_list(self, heard: str, outcome: str, ok):
-        """Feed the Voice tab's "What I heard" list, if the tab is built."""
-        voice_widget = getattr(self, '_voice_top_widget', None)
-        if voice_widget is not None:
-            voice_widget.add_heard(heard, outcome, ok)
-
-    def _on_alwayson_status(self, message: str):
-        """Handle status updates from always-on listener"""
-        self.log(message)
-
-    def _on_alwayson_error(self, error: str):
-        """Handle errors from always-on listener"""
-        self.log(f"❌ Always-on error: {error}")
-        QMessageBox.warning(self, "Always-On Error", f"Voice listener error:\n\n{error}")
-
-    def _on_alwayson_listener_died(self):
-        """The listener stopped without being asked to; it has already
-        reported why through _on_alwayson_error and set the UI to
-        stopped through listening_stopped."""
-        self.log("🔇 Always-on listener stopped unexpectedly")
-
-    def _on_alwayson_vad_status(self, status: str):
-        """Handle VAD status changes (loading/waiting/recording/processing)."""
-        self._update_alwayson_ui(status)
-
-    def _toggle_alwayson_from_statusbar(self):
-        """Toggle always-on listening when clicking the status bar indicator"""
-        self._toggle_alwayson_listening()
-
-    def _toggle_alwayson_from_grid_btn(self, checked: bool, btn: QPushButton):
-        """Toggle always-on listening from the grid toolbar button"""
-        self._toggle_alwayson_listening()
         # Button state will be updated by _update_alwayson_ui
 
     def _create_system_prompts_tab(self):
@@ -28533,23 +28077,6 @@ class SupervertalerQt(QMainWindow):
         display = saved_name if saved_name else "(system username)"
         self.log(f"✓ User identity saved: translator name = {display}")
         QMessageBox.information(self, "Settings Saved", f"User identity saved.\nTranslator name: {display}")
-
-    def _open_voice_in_workbench(self):
-        """Open Workbench's Voice top tab from a Settings link / tray menu.
-
-        Method was renamed from _open_voice_in_sidekick in v1.10.10
-        when Sidekick was retired. The two existing call sites
-        (Voice settings link and Always-On tray menu) were updated
-        to match.
-        """
-        try:
-            if hasattr(self, '_ensure_voice_top_tab'):
-                self._ensure_voice_top_tab()
-            self._bring_workbench_forward()
-            if hasattr(self, 'voice_tab_index') and hasattr(self, 'main_tabs'):
-                self.main_tabs.setCurrentIndex(self.voice_tab_index)
-        except Exception as e:
-            QMessageBox.warning(self, "Could not open Voice", str(e))
 
     def _bring_workbench_forward(self):
         """Bring Workbench to the foreground.
@@ -28867,32 +28394,6 @@ class SupervertalerQt(QMainWindow):
             self.log(f"⚠ Could not open SuperLookup top tab: {e}")
             import traceback
             traceback.print_exc()
-
-    def open_settings_to_keyboard_shortcuts(self):
-        """Jump to Settings → Keyboard Shortcuts.
-
-        Called from the Voice tab's "Change in Settings → Keyboard
-        Shortcuts" link. Switches the main window to the Settings page
-        and selects the Keyboard Shortcuts sub-tab.
-        """
-        try:
-            main_tabs = getattr(self, 'main_tabs', None)
-            settings_tabs = getattr(self, 'settings_tabs', None)
-            settings_idx = getattr(self, 'settings_tab_index', None)
-            kb_idx = getattr(self, 'keyboard_shortcuts_tab_index', None)
-            if main_tabs is not None and settings_idx is not None:
-                main_tabs.setCurrentIndex(settings_idx)
-            if settings_tabs is not None and kb_idx is not None:
-                settings_tabs.setCurrentIndex(kb_idx)
-            self._bring_workbench_forward()
-        except Exception as e:
-            QMessageBox.information(
-                self, "Open Keyboard Shortcuts",
-                f"Couldn't auto-navigate (\"{e}\"). Open the main "
-                "Workbench window → Settings → Keyboard Shortcuts and "
-                "find <b>Voice Always-On (toggle)</b> under "
-                "<b>Special</b>."
-            )
 
     def _create_debug_settings_tab(self):
         """Create Debug Settings tab content"""
@@ -30671,29 +30172,6 @@ class SupervertalerQt(QMainWindow):
         toolbar_layout.addWidget(autotag_btn)
 
         
-        # Always-On Voice toggle button
-        alwayson_btn = QPushButton(self.tr("🎧 Always-On: OFF"))
-        alwayson_btn.setCheckable(True)
-        alwayson_btn.setChecked(False)
-        alwayson_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #757575;
-                color: white;
-                font-weight: bold;
-                padding: 3px 5px;
-                border-radius: 3px;
-            }
-            QPushButton:checked {
-                background-color: #2E7D32;
-            }
-            QPushButton:focus {
-                outline: none;
-            }
-        """)
-        alwayson_btn.setToolTip(self.tr("Voice commands – listen for spoken commands until switched off\nSpeech that isn't a command is never typed"))
-        alwayson_btn.clicked.connect(lambda checked: self._toggle_alwayson_from_grid_btn(checked, alwayson_btn))
-        toolbar_layout.addWidget(alwayson_btn)
-        self.grid_alwayson_btn = alwayson_btn  # Store reference
 
         toolbar_layout.addWidget(QLabel("|"))  # Separator
 
@@ -48217,18 +47695,6 @@ class SupervertalerQt(QMainWindow):
             self._save_settings_section("general", settings)
         except Exception as e:
             self.log(f"⚠ Could not save general settings: {str(e)}")
-
-    def load_dictation_settings(self) -> Dict[str, Any]:
-        """Load the Voice settings (microphone, sensitivity, tab layout).
-
-        They live under the historical ``dictation_settings`` key, which
-        is kept so existing settings carry over; keys left behind by the
-        removed dictation (model, language, vocabulary…) are ignored."""
-        try:
-            prefs = self._load_settings_section("ui")
-            return dict(prefs.get('dictation_settings', {}) or {})
-        except Exception:
-            return {}
 
     def _load_language_pair_from_disk(self):
         """Read just the source/target language pair from settings.json.
@@ -70018,7 +69484,7 @@ class SuperlookupTab(QWidget):
             self.engine.set_tm_database(tm_db)
     
     def show_supervertaler_assistant(self, initial_text=None, external_mode=False):
-        """Navigate to the Localize Large Sidekick (AI Assistant tab) and optionally insert text.
+        """Navigate to the AI Assistant (AI Assistant tab) and optionally insert text.
 
         Instead of a separate floating window, this reuses the existing AI Assistant
         inside the AI tab. For external mode, it also brings Localize Large
@@ -70045,13 +69511,13 @@ class SuperlookupTab(QWidget):
             elif hasattr(main_window, 'main_tabs'):
                 main_window.main_tabs.setCurrentIndex(3)  # last-resort fallback
 
-            # Switch to Localize Large Sidekick sub-tab and insert text
+            # Switch to AI Assistant sub-tab and insert text
             if hasattr(main_window, 'prompt_manager_qt') and main_window.prompt_manager_qt:
                 main_window.prompt_manager_qt.receive_text_for_assistant(
                     initial_text or "", from_external=external_mode
                 )
 
-            print(f"[Assistant] Navigated to Localize Large Sidekick (external={external_mode})")
+            print(f"[Assistant] Navigated to AI Assistant (external={external_mode})")
 
         except Exception as e:
             print(f"[Assistant] Error navigating to assistant: {e}")

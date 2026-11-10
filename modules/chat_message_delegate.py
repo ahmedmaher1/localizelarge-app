@@ -30,7 +30,7 @@ class ChatMessageDelegate(QStyledItemDelegate):
         self.avatar_size = 18
         self.avatar_margin = 4
         self.max_bubble_width_ratio = 0.85
-        self.label_height = 16       # "You" / "Localize Large Sidekick"
+        self.label_height = 16       # "You" / "AI Assistant"
         self.timestamp_height = 14   # "HH:mm"
         self.meta_height = 14        # model/token/cost info
 
@@ -164,7 +164,7 @@ class ChatMessageDelegate(QStyledItemDelegate):
             bubble_height = text_height + self.bubble_padding * 2
             height = bubble_height + self.padding
 
-            # Space for avatar label ("You" / "Localize Large Sidekick")
+            # Space for avatar label ("You" / "AI Assistant")
             height += self.label_height
 
             # Space for timestamp
@@ -312,7 +312,7 @@ class ChatMessageDelegate(QStyledItemDelegate):
         avatar_x = rect.left() + self.padding
         bubble_x = rect.left() + self.avatar_size + self.avatar_margin + self.padding
 
-        # Label "Localize Large Sidekick" above bubble
+        # Label "AI Assistant" above bubble
         label_y = rect.top() + self.padding // 2
 
         painter.setPen(QPen(QColor("#646464")))
@@ -321,7 +321,7 @@ class ChatMessageDelegate(QStyledItemDelegate):
         painter.drawText(
             label_rect,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-            "Localize Large Sidekick",
+            "AI Assistant",
         )
 
         bubble_y = label_y + self.label_height

@@ -916,7 +916,7 @@ class ChatViewWidget(QWidget):
         role = msg_data.get('role', 'system')
         title = {
             'user': 'Your message',
-            'assistant': 'Localize Large Sidekick',
+            'assistant': 'AI Assistant',
         }.get(role, 'System message')
 
         dlg = QDialog(self)

@@ -595,17 +595,6 @@ class ShortcutManager:
         # "sidekick_open_clipboard" (Ctrl+Alt+C, the Clipboard Manager) was
         # removed in v1.10.374 along with the Clipboard tab. A saved custom
         # binding for it is simply never read again.
-        # Ctrl+Alt+O ("always-On"), not Ctrl+Alt+A. This is an OS-level global
-        # hotkey, so it fires whatever application is in front - and Localize Large
-        # for Trados uses Ctrl+Alt+A for "Add term with abbreviation". Many people
-        # run both at once, so the two would have fought over every press.
-        "voice_alwayson_toggle": {
-            "category": "Special",
-            "description": "Voice Always-On (toggle)",
-            "default": "Ctrl+Alt+O",
-            "action": "toggle_alwayson",
-            "global": True,
-        },
         "editor_show_context_menu_double_shift": {
             "category": "Editor",
             "description": "Show context menu (double-tap Shift)",

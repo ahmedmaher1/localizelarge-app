@@ -72,7 +72,7 @@ _gate = threading.RLock()
 _ALIASES = {"anthropic": "claude", "xai": "grok", "x.ai": "grok", "custom": "custom_openai"}
 
 _PLAIN_COMMENT = ("API keys shared by Supervertaler for Trados, Localize Large for memoQ and "
-                  "Localize Large Sidekick. One key per provider; edit by hand or in any product's settings.")
+                  "AI Assistant. One key per provider; edit by hand or in any product's settings.")
 _LOCKED_COMMENT = ("Localize Large API keys, locked by Windows to this Windows account. They cannot be "
                    "read on another computer or by another account. Change them in any product's settings.")
 
