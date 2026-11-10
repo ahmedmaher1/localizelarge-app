@@ -100,7 +100,17 @@ try {
     $env:LOCALIZELARGE_SMOKE_EXIT_MS = "15000"
     $proc = Start-Process -FilePath (Join-Path $Dist "LocalizeLarge.exe") -PassThru
     if (-not $proc.WaitForExit(180000)) { $proc.Kill(); throw "The built app did not close within 3 minutes" }
-    if ($proc.ExitCode -ne 0) { throw "The built app exited with code $($proc.ExitCode)" }
+    if ($proc.ExitCode -ne 0) {
+        $FailLog = "$SmokeProfile\Local\LocalizeLarge\logs\localizelarge.log"
+        if (Test-Path $FailLog) {
+            Write-Host "---- last 120 lines of the built app's log ----"
+            Get-Content $FailLog -Tail 120 | ForEach-Object { Write-Host "  log: $_" }
+        } else {
+            Write-Host "The built app wrote no log file."
+            Get-ChildItem -Recurse $SmokeProfile | Select-Object -First 40 | ForEach-Object { Write-Host "  $($_.FullName)" }
+        }
+        throw ("The built app exited with code {0} (0x{0:X8})" -f $proc.ExitCode)
+    }
 }
 finally {
     $env:APPDATA = $SavedAppData; $env:LOCALAPPDATA = $SavedLocal
