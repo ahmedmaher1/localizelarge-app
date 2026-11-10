@@ -26700,30 +26700,27 @@ class SupervertalerQt(QMainWindow):
         QMessageBox.information(self, "Settings Saved", "AI settings have been saved successfully.")
     
     def _save_api_keys_from_ui(self):
-        """Save API keys from inline input fields: a changed key into the keys
-        every Localize Large product shares (the plain file, then locked to this
-        computer), and all of them into Workbench's own settings as before."""
+        """Save the key boxes: a changed key goes into the locked key store
+        (localizelarge/security/keystore.py); only values that are not keys
+        (the Ollama address) go to settings.json."""
         if not hasattr(self, '_api_key_inputs') or not self._api_key_inputs:
             return
-        from modules.llm_clients import save_api_key, SHARED_KEY_IDS
-        from modules.api_key_store import display_name
-        api_keys = self._load_settings_section("api_keys")
+        from modules.llm_clients import save_api_key
+        from localizelarge.security import keystore
+        plain_values = self._load_settings_section("api_keys")
         for key_name, input_widget in self._api_key_inputs.items():
             value = input_widget.text().strip()
-            api_keys[key_name] = value
-            # Only a box the user changed goes to the shared keys: the page saves
-            # every box, and an untouched one must not put back an older key that
-            # another product has replaced meanwhile.
+            if keystore.canonical(key_name) is None:
+                plain_values[key_name] = value
+                continue
+            # Only a box the user changed is written.
             if value != (input_widget.property("shown_key") or ""):
                 if save_api_key(key_name, value):
                     input_widget.setProperty("shown_key", value)
                 else:
-                    self.log(f"⚠ Your {display_name(SHARED_KEY_IDS.get(key_name, key_name))} key could not be "
-                             f"saved to the keys Localize Large's products share. Try again in a moment.")
-        # Migrate legacy 'google' key to canonical 'gemini' key
-        if api_keys.get('google') and not api_keys.get('gemini'):
-            api_keys['gemini'] = api_keys['google']
-        self.save_api_keys(api_keys)
+                    self.log(f"⚠ Your {keystore.display_name(key_name)} key could not be saved. "
+                             "Try again in a moment.")
+        self.save_api_keys(plain_values)
 
     def _with_key_note(self, field, key_name, key_input, notes):
         """A key row, with M1 under it when that key can't be read on this
@@ -45153,30 +45150,9 @@ class SupervertalerQt(QMainWindow):
             except Exception as e:
                 print(f"[Settings] Warning: could not migrate feature_settings.json: {e}")
 
-        # 4. Migrate api_keys.txt
-        api_keys_file = None
-        for candidate in [self.user_data_path / "api_keys.txt",
-                          Path(__file__).parent / "user_data_private" / "api_keys.txt"]:
-            if candidate.exists():
-                api_keys_file = candidate
-                break
-
-        if api_keys_file:
-            try:
-                api_keys = {}
-                with open(api_keys_file, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and '=' in line and not line.startswith('#'):
-                            key, value = line.split('=', 1)
-                            api_keys[key.strip().lower()] = value.strip()
-                # Migrate legacy 'google' key to canonical 'gemini' key
-                if api_keys.get('google') and not api_keys.get('gemini'):
-                    api_keys['gemini'] = api_keys['google']
-                unified["api_keys"] = api_keys
-                api_keys_file.rename(api_keys_file.with_suffix('.txt.migrated'))
-            except Exception as e:
-                print(f"[Settings] Warning: could not migrate api_keys.txt: {e}")
+        # 4. (Removed.) The base app copied a clear-text api_keys.txt into the
+        #    settings file here. Localize Large never reads such a file: API
+        #    keys live only in the locked key store.
 
         # 5. Relocate satellite JSON files to settings/ subfolder
         import shutil
@@ -57287,6 +57263,11 @@ class SupervertalerQt(QMainWindow):
     def save_llm_settings(self, settings: Dict[str, str]):
         """Save LLM settings to user preferences"""
         try:
+            # Custom endpoint profiles (not part of Localize Large) could carry
+            # an API key in clear text: they are never written.
+            settings = dict(settings)
+            settings['custom_openai_profiles'] = []
+            settings['custom_mt_profiles'] = []
             all_settings = self._load_unified_settings()
             all_settings.setdefault("ui", {})['llm_settings'] = settings
             self._save_unified_settings(all_settings)
@@ -60227,9 +60208,9 @@ class SupervertalerQt(QMainWindow):
         QTimer.singleShot(100, fetch_and_update)
     
     def load_api_keys(self) -> Dict[str, str]:
-        """Every API key Workbench uses: the keys shared with Localize Large for
-        Trados, memoQ and Sidekick, then Workbench's own settings - through the
-        one reader in modules/llm_clients.py."""
+        """Every API key the app uses, from the locked key store, plus the
+        non-secret values in settings - through the one reader in
+        modules/llm_clients.py."""
         from modules.llm_clients import load_api_keys
         return load_api_keys(str(self._get_unified_settings_path()))
 
@@ -60270,8 +60251,12 @@ class SupervertalerQt(QMainWindow):
             print(f"[API keys] Start-up step skipped: {type(e).__name__}: {e}")
 
     def save_api_keys(self, api_keys: Dict[str, str]):
-        """Save API keys to unified settings"""
-        self._save_settings_section("api_keys", api_keys)
+        """Save the non-secret values of the "api_keys" settings section (the
+        Ollama address). API keys never go to settings.json: anything that is
+        a key is dropped here; keys are saved by save_api_key() in
+        modules/llm_clients.py."""
+        from localizelarge.security import keystore
+        self._save_settings_section("api_keys", keystore.without_secrets(api_keys))
 
     def get_ai_inject_glossary_terms(self) -> list:
         """Get glossary terms from AI-inject-enabled termbases for the current project.

@@ -28,7 +28,6 @@ class ConfigManager:
     CONFIG_FILENAME = ".supervertaler_config.json"
     DEFAULT_USER_DATA_FOLDER = "Supervertaler_Data"
     DEV_MODE_FLAG = ".supervertaler.local"
-    API_KEYS_FILENAME = "api_keys.txt"  # legacy, used for migration only
     
     # Folder structure that must exist in user_data directory
     REQUIRED_FOLDERS = [
@@ -190,35 +189,6 @@ class ConfigManager:
         except OSError as e:
             return False, f"Invalid path: {e}"
     
-    def ensure_user_data_exists(self, user_data_path: Optional[str] = None) -> Tuple[bool, str]:
-        """
-        Ensure user_data folder exists with proper structure.
-        
-        Creates all required subdirectories if they don't exist.
-        Also copies api_keys.example.txt → api_keys.txt if not present.
-        
-        Args:
-            user_data_path: Optional specific path. If None, uses configured path.
-            
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        if user_data_path is None:
-            user_data_path = self.get_user_data_path()
-        
-        try:
-            # Create root user_data folder
-            Path(user_data_path).mkdir(parents=True, exist_ok=True)
-            
-            # Create all required subdirectories
-            for folder in self.REQUIRED_FOLDERS:
-                folder_path = os.path.join(user_data_path, folder)
-                Path(folder_path).mkdir(parents=True, exist_ok=True)
-            
-            return True, f"User data folder structure created at: {user_data_path}"
-        except Exception as e:
-            return False, f"Failed to create user_data structure: {e}"
-    
     def get_subfolder_path(self, subfolder: str) -> str:
         """
         Get the full path to a subfolder in user_data.
@@ -250,79 +220,6 @@ class ConfigManager:
                 return old_user_data_path
         
         return None
-    
-    def migrate_user_data(self, old_path: str, new_path: str) -> Tuple[bool, str]:
-        """
-        Migrate user_data from old location to new location.
-        
-        Also handles migration of api_keys.txt if it exists in old location.
-        
-        Args:
-            old_path: Current user_data location
-            new_path: New user_data location
-            
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        if not os.path.exists(old_path):
-            return False, f"Old path does not exist: {old_path}"
-        
-        try:
-            # Ensure new location exists
-            Path(new_path).mkdir(parents=True, exist_ok=True)
-            
-            # Move all items from old to new
-            files_moved = 0
-            for item in os.listdir(old_path):
-                old_item_path = os.path.join(old_path, item)
-                new_item_path = os.path.join(new_path, item)
-                
-                # Skip if item already exists at destination
-                if os.path.exists(new_item_path):
-                    print(f"[Migration] Skipping (exists): {item}")
-                    continue
-                
-                try:
-                    if os.path.isdir(old_item_path):
-                        shutil.copytree(old_item_path, new_item_path)
-                    else:
-                        shutil.copy2(old_item_path, new_item_path)
-                    files_moved += 1
-                except Exception as e:
-                    print(f"[Migration] Error moving {item}: {e}")
-                    continue
-            
-            return True, f"Migrated {files_moved} items from {old_path} to {new_path}"
-        except Exception as e:
-            return False, f"Migration failed: {e}"
-    
-    def migrate_api_keys_from_installation(self, user_data_path: str) -> Tuple[bool, str]:
-        """
-        Migrate api_keys.txt from installation folder to user_data folder if it exists.
-        
-        This handles migration for users upgrading from older versions.
-        
-        Args:
-            user_data_path: Target user_data folder
-            
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
-        try:
-            repo_root = os.path.dirname(self.script_dir)
-            old_api_keys = os.path.join(repo_root, self.API_KEYS_FILENAME)
-            new_api_keys = os.path.join(user_data_path, self.API_KEYS_FILENAME)
-            
-            # If old api_keys.txt exists and new one doesn't, move it
-            if os.path.exists(old_api_keys) and not os.path.exists(new_api_keys):
-                shutil.copy2(old_api_keys, new_api_keys)
-                print(f"[Migration] Migrated api_keys.txt to {new_api_keys}")
-                return True, f"Migrated api_keys.txt to user_data folder"
-            
-            return True, "api_keys.txt migration not needed"
-        except Exception as e:
-            print(f"[Migration] Error migrating api_keys.txt: {e}")
-            return False, f"Failed to migrate api_keys.txt: {e}"
     
     def validate_current_path(self) -> Tuple[bool, str]:
         """
