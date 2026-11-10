@@ -1,97 +1,41 @@
-# Supervertaler Dependencies (Full / Batteries Included)
-# Install everything needed for all features:
+# Localize Large dependencies
 #   pip install -r requirements.txt
+#
+# Every package here is imported by the app. Licenses are in THIRD_PARTY_LICENSES.md.
+# The release build pins exact versions; see the SBOM shipped with each release.
 
-# ===== CORE DEPENDENCIES =====
-
-# Core UI Framework
+# User interface
 PyQt6>=6.5.0
 
-# Document Processing
+# Documents
 python-docx>=0.8.11
 openpyxl>=3.1.0
 Pillow>=10.0.0
 lxml>=4.9.0
 
-# AI/LLM Providers (lightweight API clients)
+# AI providers: OpenAI, Claude, Gemini. Ollama is reached with requests.
 openai>=1.0.0
 anthropic>=0.7.0
 google-generativeai>=0.3.0
 requests>=2.28.0
+httpx>=0.24.0
 
-# Encoding detection (used by Encoding Repair module)
-chardet>=5.0.0
-
-# System helpers (used for process cleanup / system specs)
-psutil>=5.9.0
-
-# Document Conversion & Analysis
+# Converting attached documents to text for the AI Assistant
 markitdown>=0.0.1
 
-# Translation Quality Metrics (Superbench)
-sacrebleu>=2.3.1
-
-# Clipboard Operations (Universal Lookup)
+# Clipboard
 pyperclip>=1.8.2
 
-# YAML Support
-pyyaml>=6.0.0
-
-# Markdown Rendering (Superdocs)
-markdown>=3.4.0
-
-# Basic Spellchecking (lightweight, works offline)
+# Spellcheck (offline)
 pyspellchecker>=0.7.0
+spylls>=0.1.7
 
+# Process information (local Ollama detection)
+psutil>=5.9.0
 
-# ===== FEATURE DEPENDENCIES =====
-# These are required for certain features, and are included here so this
-# requirements file provides a complete install.
+# Fuzzy matching and JSON Schema validation (used from Phase 4 and Phase 5 on)
+rapidfuzz>=3.0.0
+jsonschema>=4.0.0
 
-# [web] - Built-in Web Browser (~100 MB)
-# Web browser for Superlookup research resources
-PyQt6-WebEngine>=6.5.0
-
-# [pdf] - PDF Processing (~30 MB)
-# PDF text extraction and OCR (PDF Rescue)
-PyMuPDF>=1.23.0
-
-# [voice] - Voice commands
-numpy>=1.24.0
-sounddevice>=0.4.6
-# Vosk – the voice-command recogniser (offline, commands only, free).
-# Lightweight wheel (~14 MB) plus the English model, which downloads on
-# first use (~40 MB).
-vosk>=0.3.44
-
-# [mt] - Additional MT Providers (~30 MB)
-# DeepL API and Amazon Translate
-boto3>=1.28.0
-deepl>=1.15.0
-
-# [hunspell] - Advanced Spellcheck (~20 MB)
-# Hunspell backend for 100+ languages
-spylls>=0.1.7  # Pure Python Hunspell (replaces cyhunspell which doesn't work on Windows/Py3.12)
-
-# [hotkeys] - Cross-platform Global Hotkeys
-# Global hotkey registration and keystroke automation (Superlookup, QuickTrans)
-pynput>=1.7.6
-
-# [hotkeys-macos] - macOS NSEvent backend (replaces pynput on macOS to avoid
-# a TSM-on-background-thread crash on macOS 26+). Required for global hotkeys
-# to work on macOS; the host Terminal/iTerm2/Supervertaler.app also needs
-# Accessibility permission.
-pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
-
-# [windows] - Windows-only AutoHotkey support
-ahk>=1.0.0; sys_platform == "win32"
-
-# API keys locked to the computer: the Keychain on a Mac, the Secret Service on
-# Linux (Windows uses its own DPAPI)
+# API keys on non-Windows development machines. Windows uses DPAPI.
 keyring>=25.0; sys_platform != "win32"
-
-
-# ===== PLATFORM-SPECIFIC NOTES =====
-# - Linux: Install Hunspell dictionaries: sudo apt install hunspell-<lang>
-# - macOS: All features available
-# - Windows: All features available

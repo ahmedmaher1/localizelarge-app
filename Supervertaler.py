@@ -63792,45 +63792,6 @@ class SuperlookupTab(QWidget):
             import traceback
             traceback.print_exc()
 
-    def _paste_translation_to_external_app(self, translation: str):
-        """Copy translation to clipboard and paste at cursor in the external app.
-
-        Called when the user selects a translation in the QuickTrans popup that
-        was invoked via the global hotkey (Ctrl+Alt+Q) from another application.
-        """
-        try:
-            print(f"[QuickTrans] Pasting translation to external app: {translation[:50]}...")
-
-            # 1. Copy translation to clipboard
-            pyperclip.copy(translation)
-            print(f"[QuickTrans] Translation copied to clipboard")
-
-            # 2. Re-activate the original app window (browser, Trados, etc.)
-            #    that was captured when the hotkey was pressed
-            source_window = getattr(self, '_quicktrans_source_window', None)
-            if source_window:
-                from modules.platform_helpers import activate_foreground_window
-                activate_foreground_window(source_window)
-                print(f"[QuickTrans] Re-activated source window: {source_window}")
-
-            # 3. After a short delay (let OS process the focus switch),
-            #    send Ctrl+V / Cmd+V to paste at cursor
-            def _do_paste():
-                try:
-                    from modules.platform_helpers import CrossPlatformKeySender
-                    sender = CrossPlatformKeySender()
-                    sender.send_paste()
-                    print(f"[QuickTrans] Ctrl+V sent to external app")
-                except Exception as e:
-                    print(f"[QuickTrans] Error sending paste: {e}")
-
-            # 500ms delay: let the OS complete the focus switch before
-            # sending Ctrl+V via AHK to the now-foreground app
-            QTimer.singleShot(500, _do_paste)
-
-        except Exception as e:
-            print(f"[QuickTrans] Error pasting translation: {e}")
-
     # show_quicklauncher_external, _show_quicklauncher_external_legacy,
     # and _run_external_quicklauncher_prompt were removed in v1.10.10.
     # They were the Sidekick-era hotkey landing methods plus a QMenu
@@ -64662,6 +64623,13 @@ def main():
     window = SupervertalerQt()
 
     window.show()
+
+    # Smoke tests (tests/ and the release script) close the window after a
+    # delay, the way a user would, so start-up and shut-down can be checked
+    # without a person at the keyboard.
+    _smoke_ms = os.environ.get("LOCALIZELARGE_SMOKE_EXIT_MS", "")
+    if _smoke_ms.isdigit():
+        QTimer.singleShot(int(_smoke_ms), window.close)
 
     sys.exit(app.exec())
 

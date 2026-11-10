@@ -133,3 +133,28 @@ is not one of the four is ignored and the default is used.
 - The "MT" box of the compare panel and the MT colour table in `modules/quicktrans.py`.
 
 QuickTrans is kept, with AI providers only.
+
+### Other code removed with these features
+
+| Removed | Why |
+|---|---|
+| Most of `modules/platform_helpers.py`: the global hotkey manager, the keystroke sender, native clipboard access and the code that typed or pasted into other applications | They served the global hotkeys. What is left opens files and folders and brings the app's own window forward |
+| `Supervertaler.spec`, `Supervertaler_macOS.spec`, `build_macos_signed.sh`, the two macOS entitlements files, `build_windows_release.ps1`, `setup.py`, `MANIFEST.in`, and upstream build and run scripts in `scripts/` and `tools/` | The upstream release process. `LocalizeLarge.spec` and `scripts/build_release.ps1` replace them in Phase 8. macOS is not built in v1; the cross-platform code paths stay |
+
+### Dependencies
+
+Removed from `requirements.txt` and `pyproject.toml`: `PyQt6-WebEngine`, `PyMuPDF`, `vosk`,
+`sounddevice`, `numpy` (as a direct dependency), `boto3`, `deepl`, `pynput`, `ahk`,
+`pyobjc-framework-Cocoa`, and four packages that nothing imported: `chardet`, `sacrebleu`,
+`PyYAML`, `Markdown`.
+
+Added: `rapidfuzz` and `jsonschema` (both MIT), for Phases 4 to 6, and `httpx` (BSD-3-Clause),
+which the AI client already imported when a proxy is set but which was never listed.
+
+Installed packages, counted in a fresh environment without the test tools: 100 before,
+81 after. `pip check` is clean.
+
+**Open question:** `markitdown` (converts attached documents to text for the AI Assistant)
+brings in `onnxruntime` (about 62 MB) and `numpy` (about 30 MB). It is not in the v1 scope
+list. Dropping it would shrink the download; the AI Assistant would then read only plain
+text attachments.

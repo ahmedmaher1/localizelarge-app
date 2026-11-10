@@ -80,34 +80,6 @@ class SuperlookupEngine:
             }
         }
     
-    def capture_text(self) -> Optional[str]:
-        """
-        Capture text - just copy what's selected and get clipboard.
-        
-        Returns:
-            Captured text or None if failed
-        """
-        try:
-            # Use pynput for cross-platform Ctrl+C sending
-            try:
-                from modules.platform_helpers import CrossPlatformKeySender
-                sender = CrossPlatformKeySender()
-                if sender.is_available:
-                    time.sleep(0.2)  # Wait for hotkey to release
-                    sender.send_copy()
-                    time.sleep(0.2)  # Wait for clipboard to update
-                # else: user must have copied text manually
-            except Exception as e:
-                print(f"[Superlookup] pynput copy failed (non-critical): {e}")
-
-            # Get clipboard
-            text = pyperclip.paste()
-            return text if text else None
-
-        except Exception as e:
-            print(f"Error capturing text: {e}")
-            return None
-    
     def set_tm_database(self, tm_db):
         """Set the TM database for lookups"""
         self.tm_database = tm_db
@@ -222,23 +194,6 @@ class SuperlookupEngine:
         
         return results
     
-    def get_mt_translations(self, text: str) -> List[LookupResult]:
-        """
-        Get machine translation suggestions.
-        
-        Args:
-            text: Text to translate
-            
-        Returns:
-            List of MT results
-        """
-        results = []
-        
-        # TODO: Integrate with MT providers (DeepL, Google, OpenAI)
-        # For now, return placeholder
-        
-        return results
-    
     def lookup_all(self, text: str) -> Dict[str, List[LookupResult]]:
         """
         Perform all types of lookups on the text.
@@ -252,5 +207,5 @@ class SuperlookupEngine:
         return {
             'tm': self.search_tm(text),
             'glossary': self.search_glossary(text),
-            'mt': self.get_mt_translations(text)
+            'mt': []
         }

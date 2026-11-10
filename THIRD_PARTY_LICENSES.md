@@ -7,8 +7,8 @@ This file lists the software Localize Large depends on. Versions are the ones in
 the development environment on 2026-11-10; the release build pins its own versions and the
 SBOM shipped with each release is the exact list for that build.
 
-**Status: work in progress.** The dependency set is being reduced to the v1 scope. Packages
-that are still to be removed are listed at the end.
+**Status: work in progress.** The list below matches `requirements.txt` after Phase 2. The
+Java libraries are upgraded in Phase 3.
 
 ## Python packages
 
@@ -27,19 +27,24 @@ Licenses are taken from each package's own metadata.
 | anthropic | 2.7.0 | Apache-2.0 |
 | google-generativeai | 0.8.6 | Apache-2.0 |
 | requests | 2.34.2 | Apache-2.0 |
-| chardet | 7.7.0 | 0BSD |
+| httpx | 0.28.1 | BSD-3-Clause |
+| rapidfuzz | 3.14.6 | MIT |
+| jsonschema | 4.26.0 | MIT |
 | psutil | 7.2.2 | BSD-3-Clause |
 | markitdown | 0.1.9 | MIT |
-| sacrebleu | 2.6.0 | Apache-2.0 |
 | pyperclip | 1.11.0 | BSD |
-| PyYAML | 6.0.3 | MIT |
-| Markdown | 3.11.3 | BSD-3-Clause |
 | pyspellchecker | 0.9.1 | MIT |
 | spylls | 0.1.7 | Not stated in the package's license field; its classifier says MIT. **To confirm against the project's repository before release.** |
-| numpy | 2.5.4 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 |
 | keyring (not used on Windows) | 25.7.0 | MIT |
 
-Packages these depend on are not listed here yet. The release SBOM lists all of them.
+Packages these depend on are not all listed here; the release SBOM lists every one. The
+largest are brought in by `markitdown`:
+
+| Package | Version | License |
+|---|---|---|
+| onnxruntime | 1.31.1 | MIT |
+| numpy | 2.5.4 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 |
+| magika | 1.0.3 | Apache-2.0 |
 
 ## Java libraries (Okapi sidecar)
 
@@ -60,7 +65,9 @@ this table is updated in the same commit.
 |---|---|
 | Supervertaler Workbench 1.10.376 (the base of this app) | MIT, © 2025 Michael Beijer |
 
-## Still installed, to be removed in Phase 2
+## Removed in Phase 2
 
-`PyQt6-WebEngine`, `PyMuPDF` (AGPL; must not ship), `vosk`, `sounddevice`, `boto3`, `deepl`,
-`pynput`, `ahk`, `pyobjc-framework-Cocoa`. None of these may be in a release build.
+`PyQt6-WebEngine`, `PyMuPDF` (AGPL), `vosk`, `sounddevice`, `boto3`, `deepl`, `pynput`,
+`ahk`, `pyobjc-framework-Cocoa`, and four packages nothing imported (`chardet`,
+`sacrebleu`, `PyYAML`, `Markdown`). `tests/test_ll_clean_profile_launch.py` checks that none
+of the first group is imported when the app runs.
