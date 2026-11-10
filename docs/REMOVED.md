@@ -54,3 +54,21 @@ remained. The in-app assistant tab is now called "AI Assistant".
 
 The packages `vosk`, `sounddevice` and `pynput` leave `requirements.txt` at the end of
 Phase 2, with the other removed packages.
+
+### 3. Embedded browser and web lookups
+
+| Removed | Why |
+|---|---|
+| Superbrowser (`modules/superbrowser.py`): ChatGPT, Claude and Gemini web pages side by side | It loaded third-party websites inside the app |
+| SuperLookup's "Web Resources" tab, its settings sub-tab and custom web resources (`modules/custom_web_resources.py`) | Same. Every lookup sent the search text to outside websites |
+| SuperLookup's machine-translation lookup, including the built-in MyMemory call | MT services are out of v1 scope |
+| All use of QtWebEngine (the embedded Chromium) | No remaining use. The app no longer starts Chromium processes or keeps a web cache |
+
+Kept: SuperLookup's translation-memory and termbase search.
+
+Also removed because nothing imported them: `modules/feature_manager.py`,
+`modules/pdf_rescue_tkinter.py`, `modules/translation_services.py`, `modules/superdocs.py`,
+`modules/superdocs_viewer_qt.py`, `modules/setup_wizard.py`.
+
+Effect measured in the Linux test container: the app now exits cleanly (the base crashed on
+exit in QtWebEngine), and time to the first window fell from 8.7 s to about 5.5 s.

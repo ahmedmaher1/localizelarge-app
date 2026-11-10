@@ -100,7 +100,7 @@ def make_window(S, children, *, ui_prefs=None, project_modified=False):
     )
     w.hide = lambda: setattr(w, "hidden", True)
     w.save_project = lambda: setattr(w, "saves", w.saves + 1)   # e.g. Save As cancelled
-    for name in ("_stop_okapi_sidecar", "_cleanup_web_views", "_close_detached_log_windows"):
+    for name in ("_stop_okapi_sidecar", "_close_detached_log_windows"):
         setattr(w, name, types.MethodType(getattr(S.SupervertalerQt, name), w))
     w.sidecar_proc = sidecar._process
     return w
