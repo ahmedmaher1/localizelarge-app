@@ -8,18 +8,17 @@ what the plan asks for; **its steps have not been run yet** and are marked so.
 Tools: Python 3.12.3, `uv` 0.11, OpenJDK 21.0.12, Maven 3.9.11, git.
 
 ```bash
-git clone https://github.com/Supervertaler/Supervertaler-Workbench.git localizelarge-app
+git clone https://github.com/ahmedmaher1/localizelarge-app.git
 ```
+
+To bring over upstream fixes later, add the base project as a read-only remote:
 
 ```bash
-cd localizelarge-app && git checkout f83e5203298aa3c120a1f77cd3705dd65d28c44c && git checkout -B main
+cd localizelarge-app && git remote add upstream https://github.com/Supervertaler/Supervertaler-Workbench.git && git remote set-url --push upstream DISABLED
 ```
 
-```bash
-git remote rename origin upstream && git remote set-url --push upstream DISABLED
-```
-
-The last command makes `upstream` read-only: a push to it fails.
+The last part makes `upstream` read-only: a push to it fails. Localize Large started from
+upstream commit `f83e5203298aa3c120a1f77cd3705dd65d28c44c`.
 
 Python environment:
 
@@ -41,6 +40,12 @@ Sidecar (the plan's `build.ps1` is the Windows wrapper around the same Maven cal
 
 ```bash
 cd okapi-sidecar && mvn -B -q package -DskipTests
+```
+
+The app looks for `okapi-sidecar/dist/okapi-sidecar.jar`, so copy the built JAR there:
+
+```bash
+mkdir -p okapi-sidecar/dist && cp okapi-sidecar/target/okapi-sidecar-0.1.9.jar okapi-sidecar/dist/okapi-sidecar.jar
 ```
 
 Tests, with a throwaway home folder so no real data is touched:
