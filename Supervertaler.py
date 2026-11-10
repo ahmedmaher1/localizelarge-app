@@ -65,7 +65,7 @@ __edition__ = "Qt"
 import sys as _sys
 import os as _os
 if getattr(_sys, 'frozen', False) and _sys.platform == 'darwin':
-    _crash_log = _os.path.expanduser('~/Desktop/supervertaler_crash.log')
+    _crash_log = str(__import__('localizelarge.paths', fromlist=['x']).crash_log_file())
     try:
         with open(_crash_log, 'w') as _f:
             _f.write(f"Launch time: {__import__('datetime').datetime.now()}\n")
@@ -151,148 +151,40 @@ def get_resource_path(relative_path: str) -> Path:
     return base_path / relative_path
 
 
+from localizelarge import paths as _ll_paths  # the one owner of every data path
+
+
 def get_config_pointer_path() -> Path:
-    """
-    Get path to the config pointer file that stores the user's chosen data location.
-    
-    This is stored in a standard config location:
-    - Windows: %APPDATA%/Supervertaler/config.json
-    - macOS:   ~/Library/Application Support/Supervertaler/config.json
-    - Linux:   ~/.config/Supervertaler/config.json
-    
-    This small file just contains a pointer to where the real data lives.
-    """
-    if sys.platform == 'win32':
-        # Windows: %APPDATA% (Roaming, syncs across machines on domain)
-        appdata = os.environ.get('APPDATA', os.path.expanduser('~'))
-        return Path(appdata) / "Supervertaler" / "config.json"
-    elif sys.platform == 'darwin':
-        # macOS: ~/Library/Application Support/
-        return Path.home() / "Library" / "Application Support" / "Supervertaler" / "config.json"
-    else:
-        # Linux/BSD: ~/.config/ (XDG_CONFIG_HOME)
-        xdg_config = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
-        return Path(xdg_config) / "Supervertaler" / "config.json"
+    """Kept for callers of the old name. Localize Large has no pointer file:
+    its folders are fixed (see localizelarge/paths.py)."""
+    return _ll_paths.settings_root() / "config.json"
 
 
 def get_default_user_data_path() -> Path:
-    """
-    Get the DEFAULT user data path (visible in home folder).
-    
-    - Windows: C:/Users/Username/Supervertaler/
-    - macOS:   ~/Supervertaler/
-    - Linux:   ~/Supervertaler/
-    
-    This is intentionally a visible, easily-accessible location.
-    """
-    return Path.home() / "Supervertaler"
+    """The settings root: %APPDATA%\\LocalizeLarge on Windows."""
+    return _ll_paths.settings_root()
 
 
 def save_user_data_path(path: Path) -> None:
-    """Save the user's chosen data path to the config pointer file."""
-    pointer_path = get_config_pointer_path()
-    pointer_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    config = {"user_data_path": str(path)}
-    with open(pointer_path, 'w', encoding='utf-8') as f:
-        json.dump(config, f, indent=2)
+    """No-op. The data folders are fixed and cannot be moved."""
+    return None
 
 
 def load_user_data_path_from_config() -> Optional[Path]:
-    """
-    Load the user's chosen data path from config pointer file.
-    Returns None if no config exists or path is invalid.
-    """
-    pointer_path = get_config_pointer_path()
-    
-    if not pointer_path.exists():
-        return None
-    
-    try:
-        with open(pointer_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        
-        path_str = config.get('user_data_path')
-        if path_str:
-            return Path(path_str)
-    except (json.JSONDecodeError, OSError):
-        pass
-    
     return None
 
 
 def get_user_data_path() -> Path:
-    """
-    Get the path to user data directory.
-    
-    Resolution order:
-    1. Check config pointer file for user's saved preference
-    2. If pointer missing, check if default location has data (auto-recover)
-    3. If nothing found, return default (first-run dialog will be shown later)
-    
-    All users (EXE, pip, dev) use the same unified system:
-    - Default: ~/Supervertaler/ (visible in home folder)
-    - User can choose custom location on first run
-    - Config pointer remembers their choice
-    
-    This ensures data survives pip upgrades, EXE updates, and is easy to find/backup.
-    """
-    # 1. Check if user has a saved preference
-    saved_path = load_user_data_path_from_config()
-    if saved_path and saved_path.exists():
-        return saved_path
-    
-    # 2. Check if default location has data (auto-recovery if pointer deleted)
-    default_path = get_default_user_data_path()
-    if default_path.exists():
-        # Check if it has actual content
-        has_content = False
-        try:
-            for item in default_path.iterdir():
-                if item.is_file() or (item.is_dir() and any(item.iterdir())):
-                    has_content = True
-                    break
-        except OSError:
-            pass
-        
-        if has_content:
-            # Auto-recover: recreate the pointer file
-            save_user_data_path(default_path)
-            print(f"[Data Paths] Auto-recovered config pointer to: {default_path}")
-            return default_path
-    
-    # 3. Return default path (first-run dialog will be shown by MainWindow)
-    # Don't create folder yet - let the dialog handle that
-    return default_path
+    """The settings root, created on first use. Databases, logs and caches live
+    under the local root; ask localizelarge.paths for those."""
+    _ll_paths.ensure_roots()
+    return _ll_paths.settings_root()
 
 
 def needs_first_run_data_dialog() -> bool:
-    """
-    Check if we need to show the first-run data location dialog.
-    
-    Returns True if:
-    - No config pointer file exists, AND
-    - Default data location doesn't have existing content
-    
-    This means it's truly a fresh install.
-    """
-    # If config pointer exists, user has already chosen a location
-    pointer_path = get_config_pointer_path()
-    if pointer_path.exists():
-        return False
-    
-    # If default location has content, we auto-recovered (no dialog needed)
-    default_path = get_default_user_data_path()
-    if default_path.exists():
-        try:
-            for item in default_path.iterdir():
-                if item.is_file() or (item.is_dir() and any(item.iterdir())):
-                    return False  # Has content, no dialog needed
-        except OSError:
-            pass
-    
-    # Truly a fresh install - need to show dialog
-    return True
+    """Always False: there is no data-location choice to make."""
+    return False
+
 
 import threading
 import time  # For delays in Superlookup
@@ -9295,7 +9187,7 @@ class SupervertalerQt(QMainWindow):
 
         # Database Manager for Termbases
         self.db_manager = DatabaseManager(
-            db_path=str(self.user_data_path / "resources" / "supervertaler.db"),
+            db_path=str(_ll_paths.database_file()),
             log_callback=self.log
         )
         # Only connect if we're not showing the dialog (which will create the folder)
@@ -9308,7 +9200,7 @@ class SupervertalerQt(QMainWindow):
         self.tm_database = TMDatabase(
             source_lang=None,  # Will be set when project is loaded
             target_lang=None,  # Will be set when project is loaded
-            db_path=str(self.user_data_path / "resources" / "supervertaler.db"),
+            db_path=str(_ll_paths.database_file()),
             log_callback=self.log
         )
         
@@ -9626,7 +9518,7 @@ class SupervertalerQt(QMainWindow):
             # Re-initialize database manager
             from modules.database_manager import DatabaseManager
             self.db_manager = DatabaseManager(
-                db_path=str(self.user_data_path / "resources" / "supervertaler.db"),
+                db_path=str(_ll_paths.database_file()),
                 log_callback=self.log
             )
             self.db_manager.connect()
@@ -9636,7 +9528,7 @@ class SupervertalerQt(QMainWindow):
             self.tm_database = TMDatabase(
                 source_lang=None,
                 target_lang=None,
-                db_path=str(self.user_data_path / "resources" / "supervertaler.db"),
+                db_path=str(_ll_paths.database_file()),
                 log_callback=self.log
             )
             
@@ -18751,7 +18643,7 @@ class SupervertalerQt(QMainWindow):
                 if reply2 == QMessageBox.StandardButton.Yes and self.tm_database:
                     # Clear TM entries
                     import sqlite3
-                    db_path = self.user_data_path / "resources" / "supervertaler.db"
+                    db_path = _ll_paths.database_file()
                     conn = sqlite3.connect(str(db_path), timeout=15)
                     conn.execute("PRAGMA journal_mode=WAL")
                     cursor = conn.cursor()
@@ -61256,7 +61148,7 @@ class SupervertalerQt(QMainWindow):
             file_path, _ = QFileDialog.getOpenFileName(
                 dialog,
                 "Select TMX File",
-                str(self.user_data_path / "resources"),
+                str(_ll_paths.database_dir()),
                 "TMX Files (*.tmx);;All Files (*.*)"
             )
             if file_path:
@@ -72045,7 +71937,7 @@ def _setup_diagnostic_log():
     from datetime import datetime
 
     try:
-        log_dir = get_user_data_path() / "workbench" / "logs"
+        log_dir = _ll_paths.logs_dir()
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / "supervertaler.log"
         prev_path = log_dir / "supervertaler-previous.log"
@@ -72473,7 +72365,7 @@ if __name__ == '__main__':
             main()
         except Exception:
             import traceback
-            _crash_log = os.path.expanduser('~/Desktop/supervertaler_crash.log')
+            _crash_log = str(_ll_paths.crash_log_file())
             try:
                 with open(_crash_log, 'a') as _f:
                     _f.write('\n--- CRASH ---\n')

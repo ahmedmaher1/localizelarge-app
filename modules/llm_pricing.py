@@ -28,14 +28,16 @@ from typing import Dict, Optional, Tuple
 _FREE_PROVIDERS = ("ollama",)
 
 
+from localizelarge import paths as _ll_paths
+
+
 def _load_pricing() -> Dict[str, Tuple[float, float]]:
     """Load ``model_id -> (input_per_1M, output_per_1M)`` from the canonical file.
 
-    The shared override at ``~/Supervertaler/pricing.json`` (the default data
-    root, matching the Trados plugin) wins over the bundled copy when present.
+    A ``pricing.json`` in the settings root wins over the bundled copy when present.
     """
     candidates = [
-        Path.home() / "Supervertaler" / "pricing.json",       # shared override
+        _ll_paths.pricing_override_file(),                    # user override
         Path(__file__).resolve().parent / "pricing.json",     # bundled default
     ]
     for path in candidates:

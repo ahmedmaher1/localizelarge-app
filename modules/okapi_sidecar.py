@@ -661,21 +661,6 @@ class OkapiSidecar:
         candidates.append(app_dir / "okapi-sidecar" / "dist")
         candidates.append(app_dir / "okapi-sidecar" / "target")
 
-        # 2. In user data directory
-        if platform.system() == "Windows":
-            appdata = os.environ.get("LOCALAPPDATA", "")
-            if appdata:
-                candidates.append(
-                    Path(appdata) / "Supervertaler" / "okapi-sidecar")
-        elif platform.system() == "Darwin":
-            candidates.append(
-                Path.home() / "Library" / "Application Support" /
-                "Supervertaler" / "okapi-sidecar")
-        else:
-            candidates.append(
-                Path.home() / ".local" / "share" /
-                "supervertaler" / "okapi-sidecar")
-
         for candidate in candidates:
             jar = candidate / "okapi-sidecar.jar"
             if jar.exists():
@@ -748,16 +733,8 @@ class OkapiSidecar:
     def _user_data_sidecar_dir(self) -> Optional[Path]:
         """Where lazy-downloaded sidecar files go. Per-user, persists
         across reinstalls. None on unsupported platforms."""
-        if platform.system() == "Windows":
-            appdata = os.environ.get("LOCALAPPDATA", "")
-            if appdata:
-                return Path(appdata) / "Supervertaler" / "okapi-sidecar"
-        elif platform.system() == "Darwin":
-            return (Path.home() / "Library" / "Application Support" /
-                    "Supervertaler" / "okapi-sidecar")
-        else:
-            return (Path.home() / ".local" / "share" /
-                    "supervertaler" / "okapi-sidecar")
+        # Localize Large ships the sidecar inside the app folder and never
+        # downloads one, so there is no per-user sidecar folder.
         return None
 
     def download_install(self, progress_callback=None) -> bool:

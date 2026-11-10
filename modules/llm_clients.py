@@ -86,12 +86,6 @@ def _own_settings_paths() -> List[str]:
     paths = [
         os.path.join(root, "workbench", "settings", "settings.json"),
         os.path.join(root, "settings", "settings.json"),  # old layout
-        os.path.join(os.path.expanduser('~'), "Supervertaler", "workbench", "settings", "settings.json"),
-        os.path.join(os.path.expanduser('~'), "Supervertaler", "settings", "settings.json"),
-        os.path.join(script_dir, "user_data_private", "workbench", "settings", "settings.json"),
-        os.path.join(script_dir, "user_data_private", "settings", "settings.json"),
-        os.path.join(script_dir, "user_data", "workbench", "settings", "settings.json"),
-        os.path.join(script_dir, "user_data", "settings", "settings.json"),
     ]
     return list(dict.fromkeys(paths))
 
@@ -130,10 +124,6 @@ def _read_own_keys(settings_path: Optional[str] = None) -> Dict[str, str]:
     script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     legacy_paths = [
         os.path.join(api_key_store.data_root(), "api_keys.txt"),
-        os.path.join(os.path.expanduser('~'), "Supervertaler", "api_keys.txt"),
-        os.path.join(script_dir, "user_data_private", "api_keys.txt"),
-        os.path.join(script_dir, "user_data", "api_keys.txt"),
-        os.path.join(script_dir, "api_keys.txt"),
     ]
     keys: Dict[str, str] = {}
     for legacy_path in dict.fromkeys(legacy_paths):

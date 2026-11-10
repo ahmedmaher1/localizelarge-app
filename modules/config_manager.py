@@ -57,30 +57,21 @@ class ConfigManager:
     
     @staticmethod
     def _is_dev_mode() -> bool:
-        """Check if running in dev mode (looking for .supervertaler.local flag)."""
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        repo_root = os.path.dirname(script_dir)  # Go up one level from modules/
-        dev_flag_path = os.path.join(repo_root, ConfigManager.DEV_MODE_FLAG)
-        return os.path.exists(dev_flag_path)
-    
+        """Localize Large has no developer data folder."""
+        return False
+
     def _get_config_file_path(self) -> str:
-        """
-        Get the full path to the config file.
-        
-        Dev mode: No config file needed (uses user_data_private/)
-        User mode: ~/.supervertaler_config.json
-        """
-        if self.dev_mode:
-            return None  # Dev mode doesn't use config file
-        home = str(Path.home())
-        return os.path.join(home, ConfigManager.CONFIG_FILENAME)
-    
+        """The file that remembers the last folder used in file dialogs."""
+        from localizelarge import paths
+        paths.ensure_roots()
+        return str(paths.settings_dir() / "file-dialogs.json")
+
     @staticmethod
     def _get_default_user_data_path() -> str:
-        """Get the default suggested user_data path."""
-        home = str(Path.home())
-        return os.path.join(home, ConfigManager.DEFAULT_USER_DATA_FOLDER)
-    
+        """The settings root (localizelarge.paths owns it)."""
+        from localizelarge import paths
+        return str(paths.settings_root())
+
     def _load_config(self) -> dict:
         """Load configuration from file. Return empty dict if file doesn't exist."""
         # Dev mode doesn't use config file

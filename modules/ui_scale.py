@@ -58,32 +58,10 @@ def scaled_pt(base_pt: float) -> float:
 # ── Internals ──────────────────────────────────────────────────────────────
 
 
-def _config_pointer_path() -> Path:
-    """Mirror Supervertaler.get_config_pointer_path() without importing the main module."""
-    if sys.platform == "win32":
-        appdata = os.environ.get("APPDATA")
-        if appdata:
-            return Path(appdata) / "Supervertaler" / "config.json"
-        return Path.home() / "AppData" / "Roaming" / "Supervertaler" / "config.json"
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Supervertaler" / "config.json"
-    xdg_config = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-    return Path(xdg_config) / "Supervertaler" / "config.json"
-
-
 def _user_data_path() -> Path:
-    """Mirror Supervertaler.get_user_data_path() with the lightest possible logic."""
-    pointer = _config_pointer_path()
-    if pointer.exists():
-        try:
-            with open(pointer, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            chosen = cfg.get("user_data_path")
-            if chosen and Path(chosen).exists():
-                return Path(chosen)
-        except (json.JSONDecodeError, OSError):
-            pass
-    return Path.home() / "Supervertaler"
+    """The settings root (localizelarge.paths owns it)."""
+    from localizelarge import paths
+    return paths.settings_root()
 
 
 def _read_scale_from_disk() -> int:

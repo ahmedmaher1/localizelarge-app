@@ -90,24 +90,15 @@ _NAMES = {
 # ─── Where the files are ─────────────────────────────────────────────────────
 
 def config_dir() -> str:
-    """Where config.json lives - the pointer every product reads to find the data root."""
-    if sys.platform == "win32":
-        return os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "Supervertaler")
-    if sys.platform == "darwin":
-        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Supervertaler")
-    return os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "Supervertaler")
+    """The settings root (localizelarge.paths owns it)."""
+    from localizelarge import paths
+    return str(paths.settings_root())
 
 
 def data_root() -> str:
-    """The shared data folder: what config.json points at, else ~/Supervertaler (core's rule)."""
-    try:
-        with open(os.path.join(config_dir(), "config.json"), "r", encoding="utf-8-sig") as f:
-            path = json.load(f).get("user_data_path")
-        if isinstance(path, str) and path.strip():
-            return path
-    except Exception:
-        pass
-    return os.path.join(os.path.expanduser("~"), "Supervertaler")
+    """The settings root. Localize Large keeps no pointer file and shares no
+    folder with any other product."""
+    return config_dir()
 
 
 def plain_file_path() -> str:
