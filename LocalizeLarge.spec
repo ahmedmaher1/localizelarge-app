@@ -34,6 +34,7 @@ datas += [
     ("translations", "translations"),
     ("modules/pricing.json", "modules"),
     ("localizelarge/data", "localizelarge/data"),
+    ("localizelarge/schemas", "localizelarge/schemas"),
     ("okapi-sidecar/dist/okapi-sidecar.jar", "okapi-sidecar"),
 ]
 

@@ -42,6 +42,9 @@ NEVER_FETCHED = {
     # XML namespaces and schema identifiers: names, not addresses that are opened.
     "schemas.openxmlformats.org": "XML namespace (Office Open XML)",
     "www.w3.org": "XML namespace (W3C)",
+    "themqm.org": "where the MQM typology and scoring models are published (credit and citation)",
+    "creativecommons.org": "the address of the CC BY 4.0 licence of the MQM typology",
+    "json-schema.org": "the name of the JSON Schema dialect in issues.schema.json; validated offline",
     "www.lisa.org": "XML namespace (SRX, TMX)",
     "sdl.com": "XML namespace (Trados SDLXLIFF)",
     # Links shown to the user and opened only in their own browser, on a click.

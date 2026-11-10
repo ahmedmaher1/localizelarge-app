@@ -23,6 +23,8 @@ Pass             : NPT ≤ APP. On the raw scale that is score ≥ 100 − APP �
                    on the calibrated scale it is score ≥ PT.
 
 The paper's non-linear model (for very small and very large samples) is not implemented.
+A score below 0, which the linear formulas give for many errors in a short text, is
+reported as 0; the penalty totals are reported as calculated.
 """
 from __future__ import annotations
 
@@ -173,8 +175,10 @@ def calculate(issues: Iterable[Any], evaluation_word_count: int,
 
     pwpt = apt / evaluation_word_count
     npt = pwpt * profile.reference_word_count
-    raw = 100.0 * (1.0 - pwpt)
-    calibrated = 100.0 - npt * profile.scaling_factor
+    # On a short text a few errors push the linear formulas below zero (the paper's
+    # non-linear model is its answer to that). A score is shown as 0 at the lowest.
+    raw = max(0.0, 100.0 * (1.0 - pwpt))
+    calibrated = max(0.0, 100.0 - npt * profile.scaling_factor)
     value = raw if profile.model == RAW else calibrated
     # The same test on either scale: the normed penalty is within the tolerance.
     passed = npt <= profile.acceptable_penalty_points + 1e-9

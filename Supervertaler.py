@@ -152,6 +152,7 @@ def get_resource_path(relative_path: str) -> Path:
 from localizelarge import paths as _ll_paths  # the one owner of every data path
 from localizelarge import project_format as _ll_project_format
 from localizelarge import rtl as _ll_rtl  # right-to-left editors
+from localizelarge.quality.ui import window_hooks as _ll_quality_ui  # QA, MQM issues, Quality panel
 
 
 def _ll_default_model(provider: str) -> str:
@@ -4356,6 +4357,7 @@ class ReadOnlyGridTextEditor(_ll_rtl.DirectionMixin, QTextEdit):
         add_to_nt_action.triggered.connect(self._handle_add_to_nt)
         menu.addAction(add_to_nt_action)
 
+        _ll_quality_ui.add_context_action(self, menu)   # "Add issue…"
         menu.exec(event.globalPos())
 
     def _handle_add_to_nt(self):
@@ -5508,6 +5510,7 @@ class EditableGridTextEditor(_ll_rtl.DirectionMixin, QTextEdit):
         add_to_nt_action.triggered.connect(self._handle_add_to_nt)
         menu.addAction(add_to_nt_action)
 
+        _ll_quality_ui.add_context_action(self, menu)   # "Add issue…"
         menu.exec(event.globalPos())
 
     def _get_misspelled_word_at_cursor(self, cursor):
@@ -11477,6 +11480,8 @@ class SupervertalerQt(QMainWindow):
         languagetool_action.triggered.connect(self.show_languagetool_dialog)
         self.qa_menu.addAction(languagetool_action)
 
+        # Run QA, Add issue, the Quality panel and the quality report (localizelarge/quality)
+        _ll_quality_ui.install(self, __version__)
         proofreading_submenu = self.qa_menu.addMenu(self.tr("✅ &Proofreading"))
 
         proofread_action = QAction(self.tr("✅ &Proofread Translation..."), self)
@@ -41627,6 +41632,9 @@ class SupervertalerQt(QMainWindow):
             # after all pending events are processed.
             QTimer.singleShot(0, self._resize_visible_rows)
 
+            # Underlines and status markers for quality issues
+            _ll_quality_ui.grid_loaded(self)
+
     # =========================================================================
     # COMPARE PANEL TAB
     # =========================================================================
@@ -43791,6 +43799,7 @@ class SupervertalerQt(QMainWindow):
                 layout.addWidget(lock_lbl)
             if indicator_bg:
                 widget.setStyleSheet(f"background: {indicator_bg};")
+            _ll_quality_ui.add_status_marker(self, layout, segment)
             layout.addStretch(1)
             return widget
 
@@ -43851,6 +43860,7 @@ class SupervertalerQt(QMainWindow):
             short_lbl.installEventFilter(self)
             layout.addWidget(short_lbl)
 
+        _ll_quality_ui.add_status_marker(self, layout, segment)   # quality issues: "M2", "C1?" …
         layout.addStretch(1)
 
         return widget
@@ -56363,6 +56373,7 @@ class SupervertalerQt(QMainWindow):
             self._sync_grid_targets_to_segments([segment])
 
         segment.status = 'confirmed'
+        _ll_quality_ui.segment_confirmed(self, segment)   # QA and glossary checks on this segment
 
         # Record undo state for Ctrl+Enter confirmation
         self.record_undo_state(segment_id, old_target, segment.target, old_status, 'confirmed')
@@ -56537,6 +56548,7 @@ class SupervertalerQt(QMainWindow):
             
             old_status = segment.status
             segment.status = 'confirmed'
+            _ll_quality_ui.segment_confirmed(self, segment)
             confirmed_count += 1
             
             # Update grid status icon

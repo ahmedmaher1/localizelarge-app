@@ -173,3 +173,10 @@ def test_totals_per_category_and_severity():
     assert [(t.category, t.penalty) for t in result.by_category] == [
         ("accuracy/omission", 7.0), ("terminology/wrong-term", 25.0)]
     assert result.by_severity == {"neutral": 0, "minor": 2, "major": 1, "critical": 1}
+
+
+def test_a_score_is_never_below_zero():
+    """Not from the paper: on a very short text the linear formulas go below zero."""
+    result = calculate(issues(critical=2), 10, ScoringProfile())
+    assert result.normed_penalty_total == 5000 and result.absolute_penalty_total == 50
+    assert result.raw_score == 0.0 and result.calibrated_score == 0.0 and result.passed is False
