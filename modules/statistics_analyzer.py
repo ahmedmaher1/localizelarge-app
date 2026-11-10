@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import re
 import sqlite3
-from difflib import SequenceMatcher
+from localizelarge.tm.score import similarity as _ll_similarity
 from typing import Dict, List, Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -288,12 +288,9 @@ def _fuzzy_best_similarity(
         if cand_len == 0:
             continue
         # Cheap length-ratio gate: a match can't exceed this similarity.
-        if min(src_len, cand_len) / max(src_len, cand_len) < threshold:
+        if min(src_len, cand_len) / max(src_len, cand_len) < threshold * 0.8:
             continue
-        sm = SequenceMatcher(None, src_norm, cand)
-        if sm.quick_ratio() <= best:
-            continue
-        ratio = sm.ratio()
+        ratio = _ll_similarity(source, row["source_text"])
         if ratio > best:
             best = ratio
             if best >= 0.999:

@@ -10,7 +10,6 @@ Inspired by CafeTran's "Total Recall" feature.
 
 import sqlite3
 import threading
-from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Callable
 import re
 
@@ -307,10 +306,8 @@ class ProjectTM:
 
     def _calculate_similarity(self, text1: str, text2: str) -> float:
         """Calculate similarity ratio between two texts"""
-        # Strip HTML/XML tags for comparison
-        clean1 = re.sub(r'<[^>]+>', '', text1).lower()
-        clean2 = re.sub(r'<[^>]+>', '', text2).lower()
-        return SequenceMatcher(None, clean1, clean2).ratio()
+        from localizelarge.tm.score import similarity
+        return similarity(text1, text2)
 
     def get_stats(self) -> Dict:
         """Get statistics about the ProjectTM"""

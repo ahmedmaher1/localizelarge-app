@@ -119,8 +119,9 @@ finally {
 $Roaming = (Get-ChildItem "$SmokeProfile\Roaming").Name -join ","
 $Local = (Get-ChildItem "$SmokeProfile\Local").Name -join ","
 Write-Host "Folders created in APPDATA: $Roaming ; in LOCALAPPDATA: $Local"
-# Windows itself creates "Microsoft" in a new LOCALAPPDATA for some system components.
-# It is listed so that a person can see what it holds; anything else stops the build.
+# In an empty LOCALAPPDATA, Windows adds an empty folder Microsoft\Windows\Caches when a
+# program with a window starts. It is listed so that a person can see what it holds;
+# any other folder, or a file inside it, stops the build.
 $Others = @(Get-ChildItem "$SmokeProfile\Roaming", "$SmokeProfile\Local" | Where-Object { $_.Name -ne "LocalizeLarge" })
 foreach ($other in $Others) {
     Write-Host "  not the app's own folder: $($other.FullName)"
@@ -128,7 +129,8 @@ foreach ($other in $Others) {
         Write-Host ("    {0}  {1}" -f $_.FullName.Substring($SmokeProfile.Length), $(if ($_.PSIsContainer) { "" } else { "$($_.Length) bytes" }))
     }
 }
-if ($Others | Where-Object { $_.Name -ne "Microsoft" -or $_.FullName -like "*\Roaming\*" }) {
+$FilesInOthers = @($Others | ForEach-Object { Get-ChildItem -Recurse -File $_.FullName })
+if ($FilesInOthers.Count -gt 0 -or ($Others | Where-Object { $_.Name -ne "Microsoft" -or $_.FullName -like "*\Roaming\*" })) {
     throw "The built app created unexpected folders"
 }
 $LogPath = "$SmokeProfile\Local\LocalizeLarge\logs\localizelarge.log"

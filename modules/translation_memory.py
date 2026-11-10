@@ -10,7 +10,6 @@ Migrated from in-memory dictionaries to SQLite for scalability.
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple
 from modules.database_manager import DatabaseManager
 
@@ -45,7 +44,8 @@ class TM:
     
     def calculate_similarity(self, text1: str, text2: str) -> float:
         """Calculate similarity ratio between two texts"""
-        return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
+        from localizelarge.tm.score import similarity
+        return similarity(text1, text2)
     
     def get_fuzzy_matches(self, source: str, max_matches: int = 5) -> List[Dict]:
         """Get fuzzy matches from this TM"""

@@ -48,7 +48,8 @@ TM_ENTRIES: List[Tuple[str, str]] = [
     ("Switch off the power supply before opening the control box.",
      "Schakel de voeding uit voordat u de regelkast opent."),
     ("Check the pressure gauge every month.", "Controleer de manometer elke maand."),
-    ("If the pump vibrates, stop it immediately.", "Als de pomp trilt, stop deze dan onmiddellijk."),
+    ("If the pump makes a loud noise, stop it immediately.",
+     "Als de pomp veel lawaai maakt, stop deze dan onmiddellijk."),
     ("The maximum operating pressure is 10 bar.", "De maximale bedrijfsdruk is 10 bar."),
     ("Clean the filter every 250 operating hours.", "Reinig het filter elke 250 bedrijfsuren."),
 ]

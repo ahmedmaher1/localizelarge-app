@@ -61,6 +61,11 @@ checks the deletion.
 
 ### What it never writes
 
+In a Windows account folder that is completely empty, Windows itself adds an empty folder
+`%LOCALAPPDATA%\Microsoft\Windows\Caches` when the app starts (seen in the build's start-up
+test on Windows Server 2025). The app does not use it; on a normal computer it already
+exists.
+
 It never reads or writes a Supervertaler folder, and never writes API keys in clear text
 anywhere: not to settings, logs, project files or exports. Tests check the folders and the
 places keys are saved.

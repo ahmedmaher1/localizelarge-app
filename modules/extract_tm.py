@@ -13,7 +13,6 @@ import sqlite3
 import threading
 import os
 from pathlib import Path
-from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Callable, Tuple
 import re
 import time
@@ -399,9 +398,8 @@ class ExtractTM:
 
     def _calculate_similarity(self, text1: str, text2: str) -> float:
         """Calculate similarity between two texts"""
-        clean1 = re.sub(r'<[^>]+>', '', text1).lower()
-        clean2 = re.sub(r'<[^>]+>', '', text2).lower()
-        return SequenceMatcher(None, clean1, clean2).ratio()
+        from localizelarge.tm.score import similarity
+        return similarity(text1, text2)
 
     def export_to_tmx(self, output_path: str, progress_callback: Optional[Callable[[int, int], None]] = None) -> int:
         """

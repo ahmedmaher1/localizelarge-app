@@ -35,6 +35,16 @@ License). The history of that project is in its own repository.
 - Tags written as text in a file (`<b>` inside a JSON or YAML string) are kept on export.
 - XLIFF 1.2 export keeps `<g>` formatting tags in the target.
 
+### Translation memory
+
+- New fuzzy match scores (`localizelarge/tm/score.py`, using rapidfuzz). 100% means the
+  same text. A difference only in tags, numbers, upper/lower case or punctuation costs one
+  point each, so such matches show as 98 or 99%. Scores of other matches differ by a few
+  points from the base app's.
+- Fixed: in a large memory, fuzzy search looked at the least relevant candidates first and
+  could miss a near match completely.
+- A fuzzy lookup in a 100,000-unit memory takes about 0.12 s (see `docs/PERFORMANCE.md`).
+
 ### Security
 
 - The Okapi file-format service listens on `127.0.0.1` only, on a free port chosen at each

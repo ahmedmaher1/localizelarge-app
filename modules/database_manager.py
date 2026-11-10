@@ -23,7 +23,6 @@ import re
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
-from difflib import SequenceMatcher
 
 
 # ── CJK / space-less script helpers (for fuzzy-TM retrieval) ──────────────
@@ -1771,6 +1770,8 @@ class DatabaseManager:
             })
 
         # === PHASE B: For each source, find best match using pre-filters ===
+        from rapidfuzz import fuzz as _rf_fuzz
+        from localizelarge.tm.score import similarity as _ll_similarity
         results = {}
         total = len(sources)
 
@@ -1802,7 +1803,7 @@ class DatabaseManager:
 
                 # Pre-filter 1: Length ratio (very cheap)
                 len_ratio = min(source_len, cand_len) / max(source_len, cand_len)
-                if len_ratio < threshold:
+                if len_ratio < threshold * 0.8:
                     continue
 
                 # Pre-filter 2: Word overlap (cheap set intersection)
@@ -1814,13 +1815,15 @@ class DatabaseManager:
                     if max_words > 0 and overlap / max_words < threshold * 0.5:
                         continue
 
-                # Pre-filter 3: quick_ratio (O(n) upper bound)
-                sm = SequenceMatcher(None, source_clean, cand['clean'])
-                if sm.quick_ratio() <= best_similarity:
+                # Pre-filter 3: character similarity. The score is the mean
+                # of a word measure (at most 100) and this one, so it cannot
+                # be more than 50 + half of it.
+                quick = _rf_fuzz.ratio(source_clean, cand['clean'])
+                if 0.5 + quick / 200.0 <= best_similarity:
                     continue
 
-                # Full similarity (O(n²) but only for promising candidates)
-                similarity = sm.ratio()
+                # Full score, only for promising candidates
+                similarity = _ll_similarity(source, cand['source_text'])
 
                 if similarity >= threshold and similarity > best_similarity:
                     best_similarity = similarity
@@ -1846,24 +1849,15 @@ class DatabaseManager:
 
     def calculate_similarity(self, text1: str, text2: str) -> float:
         """
-        Calculate similarity ratio between two texts using SequenceMatcher.
-        Tags and line breaks are normalised before comparison so that segments
-        that differ only by an inline line break (e.g. a Trados <lb/> heading
-        prefix like "Door stops↵\n") still score well against the body text.
+        The fuzzy match score of two segments as a ratio (see
+        localizelarge/tm/score.py). 1.0 means identical; a difference in tags,
+        numbers, case or punctuation alone costs one point each. White space,
+        line breaks included, is collapsed before comparing.
 
         Returns: Similarity score from 0.0 to 1.0
         """
-        import re
-        # Strip HTML/XML tags for comparison
-        clean1 = re.sub(r'<[^>]+>', '', text1).lower()
-        clean2 = re.sub(r'<[^>]+>', '', text2).lower()
-        # Normalise line breaks and surrounding whitespace to a single space,
-        # matching the behaviour of _normalize_for_matching() used for exact match.
-        # This prevents segments that differ only by a heading line or an inline
-        # line break from scoring very low in fuzzy matching.
-        clean1 = re.sub(r'\s*\n\s*', ' ', clean1).strip()
-        clean2 = re.sub(r'\s*\n\s*', ' ', clean2).strip()
-        return SequenceMatcher(None, clean1, clean2).ratio()
+        from localizelarge.tm.score import similarity
+        return similarity(text1, text2)
 
     def search_fuzzy_matches(self, source: str, tm_ids: List[str] = None,
                             threshold: float = 0.75, max_results: int = 5,
@@ -1904,9 +1898,11 @@ class DatabaseManager:
         # Sort by length (longer words are usually more discriminating)
         all_search_terms.sort(key=len, reverse=True)
         
-        # Limit search terms to avoid overly complex queries (top 20 longest words)
-        # This helps find similar long segments more reliably
-        search_terms_for_query = all_search_terms[:20]
+        # Limit the search terms to the 10 longest words. More terms make the
+        # FTS5 query much slower on a large memory (every extra common word
+        # matches thousands of rows) without finding more near matches; see
+        # tools/bench_tm.py.
+        search_terms_for_query = all_search_terms[:10]
         
         if not search_terms_for_query:
             # If no valid terms, return empty results
@@ -1978,7 +1974,21 @@ class DatabaseManager:
         if fts_table not in ('translation_units_fts', 'translation_units_trigram'):
             fts_table = 'translation_units_fts'
 
-        # Build query for this TM
+        def lang_condition(column: str, variants: List[str], params: list) -> str:
+            parts = []
+            for variant in variants:
+                parts.append(f"{column} = ? COLLATE NOCASE")
+                params.append(variant)
+                parts.append(f"{column} LIKE ?")
+                params.append(f"{variant}-%")
+            return "(" + " OR ".join(parts) + ")"
+
+        def lang_matches(value: str, variants: List[str]) -> bool:
+            value = (value or "").lower()
+            return any(value == v.lower() or value.startswith(v.lower() + "-") for v in variants)
+
+        # One query for both directions: the FTS match is the same, only the
+        # language pair differs, and each row tells which direction it is.
         query = f"""
             SELECT tu.*,
                    bm25({fts_table}) as relevance
@@ -1987,120 +1997,69 @@ class DatabaseManager:
             WHERE {fts_table} MATCH ?
         """
         params = [fts_query]
-        
+
         if tm_ids and tm_ids[0] is not None:
             placeholders = ','.join('?' * len(tm_ids))
             query += f" AND tu.tm_id IN ({placeholders})"
             params.extend(tm_ids)
-        
-        # Use flexible language matching (matches 'nl', 'nl-NL', 'Dutch', etc.)
-        if src_base:
-            src_variants = get_lang_match_variants(source_lang)
-            src_conditions = []
-            for variant in src_variants:
-                src_conditions.append("tu.source_lang = ? COLLATE NOCASE")
-                params.append(variant)
-                src_conditions.append("tu.source_lang LIKE ?")
-                params.append(f"{variant}-%")
-            query += f" AND ({' OR '.join(src_conditions)})"
-        
-        if tgt_base:
-            tgt_variants = get_lang_match_variants(target_lang)
-            tgt_conditions = []
-            for variant in tgt_variants:
-                tgt_conditions.append("tu.target_lang = ? COLLATE NOCASE")
-                params.append(variant)
-                tgt_conditions.append("tu.target_lang LIKE ?")
-                params.append(f"{variant}-%")
-            query += f" AND ({' OR '.join(tgt_conditions)})"
-        
-        # Per-TM candidate limit - INCREASED to catch more potential fuzzy matches
-        # When multiple TMs are searched, BM25 ranking can push genuinely similar
-        # entries far down the list due to common word matches in other entries
-        candidate_limit = max(500, max_results * 50)
-        query += f" ORDER BY relevance DESC LIMIT {candidate_limit}"
-        
+
+        # Flexible language matching (matches 'nl', 'nl-NL', 'Dutch', etc.)
+        src_variants = get_lang_match_variants(source_lang) if src_base else []
+        tgt_variants = get_lang_match_variants(target_lang) if tgt_base else []
+        reverse_possible = bool(bidirectional and src_base and tgt_base)
+        forward = []
+        if src_variants:
+            forward.append(lang_condition("tu.source_lang", src_variants, params))
+        if tgt_variants:
+            forward.append(lang_condition("tu.target_lang", tgt_variants, params))
+        if forward and reverse_possible:
+            reverse = [lang_condition("tu.target_lang", src_variants, params),
+                       lang_condition("tu.source_lang", tgt_variants, params)]
+            query += f" AND (({' AND '.join(forward)}) OR ({' AND '.join(reverse)}))"
+        elif forward:
+            query += f" AND {' AND '.join(forward)}"
+
+        # Per-TM candidate limit. FTS5's bm25() is smaller for a better match,
+        # so the best candidates come first in ascending order. (The base
+        # sorted descending, which handed the scorer the worst candidates of a
+        # large memory.)
+        candidate_limit = max(300, max_results * 50)
+        query += f" ORDER BY relevance ASC LIMIT {candidate_limit}"
+
         try:
             self.cursor.execute(query, params)
             all_rows = self.cursor.fetchall()
-        except Exception as e:
+        except Exception:
             return []
-        
+
+        from localizelarge.tm.score import Scorer
+        scorer = Scorer(source)
+        cutoff = int(round(threshold * 100))
         results = []
-        
+
         for row in all_rows:
             match_dict = dict(row)
-            # Calculate actual similarity using SequenceMatcher
-            similarity = self.calculate_similarity(source, match_dict['source_text'])
-            
-            # Only include matches above threshold
-            if similarity >= threshold:
-                match_dict['similarity'] = similarity
-                match_dict['match_pct'] = int(similarity * 100)
-                results.append(match_dict)
-        
-        # If bidirectional, also search reverse direction
-        if bidirectional and src_base and tgt_base:
-            query = f"""
-                SELECT tu.*,
-                       bm25({fts_table}) as relevance
-                FROM translation_units tu
-                JOIN {fts_table} ON tu.id = {fts_table}.rowid
-                WHERE {fts_table} MATCH ?
-            """
-            params = [fts_query]
-            
-            if tm_ids and tm_ids[0] is not None:
-                placeholders = ','.join('?' * len(tm_ids))
-                query += f" AND tu.tm_id IN ({placeholders})"
-                params.extend(tm_ids)
-            
-            # Reversed language filters with flexible matching
-            src_variants = get_lang_match_variants(source_lang)
-            tgt_variants = get_lang_match_variants(target_lang)
-            
-            # TM target_lang = our source_lang
-            tgt_conditions = []
-            for variant in src_variants:
-                tgt_conditions.append("tu.target_lang = ? COLLATE NOCASE")
-                params.append(variant)
-                tgt_conditions.append("tu.target_lang LIKE ?")
-                params.append(f"{variant}-%")
-            query += f" AND ({' OR '.join(tgt_conditions)})"
-            
-            # TM source_lang = our target_lang  
-            src_conditions = []
-            for variant in tgt_variants:
-                src_conditions.append("tu.source_lang = ? COLLATE NOCASE")
-                params.append(variant)
-                src_conditions.append("tu.source_lang LIKE ?")
-                params.append(f"{variant}-%")
-            query += f" AND ({' OR '.join(src_conditions)})"
-            
-            query += f" ORDER BY relevance DESC LIMIT {max_results * 5}"
-            
-            try:
-                self.cursor.execute(query, params)
-                
-                for row in self.cursor.fetchall():
-                    match_dict = dict(row)
-                    # Calculate similarity against target_text (since we're reversing)
-                    similarity = self.calculate_similarity(source, match_dict['target_text'])
-                    
-                    # Only include matches above threshold
-                    if similarity >= threshold:
-                        # Swap source/target for reverse match
-                        match_dict['source_text'], match_dict['target_text'] = match_dict['target_text'], match_dict['source_text']
-                        match_dict['source_lang'], match_dict['target_lang'] = match_dict['target_lang'], match_dict['source_lang']
-                        match_dict['similarity'] = similarity
-                        match_dict['match_pct'] = int(similarity * 100)
-                        match_dict['reverse_match'] = True
-                        results.append(match_dict)
-            except Exception as e:
-                print(f"[DEBUG] _search_single_tm_fuzzy (reverse): SQL ERROR: {e}")
-        
+            is_forward = (not src_variants or lang_matches(match_dict.get('source_lang'), src_variants)) and \
+                         (not tgt_variants or lang_matches(match_dict.get('target_lang'), tgt_variants))
+            if is_forward:
+                value = scorer.score(match_dict['source_text'], cutoff)
+                if value >= cutoff:
+                    match_dict['similarity'] = value / 100.0
+                    match_dict['match_pct'] = value
+                    results.append(match_dict)
+            elif reverse_possible:
+                # Our source is this unit's target: score against it and swap.
+                value = scorer.score(match_dict['target_text'], cutoff)
+                if value >= cutoff:
+                    match_dict['source_text'], match_dict['target_text'] = match_dict['target_text'], match_dict['source_text']
+                    match_dict['source_lang'], match_dict['target_lang'] = match_dict['target_lang'], match_dict['source_lang']
+                    match_dict['similarity'] = value / 100.0
+                    match_dict['match_pct'] = value
+                    match_dict['reverse_match'] = True
+                    results.append(match_dict)
+
         return results
-    
+
     def search_all(self, source: str, tm_ids: List[str] = None, enabled_only: bool = True,
                    threshold: float = 0.75, max_results: int = 10) -> List[Dict]:
         """
