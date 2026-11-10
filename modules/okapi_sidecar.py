@@ -56,34 +56,39 @@ class OkapiSidecar:
     machine – nothing is sent over the internet.
     """
 
-    DEFAULT_PORT = 8090
     STARTUP_TIMEOUT = 20  # seconds
     SHUTDOWN_TIMEOUT = 5  # seconds
 
-    # Sidecar version this client expects to talk to. If a sidecar from
-    # a previous session is still running on the port with a different
-    # version, start() will ask it to shut down and spawn a fresh one.
-    # Bump this whenever the sidecar JAR is rebuilt with meaningful
-    # changes (keep it in sync with pom.xml / App.java).
-    EXPECTED_VERSION = "0.1.9"
+    # Sidecar version this client expects to talk to (keep it in sync with
+    # pom.xml and App.java).
+    EXPECTED_VERSION = "0.2.0"
 
-    def __init__(self, port: int = DEFAULT_PORT,
+    # The sidecar answers only on the loopback address, on a free port chosen
+    # for each session, and only to requests that carry this session's token.
+    HOST = "127.0.0.1"
+    TOKEN_HEADER = "X-LL-Token"
+    TOKEN_ENV = "LL_SIDECAR_TOKEN"
+
+    def __init__(self, port: Optional[int] = None,
                  sidecar_dir: Optional[str] = None):
         """
         Args:
-            port:        TCP port for the sidecar (default 8090).
+            port:        TCP port for the sidecar. None (the default) picks a
+                         free port each time the sidecar starts.
             sidecar_dir: Path to the directory containing the sidecar JAR
                          and bundled JRE.  If None, auto-detected relative
                          to the Localize Large installation.
         """
-        self.port = port
-        self.base_url = f"http://127.0.0.1:{port}"
+        self._fixed_port = port
+        self.port = port or 0
+        self.base_url = f"http://{self.HOST}:{self.port}"
+        self._token = ""
         self._process: Optional[subprocess.Popen] = None
         self._started_by_us = False
         # Set by start(): True when the JAR that came up reports a version other
-        # than EXPECTED_VERSION. Used by the app to decide whether to refresh a
-        # lazy-downloaded JAR (see needs_update()).
+        # than EXPECTED_VERSION (the JAR needs rebuilding).
         self.version_mismatch = False
+        self._http = self._new_session("")
 
         # Locate the sidecar directory
         if sidecar_dir:
@@ -91,52 +96,48 @@ class OkapiSidecar:
         else:
             self.sidecar_dir = self._find_sidecar_dir()
 
+    @classmethod
+    def _new_session(cls, token: str):
+        """An HTTP session that sends the token and never uses a proxy: the
+        sidecar is on this computer, so a system proxy must not see the files."""
+        if requests is None:
+            return None
+        session = requests.Session()
+        session.trust_env = False
+        if token:
+            session.headers[cls.TOKEN_HEADER] = token
+        return session
+
+    @classmethod
+    def _free_port(cls) -> int:
+        """A TCP port that is free on the loopback address right now."""
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((cls.HOST, 0))
+            return sock.getsockname()[1]
+
     # ═══════════════════════════════════════════════════════════════
     #  Lifecycle
     # ═══════════════════════════════════════════════════════════════
 
     def start(self) -> bool:
         """Start the sidecar process.  Returns True if started (or
-        already running), False if the sidecar is not available."""
+        already running), False if the sidecar is not available.
+
+        Each start uses a new free port and a new random token. A sidecar
+        started by another program or another session is never reused and
+        never stopped.
+        """
 
         if requests is None:
             logger.error("'requests' package not installed – "
                          "cannot communicate with Okapi sidecar")
             return False
 
-        # Check if already running (e.g. started by a previous session)
         if self.is_running():
-            running_version = self.get_version()
-            if running_version == self.EXPECTED_VERSION:
-                logger.info(
-                    "Okapi sidecar v%s already running on port %d – reusing",
-                    running_version, self.port,
-                )
-                return True
-
-            # Version mismatch – almost certainly a stale sidecar from
-            # before a JAR rebuild. Ask it to exit and spawn a fresh one
-            # so the new bytecode actually takes effect.
-            logger.info(
-                "Sidecar version mismatch on port %d (running=%s, expected=%s)"
-                " – restarting", self.port,
-                running_version or "unknown", self.EXPECTED_VERSION,
-            )
-            self._stop_foreign_sidecar()
-
-            # If we couldn't free the port, fall back to using whatever's
-            # there. We deliberately don't loop – if the JAR on disk also
-            # reports the wrong version (e.g. rebuild not run yet), this
-            # avoids thrashing kill/respawn forever.
-            if self.is_running():
-                logger.warning(
-                    "Couldn't restart stale sidecar on port %d – continuing"
-                    " with the existing process. Rebuild the sidecar JAR"
-                    " (cd okapi-sidecar && bash build.sh) if you expected"
-                    " new behaviour.", self.port,
-                )
-                return True
-            # Otherwise fall through to the spawn block.
+            return True
+        if self._process is not None:
+            self.stop()
 
         # Find the JAR
         jar_path = self.sidecar_dir / "okapi-sidecar.jar"
@@ -150,20 +151,33 @@ class OkapiSidecar:
             logger.warning("Java runtime not found – Okapi sidecar unavailable")
             return False
 
-        # Launch the process
+        import secrets
+        self.port = self._fixed_port or self._free_port()
+        self.base_url = f"http://{self.HOST}:{self.port}"
+        self._token = secrets.token_urlsafe(32)
+        self._http = self._new_session(self._token)
+
+        # Launch the process. The token travels in the environment of the
+        # child only; it is never written to a file, a log or the command line.
         cmd = [
             str(java_path),
             "-jar", str(jar_path),
             f"--port={self.port}"
         ]
         logger.info("Starting Okapi sidecar: %s", " ".join(cmd))
+        child_env = dict(os.environ)
+        child_env[self.TOKEN_ENV] = self._token
 
         try:
             self._process = subprocess.Popen(
                 cmd,
+                # The sidecar exits when this pipe closes, so it cannot
+                # outlive the app even if the app is killed.
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=str(self.sidecar_dir),
+                env=child_env,
                 # Don't let the child inherit our console on Windows
                 creationflags=(subprocess.CREATE_NO_WINDOW
                                if platform.system() == "Windows" else 0),
@@ -192,8 +206,8 @@ class OkapiSidecar:
             self.stop()
             return False
 
-        logger.info("Okapi sidecar started on port %d (PID %d)",
-                     self.port, self._process.pid)
+        logger.info("Okapi sidecar started on %s:%d (PID %d)",
+                     self.HOST, self.port, self._process.pid)
 
         # Sanity check: confirm the freshly spawned sidecar matches the
         # version this Python client expects. If not, the JAR on disk is
@@ -203,7 +217,7 @@ class OkapiSidecar:
         if self.version_mismatch:
             logger.warning(
                 "Sidecar JAR reports v%s but client expects v%s – rebuild"
-                " required (cd okapi-sidecar && bash build.sh)",
+                " required (run okapi-sidecar/build.sh or build.ps1)",
                 actual_version, self.EXPECTED_VERSION,
             )
         return True
@@ -212,6 +226,11 @@ class OkapiSidecar:
         """Stop the sidecar process if we started it."""
         if self._process and self._started_by_us:
             logger.info("Stopping Okapi sidecar (PID %d)", self._process.pid)
+            try:
+                if self._process.stdin is not None:
+                    self._process.stdin.close()
+            except Exception:
+                pass
             self._process.terminate()
             try:
                 self._process.wait(timeout=self.SHUTDOWN_TIMEOUT)
@@ -221,6 +240,8 @@ class OkapiSidecar:
                 self._process.wait(timeout=2)
             self._process = None
             self._started_by_us = False
+            self._token = ""
+            self._http = self._new_session("")
 
     @staticmethod
     def _drain_pipe(pipe):
@@ -228,7 +249,7 @@ class OkapiSidecar:
 
         Runs on a daemon thread for the lifetime of the subprocess.
         Each line is forwarded through the stdlib ``logging`` module so
-        it lands in supervertaler.log via the diagnostic-log tee.
+        it lands in the diagnostic log.
         """
         try:
             for raw in iter(pipe.readline, b""):
@@ -249,119 +270,29 @@ class OkapiSidecar:
                 pass
 
     def is_running(self) -> bool:
-        """Check if the sidecar is responding on its health endpoint."""
-        if requests is None:
+        """True when the sidecar this client started is alive and answering."""
+        if requests is None or self._process is None:
+            return False
+        if self._process.poll() is not None:
             return False
         try:
-            resp = requests.get(f"{self.base_url}/health", timeout=2)
+            resp = self._http.get(f"{self.base_url}/health", timeout=2)
             return resp.status_code == 200
         except (requests.ConnectionError, requests.Timeout):
             return False
 
     def get_version(self) -> Optional[str]:
         """Return the sidecar version string, or None if not running."""
+        if self._process is None:
+            return None
         try:
-            resp = requests.get(f"{self.base_url}/health", timeout=2)
+            resp = self._http.get(f"{self.base_url}/health", timeout=2)
             if resp.status_code == 200:
                 return resp.json().get("version")
         except Exception:
             pass
         return None
 
-    # ═══════════════════════════════════════════════════════════════
-    #  Stale-sidecar handling
-    # ═══════════════════════════════════════════════════════════════
-
-    def _stop_foreign_sidecar(self) -> None:
-        """Stop a sidecar we did not spawn (typically a stale JVM left
-        running from a previous Localize Large session, holding the port
-        with an outdated JAR loaded into memory).
-
-        Tries the polite POST /shutdown endpoint first; falls back to
-        finding and killing whatever process is listening on the port.
-        Returns once the port is free or after a few seconds of waiting.
-        """
-        # 1) Try polite shutdown (only present on sidecars >= 0.1.1).
-        try:
-            requests.post(f"{self.base_url}/shutdown", timeout=2)
-        except Exception:
-            pass
-
-        # 2) Wait for the port to free up.
-        deadline = time.monotonic() + 5.0
-        while time.monotonic() < deadline:
-            if not self.is_running():
-                logger.info("Stale sidecar exited cleanly")
-                return
-            time.sleep(0.1)
-
-        # 3) Force-kill the process holding the port (older sidecars
-        #    that don't have /shutdown end up here).
-        pid = self._find_port_pid(self.port)
-        if pid is None:
-            logger.warning(
-                "Couldn't identify the process holding port %d – "
-                "the new sidecar may fail to start", self.port,
-            )
-            return
-
-        logger.info("Killing stale sidecar process (PID %d)", pid)
-        try:
-            if platform.system() == "Windows":
-                subprocess.run(
-                    ["taskkill", "/F", "/PID", str(pid)],
-                    capture_output=True, timeout=5,
-                )
-            else:
-                import signal
-                os.kill(pid, signal.SIGKILL)
-        except Exception as e:
-            logger.warning("Failed to kill PID %d: %s", pid, e)
-            return
-
-        # Give the OS a moment to release the socket.
-        deadline = time.monotonic() + 3.0
-        while time.monotonic() < deadline:
-            if not self.is_running():
-                return
-            time.sleep(0.1)
-
-    @staticmethod
-    def _find_port_pid(port: int) -> Optional[int]:
-        """Return the PID of the process listening on TCP `port`, or None."""
-        try:
-            if platform.system() == "Windows":
-                # netstat -ano lists local addr, foreign addr, state, PID.
-                # Look for LISTENING rows on our port.
-                out = subprocess.run(
-                    ["netstat", "-ano", "-p", "TCP"],
-                    capture_output=True, text=True, timeout=5,
-                ).stdout
-                needle = f":{port}"
-                for line in out.splitlines():
-                    if needle not in line or "LISTENING" not in line:
-                        continue
-                    parts = line.split()
-                    # The local-address column ends in ":<port>" – verify
-                    # we matched on local, not foreign or just a substring.
-                    if not any(p.endswith(needle) for p in parts):
-                        continue
-                    try:
-                        return int(parts[-1])
-                    except ValueError:
-                        continue
-            else:
-                out = subprocess.run(
-                    ["lsof", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
-                    capture_output=True, text=True, timeout=5,
-                ).stdout.strip()
-                if out:
-                    return int(out.splitlines()[0])
-        except Exception as e:
-            logger.debug("Port-PID lookup failed: %s", e)
-        return None
-
-    # Context manager support
     def __enter__(self):
         self.start()
         return self
@@ -410,7 +341,7 @@ class OkapiSidecar:
             data['options'] = json.dumps(options)
 
         with open(file_path, 'rb') as f:
-            resp = requests.post(
+            resp = self._http.post(
                 f"{self.base_url}/extract",
                 files={'file': (file_path.name, f)},
                 data=data,
@@ -473,7 +404,7 @@ class OkapiSidecar:
             data['options'] = json.dumps(options)
 
         with open(original, 'rb') as f:
-            resp = requests.post(
+            resp = self._http.post(
                 f"{self.base_url}/merge",
                 files={'original': (original.name, f)},
                 data=data,
@@ -507,7 +438,7 @@ class OkapiSidecar:
             raise FileNotFoundError(f"TMX file not found: {tmx_path}")
 
         with open(tmx_path, 'rb') as f:
-            resp = requests.post(
+            resp = self._http.post(
                 f"{self.base_url}/tmx/read",
                 files={'file': (tmx_path.name, f)},
                 timeout=120,
@@ -529,7 +460,7 @@ class OkapiSidecar:
             raise FileNotFoundError(f"TMX file not found: {tmx_path}")
 
         with open(tmx_path, 'rb') as f:
-            resp = requests.post(
+            resp = self._http.post(
                 f"{self.base_url}/tmx/validate",
                 files={'file': (tmx_path.name, f)},
                 timeout=60,
@@ -552,7 +483,7 @@ class OkapiSidecar:
         Returns:
             List of sentence-level segments.
         """
-        resp = requests.post(
+        resp = self._http.post(
             f"{self.base_url}/segment",
             json={'text': text, 'language': language},
             timeout=30,
@@ -566,7 +497,7 @@ class OkapiSidecar:
 
     def get_supported_filters(self) -> List[Dict[str, str]]:
         """Return list of supported file format dicts."""
-        resp = requests.get(f"{self.base_url}/filters", timeout=5)
+        resp = self._http.get(f"{self.base_url}/filters", timeout=5)
         return self._handle_response(resp)
 
     # ═══════════════════════════════════════════════════════════════
@@ -598,7 +529,7 @@ class OkapiSidecar:
                              self._process.returncode)
                 return False
             try:
-                resp = requests.get(f"{self.base_url}/health", timeout=1)
+                resp = self._http.get(f"{self.base_url}/health", timeout=1)
                 if resp.status_code == 200:
                     return True
             except (requests.ConnectionError, requests.Timeout):

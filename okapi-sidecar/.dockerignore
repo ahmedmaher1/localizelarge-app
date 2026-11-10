@@ -1,9 +1,0 @@
-target/
-.idea/
-*.iml
-.vscode/
-.git/
-.gitignore
-*.md
-build.sh
-build.ps1

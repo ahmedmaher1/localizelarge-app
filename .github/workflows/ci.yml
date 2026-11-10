@@ -1,0 +1,53 @@
+name: Tests (Windows)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Install Python packages
+        run: python -m pip install -r requirements.txt pytest pytest-qt pytest-timeout
+
+      - name: pip check
+        run: python -m pip check
+
+      - name: Build the Okapi sidecar
+        shell: pwsh
+        run: ./okapi-sidecar/build.ps1
+
+      - name: Run the tests on a throwaway profile
+        shell: pwsh
+        run: |
+          $profile = Join-Path $env:RUNNER_TEMP "ll-profile"
+          New-Item -ItemType Directory -Force -Path "$profile\Roaming", "$profile\Local" | Out-Null
+          $env:APPDATA = "$profile\Roaming"
+          $env:LOCALAPPDATA = "$profile\Local"
+          python -m pytest tests/ -q --timeout=300 --continue-on-collection-errors -p no:cacheprovider -rs

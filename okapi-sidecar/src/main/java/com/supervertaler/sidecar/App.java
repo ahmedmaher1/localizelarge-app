@@ -12,7 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.security.MessageDigest;
 import java.util.*;
 
 /**
@@ -28,6 +30,16 @@ import java.util.*;
  *   POST /tmx/validate     → upload TMX, get validation report
  *   POST /segment          → send text + SRX rules, get segmented result
  *   POST /shutdown         → request graceful shutdown of the sidecar
+ *
+ * Security (Localize Large):
+ *   - listens on the loopback address 127.0.0.1 only;
+ *   - every request except GET /health must carry the session token in the
+ *     X-LL-Token header; the token comes from the LL_SIDECAR_TOKEN environment
+ *     variable set by the app, and the sidecar refuses to start without it;
+ *   - no CORS: a web page in a browser cannot call it;
+ *   - uploads are limited in size, saved under a per-request temporary folder
+ *     with a sanitised file name, and deleted when the request ends;
+ *   - it exits when its standard input closes, so it never outlives the app.
  */
 public class App {
 
@@ -37,8 +49,45 @@ public class App {
 
     private static FilterService filterService;
 
+    static final String VERSION = "0.2.0";
+    static final String BIND_HOST = "127.0.0.1";
+    static final String TOKEN_HEADER = "X-LL-Token";
+    static final String TOKEN_ENV = "LL_SIDECAR_TOKEN";
+    static final int MIN_TOKEN_LENGTH = 32;
+    static final int MAX_UPLOAD_MB = 100;
+
+    /** Constant-time comparison, so the token cannot be guessed by timing. */
+    static boolean tokenMatches(String expected, String given) {
+        if (expected == null || given == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                given.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * The last path element of an uploaded file name, so a name such as
+     * "..\\..\\evil.docx" cannot place the file outside the temporary folder.
+     */
+    static String safeFileName(String name) {
+        if (name == null) {
+            return "upload";
+        }
+        String base = name.replace('\\', '/');
+        int slash = base.lastIndexOf('/');
+        if (slash >= 0) {
+            base = base.substring(slash + 1);
+        }
+        base = base.replace("\0", "").trim();
+        if (base.isEmpty() || base.equals(".") || base.equals("..")) {
+            return "upload";
+        }
+        return base;
+    }
+
     public static void main(String[] args) {
-        int port = 8090;
+        int port = -1;
 
         // Parse command-line args
         for (String arg : args) {
@@ -47,19 +96,47 @@ public class App {
             }
         }
 
+        if (port < 1 || port > 65535) {
+            log.error("A port is required: --port=<number>");
+            System.exit(2);
+            return;
+        }
+        final String token = System.getenv(TOKEN_ENV);
+        if (token == null || token.length() < MIN_TOKEN_LENGTH) {
+            log.error("{} is not set (or is too short); refusing to start", TOKEN_ENV);
+            System.exit(2);
+            return;
+        }
+
+        // Exit when the app that started us goes away: it holds the other
+        // end of our standard input and never writes to it.
+        Thread watchdog = new Thread(() -> {
+            try {
+                while (System.in.read() != -1) {
+                    // ignore anything sent
+                }
+            } catch (IOException ignored) {
+                // treated as end of input
+            }
+            log.info("Standard input closed – the app is gone, exiting");
+            System.exit(0);
+        }, "parent-watchdog");
+        watchdog.setDaemon(true);
+        watchdog.start();
+
         filterService = new FilterService();
 
         Javalin app = Javalin.create(config -> {
-            // Allow large file uploads (100 MB)
-            config.jetty.multipartConfig.maxFileSize(100, SizeUnit.MB);
-            config.jetty.multipartConfig.maxTotalRequestSize(100, SizeUnit.MB);
+            // Upload size limit
+            config.jetty.multipartConfig.maxFileSize(MAX_UPLOAD_MB, SizeUnit.MB);
+            config.jetty.multipartConfig.maxTotalRequestSize(MAX_UPLOAD_MB, SizeUnit.MB);
 
             // Raise Jetty's form-content limit. The default is 200 KB,
             // which is too small for /merge requests on large projects
             // (the 'translations' field is JSON containing every segment –
             // a 2500-segment project easily exceeds 200 KB and merge fails
             // with "Form is larger than max length 200000").
-            final int MAX_FORM_BYTES = 100 * 1024 * 1024; // 100 MB
+            final int MAX_FORM_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
             final int MAX_FORM_KEYS  = 10_000;
             config.jetty.modifyServletContextHandler(handler -> {
                 handler.setMaxFormContentSize(MAX_FORM_BYTES);
@@ -73,21 +150,24 @@ public class App {
                         "org.eclipse.jetty.server.Request.maxFormKeys",
                         MAX_FORM_KEYS);
             });
+        });
 
-            // CORS for local development — only localhost origins
-            config.bundledPlugins.enableCors(cors -> {
-                cors.addRule(rule -> {
-                    rule.allowHost("http://localhost", "http://127.0.0.1");
-                });
-            });
+        // ── Token check on everything except the health check ────
+        app.before(ctx -> {
+            if ("/health".equals(ctx.path())) {
+                return;
+            }
+            if (!tokenMatches(token, ctx.header(TOKEN_HEADER))) {
+                throw new io.javalin.http.UnauthorizedResponse("Missing or wrong " + TOKEN_HEADER);
+            }
         });
 
         // ── Health check ─────────────────────────────────────────
         app.get("/health", ctx -> {
             Map<String, Object> health = new LinkedHashMap<>();
             health.put("status", "ok");
-            health.put("service", "supervertaler-okapi-sidecar");
-            health.put("version", "0.1.9");
+            health.put("service", "localizelarge-okapi-sidecar");
+            health.put("version", VERSION);
             health.put("okapi_version", filterService.getOkapiVersion());
             ctx.json(health);
         });
@@ -139,8 +219,8 @@ public class App {
             ctx.status(500).json(error);
         });
 
-        app.start(port);
-        log.info("Localize Large Okapi Sidecar started on port {}", port);
+        app.start(BIND_HOST, port);
+        log.info("Localize Large Okapi Sidecar started on {}:{}", BIND_HOST, port);
     }
 
     /**
@@ -187,7 +267,7 @@ public class App {
 
         // Save uploaded file to temp directory
         Path tempDir = Files.createTempDirectory("okapi-extract-");
-        Path tempFile = tempDir.resolve(file.filename());
+        Path tempFile = tempDir.resolve(safeFileName(file.filename()));
         try (InputStream is = file.content()) {
             Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
         }
@@ -234,7 +314,7 @@ public class App {
 
         // Save original to temp
         Path tempDir = Files.createTempDirectory("okapi-merge-");
-        Path tempFile = tempDir.resolve(originalFile.filename());
+        Path tempFile = tempDir.resolve(safeFileName(originalFile.filename()));
         try (InputStream is = originalFile.content()) {
             Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
         }
@@ -271,7 +351,7 @@ public class App {
         }
 
         Path tempDir = Files.createTempDirectory("okapi-tmx-");
-        Path tempFile = tempDir.resolve(file.filename());
+        Path tempFile = tempDir.resolve(safeFileName(file.filename()));
         try (InputStream is = file.content()) {
             Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
         }
@@ -296,7 +376,7 @@ public class App {
         }
 
         Path tempDir = Files.createTempDirectory("okapi-tmx-val-");
-        Path tempFile = tempDir.resolve(file.filename());
+        Path tempFile = tempDir.resolve(safeFileName(file.filename()));
         try (InputStream is = file.content()) {
             Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
         }

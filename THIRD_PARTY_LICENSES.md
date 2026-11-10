@@ -7,8 +7,8 @@ This file lists the software Localize Large depends on. Versions are the ones in
 the development environment on 2026-11-10; the release build pins its own versions and the
 SBOM shipped with each release is the exact list for that build.
 
-**Status: work in progress.** The list below matches `requirements.txt` after Phase 2. The
-Java libraries are upgraded in Phase 3.
+**Status: work in progress.** The lists below match `requirements.txt` and
+`okapi-sidecar/pom.xml`.
 
 ## Python packages
 
@@ -48,16 +48,17 @@ largest are brought in by `markitdown`:
 
 ## Java libraries (Okapi sidecar)
 
-Versions from `okapi-sidecar/pom.xml` at the base commit. They are upgraded in Phase 3, and
-this table is updated in the same commit.
+Versions from `okapi-sidecar/pom.xml`.
 
 | Library | Version | License |
 |---|---|---|
-| Okapi Framework | 1.47.0 | Apache-2.0 |
-| Javalin | 6.4.0 | Apache-2.0 |
-| Jackson Databind | 2.18.2 | Apache-2.0 |
-| SLF4J Simple | 2.0.16 | MIT |
-| Apache Commons FileUpload | 1.5 | Apache-2.0 |
+| Okapi Framework | 1.48.0 | Apache-2.0 |
+| Javalin | 6.7.0 | Apache-2.0 |
+| Jackson Databind | 2.22.4 | Apache-2.0 |
+| SLF4J Simple | 2.0.17 | MIT |
+
+Apache Commons FileUpload was listed by the base but never used; it is removed. Libraries
+these depend on (Jetty and others) are in the release SBOM.
 
 ## Other
 

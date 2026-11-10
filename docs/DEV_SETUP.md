@@ -36,16 +36,11 @@ Qt needs `libEGL` even when it runs headless:
 sudo apt-get install -y --no-install-recommends libegl1
 ```
 
-Sidecar (the plan's `build.ps1` is the Windows wrapper around the same Maven call):
+Sidecar. This builds the JAR and copies it to `okapi-sidecar/dist/okapi-sidecar.jar`, where
+the app looks for it:
 
 ```bash
-cd okapi-sidecar && mvn -B -q package -DskipTests
-```
-
-The app looks for `okapi-sidecar/dist/okapi-sidecar.jar`, so copy the built JAR there:
-
-```bash
-mkdir -p okapi-sidecar/dist && cp okapi-sidecar/target/okapi-sidecar-0.1.9.jar okapi-sidecar/dist/okapi-sidecar.jar
+okapi-sidecar/build.sh
 ```
 
 Tests, with a throwaway home folder so no real data is touched:

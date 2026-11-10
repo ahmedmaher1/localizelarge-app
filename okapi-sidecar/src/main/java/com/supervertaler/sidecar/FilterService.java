@@ -116,8 +116,11 @@ public class FilterService {
 
             // ── Word ──────────────────────────────────────────────
             // true = EXCLUDE graphic metadata (shape/group names, alt-text)
-            params.setTranslateWordExcludeGraphicMetaData(
-                    optBool(opts, "word_exclude_shapes", true));
+            // Okapi 1.48 split the old single "exclude graphic metadata"
+            // switch into two "translate" switches (name and description).
+            boolean excludeShapes = optBool(opts, "word_exclude_shapes", true);
+            params.setTranslateWordGraphicName(!excludeShapes);
+            params.setTranslateWordGraphicDescription(!excludeShapes);
             params.setTranslateComments(
                     optBool(opts, "word_comments", false));
             params.setTranslateWordHidden(
@@ -877,7 +880,16 @@ public class FilterService {
                     case "superscript":   found.add("sup"); break;
                     case "sub":
                     case "subscript":     found.add("sub"); break;
-                    case "color":         if (!value.isEmpty()) f.color = value; break;
+                    case "color":
+                        // Okapi 1.48 reports the default text colour (black,
+                        // or "auto") on every formatted run. That is not
+                        // formatting the translator needs to see, so only a
+                        // real colour becomes a <cf> tag, as before 1.48.
+                        if (!value.isEmpty() && !value.equalsIgnoreCase("000000")
+                                && !value.equalsIgnoreCase("auto")) {
+                            f.color = value;
+                        }
+                        break;
                     case "fonts":         if (!value.isEmpty()) f.font = value; break;
                     case "link":          f.link = true; break;
                     default:              break;
