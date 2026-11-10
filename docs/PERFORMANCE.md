@@ -32,6 +32,8 @@ Preview build of 2026-11-10 (GitHub Actions run 7, commit `1afa0c6`), before the
 file formats were added to the sidecar:
 
 - ZIP: `LocalizeLarge-1.0.0-preview-win-x64.zip`, 173,412,397 bytes (165.4 MB).
+- The build of the Phase 5 code (run 9, commit `cdcce67`, with the Phase 4 file formats and the
+  quality features) is 165.5 MB; the largest folders are unchanged.
 - Build time on the runner: 5 min 30 s.
 - Largest folders inside `_internal`:
 
