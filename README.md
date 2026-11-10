@@ -65,6 +65,11 @@ HOME=$(mktemp -d) QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q
 New code goes in the `localizelarge/` package. `Supervertaler.py` and `modules/` are the
 base; they keep their internal names so upstream fixes are easier to bring over.
 
+## Building the Windows ZIP
+
+See `docs/RELEASING.md`. The build runs on a GitHub Actions Windows runner
+(**Actions → Build Windows ZIP → Run workflow**) and keeps the ZIP as a private artifact.
+
 ## License
 
 GPL-3.0-or-later; see `LICENSE`. Files from Supervertaler Workbench keep their MIT notice;
