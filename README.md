@@ -24,7 +24,7 @@ Inherited from the base and working: projects, translation memory, termbases, AI
 translation, find and replace, spellcheck, the analysis report (HTML, XLSX, CSV), the
 file-based bilingual formats (memoQ, Trados, Phrase, CafeTran, Déjà Vu).
 
-Done for Localize Large so far (Phases 1 to 4 of 8):
+Done for Localize Large so far (Phases 1 to 5 of 8):
 
 - **Identity.** The new name and icon, fixed data folders, the `.llproj` project format
   (older `.svproj` files open and are saved as `.llproj`), the About dialog.
@@ -45,7 +45,11 @@ Done for Localize Large so far (Phases 1 to 4 of 8):
 - **Segmentation.** Okapi's default rules for every language, with your own rules in front.
 - **Right-to-left.** Arabic, Hebrew, Persian and Urdu in the grid and the editor.
 
-Not done yet: the quality features (Phase 5), quality packs (Phase 6), the AI provider
+- **Quality.** QA checks, glossary checks, MQM issue annotation with scores, a Quality
+  panel, quality reports (HTML, PDF, XLSX, JSON) and AI pre-annotation (beta). A demo
+  project is in `samples/`. Details: `docs/QUALITY.md`.
+
+Not done yet: quality packs (Phase 6), the AI provider
 rework (Phase 7) and the release work (Phase 8: SBOM, signing, user guide, test on a clean
 Windows 11 machine). A preview ZIP can be built for testing; nothing is published.
 

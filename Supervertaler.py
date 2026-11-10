@@ -15862,8 +15862,7 @@ class SupervertalerQt(QMainWindow):
 
             multi_tu_count = sum(1 for tu_id, sub in tu_groups.items() if len(sub) > 1)
             if multi_tu_count:
-                self.log(f"Combining sub-segments for merge: {multi_tu_count} text-unit(s) "
-                         f"had multiple sentences (concatenated for /merge)")
+                self.log(f"{multi_tu_count} text unit(s) have several sentences; the sidecar joins them")
             if skipped > 0:
                 self.log(f"{skipped} segments without Okapi metadata will use source text in merge")
 

@@ -59,6 +59,33 @@ License). The history of that project is in its own repository.
   editor for that side run right to left and align right. Latin words, numbers and inline
   tags inside the text stay in reading order.
 
+### Quality
+
+- **QA checks** (16): empty target, target same as source, inline tags, numbers (locale-
+  aware, and Arabic-Indic and Persian digits count as 0–9), placeholders, URLs and e-mail
+  addresses, spaces, end punctuation (`?` and `؟`, `,` and `،`, full-width marks), brackets
+  and quotes, repeated words, inconsistent targets and sources, length, capitalisation,
+  spelling, and your saved regex checks. They run on a segment when it is confirmed and on
+  the whole project from **QA → Run QA**.
+- **Glossary checks**: approved term missing, forbidden term used, one term translated in
+  different ways. Arabic matching ignores diacritics and tatweel, unifies alef forms and
+  allows attached prefixes.
+- **MQM annotation**: select text, press Ctrl+Shift+E (or right-click → Add issue), pick an
+  MQM Core category and a severity (keys 1 to 4), add a comment and a suggested fix. Each
+  severity has its own underline pattern and letter. If the text changes afterwards, the
+  issue is marked "needs check"; its span is never moved.
+- **Quality panel** (QA → Quality panel): Issues, Scorecard and Profile.
+- **Scoring**: the MQM Council's linear raw and linear calibrated models, with configurable
+  multipliers (default 0, 1, 5, 25), category weights, reference word count and pass mark.
+- **Quality report**: self-contained HTML, PDF, XLSX and JSON (schema in
+  `localizelarge/schemas/issues.schema.json`).
+- **AI pre-annotation (beta)**: the configured AI proposes issues. A proposal is kept only
+  if the words it quotes are in the text; proposals count towards the score only after you
+  accept them.
+- Issues and the quality profile are saved in the project file.
+- A demo project is in `samples/`.
+- The MQM Core typology is © The MQM Council (themqm.org), CC BY 4.0; see `NOTICE`.
+
 ### Security
 
 - The Okapi file-format service listens on `127.0.0.1` only, on a free port chosen at each

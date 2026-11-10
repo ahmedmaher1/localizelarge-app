@@ -83,3 +83,12 @@ def test_unreadable_quality_data_does_not_stop_a_project_from_loading(app_module
     quality = quality_of(S.Project.from_dict(data))
     assert quality.issues.all() == []
     assert quality.profile.to_dict() == QualityProfile().to_dict()
+
+
+def test_ai_runs_are_saved_with_the_project(app_module):
+    S = app_module
+    project = make_project(S)
+    quality_of(project).ai_runs.append({"provider": "ollama", "model": "llama3", "segments": 2})
+    data = project.to_dict()
+    assert data["quality"]["aiRuns"] == [{"provider": "ollama", "model": "llama3", "segments": 2}]
+    assert quality_of(S.Project.from_dict(data)).ai_runs == data["quality"]["aiRuns"]

@@ -33,18 +33,23 @@ STATUS_LABEL = {"open": "Open", "accepted": "Accepted", "rejected": "Rejected", 
 
 def build(*, project_name: str, source_lang: str, target_lang: str, segments: Sequence[Any],
           quality: ProjectQuality, evaluator: str = "", date: str = "",
-          ai_runs: Optional[Iterable[Dict[str, Any]]] = None, app_version: str = "") -> Dict[str, Any]:
+          ai_runs: Optional[Iterable[Dict[str, Any]]] = None, app_version: str = "",
+          files: Optional[Iterable[str]] = None) -> Dict[str, Any]:
     """The report as data. Everything the four formats show comes from this."""
     profile = quality.profile
     issues = quality.issues.all()
     result = scoring.calculate(issues, scoring.word_count(segments), profile.scoring)
     counted_ids = {id(i) for i in scoring.counted(issues, profile.scoring)}
     by_id = {getattr(s, "id", None): (number, s) for number, s in enumerate(segments, 1)}
+    files_given = list(files or [])
     files = []
     for segment in segments:
         name = getattr(segment, "file_name", "") or ""
         if name and name not in files:
             files.append(name)
+
+    if not files:
+        files = [name for name in (files_given or [])]
 
     rows = []
     for issue in sorted(issues, key=lambda i: (by_id.get(i.segment_id, (10 ** 9, None))[0],

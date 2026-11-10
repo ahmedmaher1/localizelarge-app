@@ -30,7 +30,6 @@ class QualityController(QObject):
         self.window = window
         self._glossary_key = None
         self._glossary: Optional[glossary_check.Glossary] = None
-        self.ai_runs: List[Dict[str, Any]] = []
 
     # ── what the window has ────────────────────────────────────────
     @property
@@ -46,6 +45,11 @@ class QualityController(QObject):
     def quality(self) -> Optional[ProjectQuality]:
         project = self.project
         return quality_of(project) if project is not None else None
+
+    @property
+    def ai_runs(self) -> List[Dict[str, Any]]:
+        quality = self.quality
+        return quality.ai_runs if quality is not None else []
 
     def segment(self, segment_id: int):
         return next((s for s in self.segments if s.id == segment_id), None)
@@ -126,9 +130,12 @@ class QualityController(QObject):
         ctx = self.context()
         found = engine.run_project(segments, ctx, progress=progress)
         glossary = self.glossary()
-        if glossary is not None and len(glossary):
+        has_glossary = glossary is not None and len(glossary) > 0
+        if has_glossary:
             found.extend(glossary_check.run(segments, glossary, quality.profile.checks))
-        quality.issues.replace_automatic(found)
+        # Without an active glossary nothing can be said about glossary findings made
+        # earlier (on another computer, say): they stay as they are.
+        quality.issues.replace_automatic(found, origins=("qa", "glossary") if has_glossary else ("qa",))
         self._modified()
         self.refresh()
         return len(found)
@@ -142,14 +149,16 @@ class QualityController(QObject):
             return 0
         found = engine.run_segment(segment, self.context(with_project_checks=False))
         glossary = self.glossary()
-        if glossary is not None and len(glossary):
+        has_glossary = glossary is not None and len(glossary) > 0
+        if has_glossary:
             found.extend(glossary_check.check_segment(segment, glossary, quality.profile.checks))
         # Project-wide findings of this segment (inconsistency) stay until the next full run.
         project_wide = {c.id for c in engine.checks() if c.project_wide} | {glossary_check.INCONSISTENT}
+        origins = ("qa", "glossary") if has_glossary else ("qa",)
         kept = [i for i in quality.issues.for_segment(segment.id)
-                if i.origin in ("qa", "glossary") and i.rule_id in project_wide]
+                if i.origin in origins and i.rule_id in project_wide]
         before = len(quality.issues)
-        quality.issues.replace_automatic(found + kept, segment_ids=[segment.id])
+        quality.issues.replace_automatic(found + kept, origins=origins, segment_ids=[segment.id])
         if found or len(quality.issues) != before:
             self._modified()
         self.refresh([segment.id])
@@ -255,7 +264,20 @@ class QualityController(QObject):
         return mqm_report.build(
             project_name=getattr(project, "name", "") or "", source_lang=project.source_lang,
             target_lang=project.target_lang, segments=self.segments, quality=self.quality,
-            ai_runs=self.ai_runs, app_version=version)
+            ai_runs=self.ai_runs, app_version=version, files=self._file_names())
+
+    def _file_names(self) -> List[str]:
+        """The source documents of the project, by name."""
+        import os
+        project = self.project
+        names = [f.get("name") for f in (getattr(project, "files", None) or []) if isinstance(f, dict) and f.get("name")]
+        if not names:
+            for field in ("original_docx_path", "original_txt_path", "po_source_path"):
+                value = getattr(project, field, None)
+                if value:
+                    names.append(os.path.basename(str(value)))
+                    break
+        return names
 
     def export_report(self, path: str) -> None:
         mqm_report.write(self.build_report(), path)
