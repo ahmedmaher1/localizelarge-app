@@ -27,4 +27,17 @@ by `LocalizeLarge.spec` in Phase 8; until then the upstream spec does not build.
 
 ## Features
 
-Added as each feature is removed in Phase 2.
+Phase 2, in the order of the build plan. Still in progress.
+
+### 1. Global hotkeys and background running
+
+| Removed | Why |
+|---|---|
+| OS-level (global) hotkeys: the AutoHotkey script `supervertaler_hotkeys.ahk`, the `ahk` library route, the `pynput` route, the signal-file watcher, the AutoHotkey setup dialog and settings field | v1 registers nothing outside its own window. In-app shortcuts are unchanged (`Ctrl+Alt+L` still opens SuperLookup while the app has focus) |
+| Capturing the selected text from another application | It worked only through the global hotkey |
+| `start-admin.ps1` | It started the app with administrator rights. v1 needs none |
+| `modules/autostart.py` and "Start with computer" | v1 never adds itself to the Windows start-up list |
+| System tray icon, "Close to tray", "Start minimized to tray", Esc-to-tray | Closing the window always quits. No process is left running |
+
+Old settings keys for these (`close_to_tray`, `start_minimized_to_tray`, `autohotkey_path`)
+are ignored if present.

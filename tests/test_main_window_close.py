@@ -86,20 +86,15 @@ def make_window(S, children, *, ui_prefs=None, project_modified=False):
     sidecar = OkapiSidecar(sidecar_dir=ROOT)       # stands in for the Java sidecar
     sidecar._process = _sleeper()
     sidecar._started_by_us = True
-    ahk = _sleeper()                               # stands in for AutoHotkey
-    children += [sidecar._process, ahk]
-    hotkeys = SimpleNamespace(stopped=False)
-    hotkeys.stop = lambda: setattr(hotkeys, "stopped", True)
+    children += [sidecar._process]
 
     w = SimpleNamespace(
-        _tray_icon=object(),
         _really_quit=False,
         _load_settings_section=lambda section: dict(ui_prefs or {}),
         _save_settings_section=lambda section, data: None,
         is_loading_model=False,
         project_modified=project_modified,
         okapi_sidecar=sidecar,
-        lookup_tab=SimpleNamespace(_hotkey_manager=hotkeys, ahk_process=ahk),
         hidden=False,
         saves=0,
     )
@@ -107,7 +102,7 @@ def make_window(S, children, *, ui_prefs=None, project_modified=False):
     w.save_project = lambda: setattr(w, "saves", w.saves + 1)   # e.g. Save As cancelled
     for name in ("_stop_okapi_sidecar", "_cleanup_web_views", "_close_detached_log_windows"):
         setattr(w, name, types.MethodType(getattr(S.SupervertalerQt, name), w))
-    w.sidecar_proc, w.ahk, w.hotkeys = sidecar._process, ahk, hotkeys
+    w.sidecar_proc = sidecar._process
     return w
 
 
@@ -122,16 +117,16 @@ def test_the_x_button_stops_children_and_quits(S, quits, children):
     event = close(S, w)
     assert event.isAccepted()
     assert quits == ["quit"]
-    assert w.sidecar_proc.poll() is not None and w.ahk.poll() is not None
-    assert w.hotkeys.stopped
+    assert w.sidecar_proc.poll() is not None
 
 
-def test_close_to_tray_hides_and_keeps_everything_running(S, quits, children):
+def test_an_old_close_to_tray_setting_is_ignored(S, quits, children):
+    # Localize Large has no tray icon: closing always quits and stops the sidecar.
     w = make_window(S, children, ui_prefs={"close_to_tray": True, "close_to_tray_hint_shown": True})
     event = close(S, w)
-    assert not event.isAccepted() and w.hidden
-    assert quits == []
-    assert w.sidecar_proc.poll() is None and w.ahk.poll() is None
+    assert event.isAccepted() and not w.hidden
+    assert quits == ["quit"]
+    assert w.sidecar_proc.poll() is not None
 
 
 def test_a_failing_cleanup_step_still_quits(S, quits, children):
@@ -141,12 +136,10 @@ def test_a_failing_cleanup_step_still_quits(S, quits, children):
 
     def broken_stop():
         raise OSError("access denied")
-    w.lookup_tab._hotkey_manager.stop = broken_stop
     w.okapi_sidecar.stop = broken_stop
     event = close(S, w)
     assert event.isAccepted()
     assert quits == ["quit"]
-    assert w.ahk.poll() is not None
 
 
 def test_cancel_on_unsaved_changes_keeps_the_app_open(S, quits, children, monkeypatch):

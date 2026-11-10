@@ -294,33 +294,6 @@ else:
 # GLOBAL AHK PROCESS CLEANUP
 # ============================================================================
 
-# Global variables to track hotkey processes for atexit cleanup
-_ahk_process = None
-_hotkey_manager = None
-
-def cleanup_hotkey_processes():
-    """Cleanup function to stop hotkey processes on exit"""
-    global _ahk_process, _hotkey_manager
-    if _hotkey_manager:
-        try:
-            _hotkey_manager.stop()
-            print("[Hotkeys] pynput hotkey manager stopped on exit")
-        except Exception:
-            pass
-    if _ahk_process:
-        try:
-            _ahk_process.terminate()
-            _ahk_process.wait(timeout=1)
-            print("[Hotkeys] AHK process terminated on exit")
-        except Exception:
-            try:
-                _ahk_process.kill()
-                print("[Hotkeys] AHK process killed on exit")
-            except Exception:
-                pass
-
-# Register cleanup function to run on Python exit
-atexit.register(cleanup_hotkey_processes)
 
 
 # ============================================================================
@@ -10110,8 +10083,7 @@ class SupervertalerQt(QMainWindow):
         # registered separately by SuperlookupTab.register_global_hotkey.
         create_shortcut(
             "tools_universal_lookup", "Ctrl+Alt+L",
-            lambda: self.lookup_tab._handle_superlookup_hotkey()
-                if hasattr(self, 'lookup_tab') else None,
+            lambda: self._go_to_superlookup(),
         )
         create_shortcut("sidekick_open", "Alt+K", self.open_quicklauncher)
         create_shortcut(
@@ -12362,15 +12334,6 @@ class SupervertalerQt(QMainWindow):
 
         help_menu.addSeparator()
 
-        # AutoHotkey setup (Windows only)
-        if os.name == 'nt':
-            ahk_setup_action = QAction(self.tr("⌨️ Setup AutoHotkey (Global Hotkey)"), self)
-            ahk_setup_action.setToolTip(
-                f"Configure AutoHotkey for SuperLookup global hotkey ({format_shortcut_for_display('Ctrl+Alt+L')})"
-            )
-            ahk_setup_action.triggered.connect(self._show_ahk_setup_from_menu)
-            help_menu.addAction(ahk_setup_action)
-            help_menu.addSeparator()
 
         about_action = QAction(self.tr("ℹ️ About"), self)
         about_action.triggered.connect(self.show_about)
@@ -13279,7 +13242,9 @@ class SupervertalerQt(QMainWindow):
         # tab no longer pulls its weight. SuperlookupTab still needs to be
         # constructed though – its __init__ registers the global Ctrl+Alt+L /
         # Ctrl+Alt+Q / Alt+K hotkeys – so do that here as a side-effect.
-        self._setup_superlookup_hotkeys()
+        lookup_tab = SuperlookupTab(self, user_data_path=self.user_data_path, register_hotkeys=False)
+        lookup_tab.hide()
+        self.lookup_tab = lookup_tab
 
         # ============================================================
         # NEW TOP-LEVEL TABS (Phase 1 of the Sidekick → Workbench
@@ -13340,31 +13305,6 @@ class SupervertalerQt(QMainWindow):
         # binding survives lazy tab construction (the tabs are
         # placeholder widgets at this point – the real widgets are
         # built on first activation by _ensure_*_top_tab).
-        try:
-            from PyQt6.QtGui import QShortcut, QKeySequence
-            self._esc_to_tray_shortcut = QShortcut(
-                QKeySequence(Qt.Key.Key_Escape), self
-            )
-            self._esc_to_tray_shortcut.activated.connect(
-                self._on_esc_quick_lookup_dismiss
-            )
-            # v1.10.344: if ANY other window-context shortcut in this
-            # window ever binds Escape, Qt declares the keypress
-            # ambiguous and fires activatedAmbiguously on ALL of them
-            # instead of activated on any – i.e. Esc silently does
-            # nothing. Route the ambiguous signal to the same handler
-            # (with a console note so the conflict is discoverable)
-            # so the dismiss can never be nulled by a future conflict.
-            def _esc_ambiguous():
-                print("[Workbench] Escape shortcut fired AMBIGUOUSLY – "
-                      "another window-level Esc shortcut exists; "
-                      "dismissing anyway.")
-                self._on_esc_quick_lookup_dismiss()
-            self._esc_to_tray_shortcut.activatedAmbiguously.connect(
-                _esc_ambiguous
-            )
-        except Exception as e:
-            print(f"[Workbench] Esc-to-tray binding failed: {e}")
 
         # Connect tab changes to handle view refreshes
         self.main_tabs.currentChanged.connect(self._on_main_tab_changed)
@@ -15116,55 +15056,6 @@ class SupervertalerQt(QMainWindow):
                     fn()
             except Exception as e:
                 self.log(f"⚠ Warm-up of {helper} failed (lazy path still works): {e}")
-        try:
-            self._prewarm_ahk()
-        except Exception as e:
-            self.log(f"⚠ AHK pre-warm failed (first paste may be slow): {e}")
-
-    def _prewarm_ahk(self):
-        """Spawn AHK once with a no-op script so the binary is in disk
-        cache and the first real Ctrl+V / Ctrl+C from
-        :class:`CrossPlatformKeySender` doesn't take an extra second
-        on cold disk. No-op when AHK isn't installed or we're not on
-        Windows. Runs in a background thread so it doesn't block the
-        warm-up timer.
-        """
-        import sys as _sys
-        if _sys.platform != 'win32':
-            return
-        import threading
-
-        def _do_prewarm():
-            try:
-                from modules.platform_helpers import CrossPlatformKeySender
-                ahk = CrossPlatformKeySender()._find_ahk()
-                if not ahk:
-                    return
-                import subprocess as _sp
-                import tempfile as _tf
-                # Empty script body; just exits. AHK's spin-up cost
-                # is paid here so the first user-triggered paste is fast.
-                with _tf.NamedTemporaryFile(
-                        mode='w', suffix='.ahk', delete=False,
-                        encoding='utf-8') as f:
-                    f.write('ExitApp\n')
-                    tmp = f.name
-                try:
-                    _sp.run([ahk, '/ErrorStdOut', tmp],
-                            timeout=10,
-                            creationflags=getattr(_sp, 'CREATE_NO_WINDOW', 0))
-                finally:
-                    import os as _os
-                    try:
-                        _os.unlink(tmp)
-                    except OSError:
-                        pass
-            except Exception as e:
-                print(f"[AHK pre-warm] {e}")
-
-        t = threading.Thread(target=_do_prewarm, daemon=True,
-                             name="AHK-prewarm")
-        t.start()
 
     def _ensure_superlookup_top_tab(self):
         """Build the SuperLookup top tab the first time the user opens it.
@@ -15379,30 +15270,6 @@ class SupervertalerQt(QMainWindow):
     # create_translation_memories_tab() and create_termbases_tab()
     # directly. The wrapper widget and its method are gone.
 
-    def _setup_superlookup_hotkeys(self):
-        """Construct the (hidden) SuperlookupTab so its __init__ registers
-        the global hotkeys (Ctrl+Alt+L, Ctrl+Alt+Q, Alt+K).
-
-        Pre-v1.9.467 this lived inside create_specialised_tools_tab(),
-        which also built the embedded Tools-tab UI. The Tools tab has
-        been retired; the SuperlookupTab construction stays because the
-        global hotkey registration happens as a side-effect of __init__.
-
-        The Voice tab itself is built separately (_ensure_voice_top_tab).
-        """
-        lookup_tab = SuperlookupTab(self, user_data_path=self.user_data_path)
-        lookup_tab.hide()  # Never shown – purely for hotkey side effects
-        self.lookup_tab = lookup_tab
-
-        if hasattr(lookup_tab, 'hotkey_registered') and lookup_tab.hotkey_registered:
-            failed = getattr(getattr(lookup_tab, '_hotkey_manager', None), 'failed_hotkeys', [])
-            if failed:
-                self.log(f"⚠ Global hotkeys: some failed to register: {', '.join(failed)}")
-            else:
-                self.log("⌨ Global hotkeys registered (Ctrl+Alt+L, Ctrl+Alt+Q, Alt+K)")
-        else:
-            self.log("⚠ Global hotkeys NOT registered – check console for errors")
-    
     def create_translation_memories_tab(self):
         """Create the Translation Memories tab with nested sub-tabs"""
         tab = QWidget()
@@ -25976,36 +25843,6 @@ class SupervertalerQt(QMainWindow):
             if hasattr(self, 'settings_tabs') and hasattr(self, 'mt_quick_lookup_tab_index'):
                 self.settings_tabs.setCurrentIndex(self.mt_quick_lookup_tab_index)
 
-    def _find_autohotkey_for_settings(self):
-        """Find AutoHotkey executable for settings display (doesn't modify state)"""
-        # Standard installation paths
-        username = os.environ.get('USERNAME', '')
-        ahk_paths = [
-            r"C:\Program Files\AutoHotkey\v2\AutoHotkey.exe",
-            r"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
-            r"C:\Program Files\AutoHotkey\AutoHotkey.exe",
-            r"C:\Program Files (x86)\AutoHotkey\AutoHotkey.exe",
-            fr"C:\Users\{username}\AppData\Local\Programs\AutoHotkey\AutoHotkey.exe",
-        ]
-        
-        for path in ahk_paths:
-            if os.path.exists(path):
-                return path, 'detected'
-        
-        return None, None
-    
-    def _browse_autohotkey_for_settings(self, line_edit):
-        """Browse for AutoHotkey executable and update line edit"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Locate AutoHotkey Executable",
-            "C:\\Program Files",
-            "Executable Files (*.exe);;All Files (*.*)"
-        )
-        
-        if file_path:
-            line_edit.setText(file_path)
-    
     def _create_backup_settings_tab(self):
         """Settings → 💾 Backup tab.
 
@@ -26965,7 +26802,6 @@ class SupervertalerQt(QMainWindow):
             # from the instance attrs it sets (resolved when Save is clicked).
             getattr(self, 'enable_backup_cb', None), getattr(self, 'backup_interval_spin', None),
             tb_hide_shorter_cb, smart_selection_cb,
-            ahk_path_edit=getattr(self, 'ahk_path_edit', None),
             auto_center_cb=auto_center_cb,
             auto_confirm_100_cb=auto_confirm_100_cb,
             auto_confirm_overwrite_cb=auto_confirm_overwrite_cb,
@@ -28022,14 +27858,6 @@ class SupervertalerQt(QMainWindow):
             self._populate_voice_commands_table()
             QMessageBox.information(self, "Reset Complete", "Voice commands have been reset to defaults.")
 
-    def _check_ahk_installed(self) -> str:
-        """Check if AutoHotkey is installed"""
-        ahk_exe = self.voice_command_manager._find_ahk_executable() if hasattr(self, 'voice_command_manager') else None
-        if ahk_exe:
-            return "✅ AutoHotkey detected"
-        else:
-            return "⚠️ AutoHotkey not found - install from autohotkey.com for system commands"
-
     def _open_voice_scripts_folder(self):
         """Open the voice scripts folder"""
         import subprocess
@@ -29066,24 +28894,6 @@ class SupervertalerQt(QMainWindow):
                 "<b>Special</b>."
             )
 
-    def reload_global_hotkeys(self):
-        """Re-register the global hotkey set with current ShortcutManager values.
-
-        Called after the user changes a ``global_*`` shortcut in
-        Settings → Keyboard Shortcuts. Without this call, the OS-level
-        hotkey listener keeps firing on the *old* key until the next
-        application restart, because pynput / WinAPI registrations don't
-        track ShortcutManager state. Idempotent – ``register_global_hotkey``
-        stops any previously running manager before binding fresh keys.
-        """
-        lookup_tab = getattr(self, 'lookup_tab', None)
-        if lookup_tab is None or not hasattr(lookup_tab, 'register_global_hotkey'):
-            return
-        try:
-            lookup_tab.register_global_hotkey()
-        except Exception as e:
-            self.log(f"⚠ Could not reload global hotkeys: {e}")
-
     def _create_debug_settings_tab(self):
         """Create Debug Settings tab content"""
         from PyQt6.QtWidgets import QGroupBox, QPushButton, QTextEdit
@@ -29605,7 +29415,7 @@ class SupervertalerQt(QMainWindow):
                                        auto_open_log_cb=None, auto_insert_100_cb=None, tm_save_mode_combo=None, tb_highlight_cb=None,
                                        enable_backup_cb=None, backup_interval_spin=None,
                                        tb_hide_shorter_cb=None, smart_selection_cb=None,
-                                       ahk_path_edit=None, auto_center_cb=None, auto_confirm_100_cb=None,
+                                       auto_center_cb=None, auto_confirm_100_cb=None,
                                        auto_confirm_overwrite_cb=None, sound_effects_cb=None, sound_event_combos=None,
                                        disable_cache_cb=None, auto_fill_confirm_cb=None,
                                        auto_propagate_on_confirm_cb=None, auto_propagate_confirm_cb=None,
@@ -29697,7 +29507,6 @@ class SupervertalerQt(QMainWindow):
             'grid_font_size': self.default_font_size,
             'results_match_font_size': 9,
             'results_compare_font_size': 9,
-            'autohotkey_path': ahk_path_edit.text().strip() if ahk_path_edit is not None else existing_settings.get('autohotkey_path', ''),
             'enable_sound_effects': sound_effects_cb.isChecked() if sound_effects_cb is not None else existing_settings.get('enable_sound_effects', False),
             'disable_all_caches': disable_cache_cb.isChecked() if disable_cache_cb is not None else existing_settings.get('disable_all_caches', False),
             # v1.10.230: AutoCorrect-while-typing has its own Settings tab
@@ -32847,302 +32656,8 @@ class SupervertalerQt(QMainWindow):
     #  the tray simply stays None and these features are no-ops.
     # ────────────────────────────────────────────────────────────────────
 
-    def _setup_tray_icon(self):
-        """Create the system-tray icon. Called once from main() after __init__."""
-        from PyQt6.QtWidgets import QSystemTrayIcon, QMenu
-        from PyQt6.QtGui import QAction, QIcon
-
-        self._tray_icon = None
-        self._really_quit = False  # Set by tray "Quit" so closeEvent doesn't hide
-
-        # v1.10.238: route an explicit quit (macOS "Quit Localize Large" / ⌘Q,
-        # or system shutdown) through _really_quit so it terminates instead of
-        # backgrounding to the tray. The window X / red close button does NOT
-        # send QEvent.Quit, so it still backgrounds as designed.
-        if not hasattr(self, "_quit_event_filter"):
-            self._quit_event_filter = _QuitEventFilter(self)
-            QApplication.instance().installEventFilter(self._quit_event_filter)
-
-        if not QSystemTrayIcon.isSystemTrayAvailable():
-            print("[Tray] System tray unavailable on this platform – skipping")
-            return
-
-        # Prefer the high-DPI PNG family from assets/ – those scale much
-        # better in the Windows tray than icon.ico (which collapses to a
-        # blurry 16-px frame). Fall back to icon.ico, then the window
-        # icon, so older installs without the PNGs still get *something*.
-        icon = None
-        for candidate in ("icon_24.png", "icon_16.png", "icon_128.png", "icon.ico"):
-            icon_path = get_resource_path(f"assets/{candidate}")
-            if icon_path.exists():
-                icon = QIcon(str(icon_path))
-                break
-        if icon is None or icon.isNull():
-            icon = self.windowIcon()
-
-        self._tray_icon = QSystemTrayIcon(icon, self)
-        self._tray_icon.setToolTip(self.tr("Localize Large"))
-
-        prefs = self._load_settings_section("ui")
-        menu = QMenu()
-
-        show_action = QAction("Show Workbench", self)
-        show_action.triggered.connect(self._tray_show_window)
-        menu.addAction(show_action)
-
-        # Quick tab-jump entries (v1.10.2 of issue #199). Mirror the
-        # global hotkeys: Ctrl+Alt+L = SuperLookup, etc. Each entry shows Workbench (if hidden) and
-        # switches main_tabs to the target tab. Indices are looked up
-        # lazily via getattr so the menu still builds even if a tab
-        # hasn't been added (e.g. an older build with fewer top tabs).
-        def _make_jumper(attr_name):
-            def _jump():
-                idx = getattr(self, attr_name, None)
-                if idx is None:
-                    return
-                self._tray_show_window()
-                if hasattr(self, 'main_tabs'):
-                    try:
-                        self.main_tabs.setCurrentIndex(idx)
-                    except Exception:
-                        pass
-            return _jump
-
-        jump_lookup = QAction("Open SuperLookup", self)
-        jump_lookup.triggered.connect(_make_jumper('superlookup_tab_index'))
-        menu.addAction(jump_lookup)
-
-        jump_voice = QAction("Open Voice", self)
-        jump_voice.triggered.connect(_make_jumper('voice_tab_index'))
-        menu.addAction(jump_voice)
-
-        jump_settings = QAction("Open Settings", self)
-        jump_settings.setMenuRole(QAction.MenuRole.NoRole)  # v1.10.233: keep ⌘, off Preferences (Mac)
-        jump_settings.triggered.connect(_make_jumper('settings_tab_index'))
-        menu.addAction(jump_settings)
-
-        menu.addSeparator()
-
-        self._tray_close_to_tray_action = QAction("Close to tray (instead of quit)", self)
-        self._tray_close_to_tray_action.setCheckable(True)
-        self._tray_close_to_tray_action.setChecked(bool(prefs.get("close_to_tray", False)))
-        self._tray_close_to_tray_action.toggled.connect(self._on_toggle_close_to_tray)
-        menu.addAction(self._tray_close_to_tray_action)
-
-        self._tray_start_minimized_action = QAction("Start minimized to tray", self)
-        self._tray_start_minimized_action.setCheckable(True)
-        self._tray_start_minimized_action.setChecked(bool(prefs.get("start_minimized_to_tray", False)))
-        self._tray_start_minimized_action.toggled.connect(self._on_toggle_start_minimized)
-        menu.addAction(self._tray_start_minimized_action)
-
-        # "Start with computer" – registers an HKCU Run entry on Windows,
-        # ~/Library/LaunchAgents plist on macOS, ~/.config/autostart .desktop
-        # on Linux. No elevation needed; the auto-started instance uses the
-        # GUI Python variant so no terminal window appears at boot.
-        try:
-            from modules import autostart as _autostart_mod
-            self._autostart_mod = _autostart_mod
-            if _autostart_mod.is_supported():
-                self._tray_autostart_action = QAction("Start with computer", self)
-                self._tray_autostart_action.setCheckable(True)
-                self._tray_autostart_action.setChecked(_autostart_mod.is_enabled())
-                self._tray_autostart_action.toggled.connect(self._on_toggle_autostart)
-                menu.addAction(self._tray_autostart_action)
-        except Exception as e:
-            print(f"[Tray] Autostart menu item not available: {e}")
-            self._autostart_mod = None
-
-        menu.addSeparator()
-
-        quit_action = QAction("Quit Localize Large", self)
-        quit_action.triggered.connect(self._tray_quit)
-        menu.addAction(quit_action)
-
-        self._tray_icon.setContextMenu(menu)
-        self._tray_icon.activated.connect(self._on_tray_activated)
-        self._tray_icon.show()
-
-        # Tell Qt not to quit when all windows are closed – we manage lifecycle
-        # via the tray "Quit" item. Otherwise hiding the only window via close
-        # would terminate the app on some platforms.
-        QApplication.instance().setQuitOnLastWindowClosed(False)
-
-    def _on_tray_activated(self, reason):
-        """Left-click the tray icon → toggle window visibility (Windows/Linux convention)."""
-        from PyQt6.QtWidgets import QSystemTrayIcon
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            if self.isVisible():
-                self.hide()
-            else:
-                self._tray_show_window()
-
-    def _tray_show_window(self):
-        """Restore, raise, and focus the main window from the tray."""
-        self.show()
-        # Clear the minimized state if Qt set it during hide.
-        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
-        self.raise_()
-        self.activateWindow()
-
-    def _on_esc_quick_lookup_dismiss(self):
-        """Dismiss Workbench when Esc is pressed on a "quick lookup"
-        top tab.
-
-        Per-tab dismissal action:
-
-        - **SuperLookup / Voice**: hide to the system tray (requires a
-          tray icon – without one, hiding would strand the user in an
-          invisible window, so those tabs fail closed).
-
-        Gate that always applies: the current tab is one of
-        SuperLookup / Voice. On Editor / TMs / Termbases /
-        AI / Settings, Esc keeps its natural editor / dialog /
-        combo-box semantics (cancel-edit, close-popup, etc.).
-
-        Per-tab text-input gate (v1.10.19 refinement):
-
-        - **SuperLookup**: always hide regardless of focus. The user
-          observed (correctly) that SuperLookup is a single-purpose
-          query surface – there's no state to preserve, the search
-          field re-seeds on the next summon, and the only thing Esc
-          could reasonably mean here is "get me out of here". So we
-          skip the focus check and dismiss unconditionally.
-        - **Voice**: skip the dismiss if a text-input
-          widget has focus (QLineEdit / QTextEdit / QPlainTextEdit /
-          QAbstractSpinBox / editable QComboBox), to preserve
-          standard Qt-app conventions (Esc clears the field, closes
-          a popup, etc.) when the user might plausibly be typing
-          something they don't want to lose. Once focus is on the
-          list / tree / button / empty area, Esc dismisses to tray.
-
-        Wired in v1.10.17, made focus-aware in v1.10.18, made
-        always-hide-on-SuperLookup in v1.10.19.
-        """
-        if not hasattr(self, 'main_tabs'):
-            return
-        has_tray = getattr(self, '_tray_icon', None) is not None
-
-        superlookup_idx = getattr(self, 'superlookup_tab_index', None)
-        voice_idx = getattr(self, 'voice_tab_index', None)
-        current = self.main_tabs.currentIndex()
-
-        # SuperLookup: unconditional hide (tray required).
-        if superlookup_idx is not None and current == superlookup_idx:
-            if has_tray:
-                self.hide()
-            return
-
-        # Voice: focus-aware hide.
-        if voice_idx is None or current != voice_idx:
-            # Some other tab – not a quick-lookup surface, do nothing.
-            return
-
-        try:
-            from PyQt6.QtWidgets import (
-                QLineEdit, QTextEdit, QPlainTextEdit, QComboBox,
-                QAbstractSpinBox,
-            )
-            focused = QApplication.focusWidget()
-            if focused is not None:
-                text_input_types = (
-                    QLineEdit, QTextEdit, QPlainTextEdit,
-                    QAbstractSpinBox,
-                )
-                if isinstance(focused, text_input_types):
-                    self.log(f"[Esc] ignored – text input focused "
-                             f"({type(focused).__name__})")
-                    return
-                if isinstance(focused, QComboBox) and focused.isEditable():
-                    self.log("[Esc] ignored – editable combo focused")
-                    return
-                # Walk up: a QLineEdit nested inside a custom
-                # composite widget should also count as a text input.
-                w = focused.parent()
-                hops = 0
-                while w is not None and hops < 5:
-                    if isinstance(w, text_input_types):
-                        return
-                    w = w.parent()
-                    hops += 1
-        except Exception:
-            # If the introspection fails for any reason, fall
-            # through to dismiss – safer than silently doing nothing.
-            pass
-
-        # Voice: hide to tray, as before.
-        if has_tray:
-            self.hide()
-
-    def keyPressEvent(self, event):
-        """Esc fallback for the quick-lookup dismiss (v1.10.345).
-
-        The primary binding is the window-level Escape QShortcut. A
-        plain-Esc KeyPress only ever bubbles up to the main window's
-        keyPressEvent when the shortcut system did NOT consume it –
-        i.e. exactly the failure mode reported as "Esc does nothing".
-        Catching it here makes the dismiss immune to whatever ate the
-        shortcut activation, and the console line records that the
-        fallback (not the shortcut) fired, so the two paths can be
-        told apart in the field.
-        """
-        try:
-            if (event.key() == Qt.Key.Key_Escape
-                    and not event.modifiers()
-                    and hasattr(self, 'main_tabs')):
-                current = self.main_tabs.currentIndex()
-                quick = (getattr(self, 'superlookup_tab_index', None),
-                         getattr(self, 'voice_tab_index', None))
-                if current in quick:
-                    try:
-                        self.log("[Esc] shortcut did not fire – "
-                                 "dismissing via keyPressEvent fallback")
-                    except Exception:
-                        pass
-                    self._on_esc_quick_lookup_dismiss()
-                    event.accept()
-                    return
-        except Exception as e:
-            print(f"[Workbench] Esc keyPressEvent fallback failed: {e}")
-        super().keyPressEvent(event)
-
-    def _on_toggle_close_to_tray(self, checked: bool):
-        prefs = self._load_settings_section("ui")
-        prefs["close_to_tray"] = bool(checked)
-        self._save_settings_section("ui", prefs)
-
-    def _on_toggle_start_minimized(self, checked: bool):
-        prefs = self._load_settings_section("ui")
-        prefs["start_minimized_to_tray"] = bool(checked)
-        self._save_settings_section("ui", prefs)
-
-    def _on_toggle_autostart(self, checked: bool):
-        """Register or unregister Localize Large with the OS autostart facility."""
-        mod = getattr(self, "_autostart_mod", None)
-        if mod is None:
-            return
-        ok = mod.enable() if checked else mod.disable()
-        # Re-sync the checkbox with reality – if the registry / plist write
-        # failed silently, don't leave the menu showing a stale state.
-        actual = mod.is_enabled()
-        if actual != checked:
-            self._tray_autostart_action.blockSignals(True)
-            self._tray_autostart_action.setChecked(actual)
-            self._tray_autostart_action.blockSignals(False)
-        if ok and getattr(self, "_tray_icon", None) is not None and checked:
-            try:
-                from PyQt6.QtWidgets import QSystemTrayIcon
-                self._tray_icon.showMessage(
-                    "Localize Large",
-                    "Will start automatically with your computer. "
-                    "Tip: enable 'Start minimized to tray' to skip the window at boot.",
-                    QSystemTrayIcon.MessageIcon.Information,
-                    4000,
-                )
-            except Exception:
-                pass
-
     def _tray_quit(self):
-        """Real quit from tray menu – bypasses the close-to-tray hide."""
+        """Quit from the Project menu."""
         self._really_quit = True
         # closeEvent does the cleanup and quits. close() returns False when
         # the user cancels (unsaved changes → Cancel); quitting anyway would
@@ -33151,8 +32666,9 @@ class SupervertalerQt(QMainWindow):
             QApplication.instance().quit()
 
     def closeEvent(self, event):
-        """Close the main window: hide to the tray if the user chose that,
-        otherwise confirm, clean up and quit the whole application.
+        """Close the main window: confirm unsaved changes, clean up and quit
+        the whole application. Localize Large has no tray icon and never keeps
+        running in the background.
 
         Issue #255: this class used to define closeEvent twice. Python keeps
         only the last definition, so the tray handling, hotkey cleanup and
@@ -33161,30 +32677,6 @@ class SupervertalerQt(QMainWindow):
         left the process running. Keep this the only closeEvent in the
         class (tests/test_main_window_close.py checks).
         """
-        # Close-to-tray: hide instead of quit, unless the tray menu explicitly
-        # asked for a real quit. Skipped if the tray icon failed to initialise.
-        if (not getattr(self, "_really_quit", False)
-                and getattr(self, "_tray_icon", None) is not None):
-            prefs = self._load_settings_section("ui")
-            if prefs.get("close_to_tray", False):
-                event.ignore()
-                self.hide()
-                if not prefs.get("close_to_tray_hint_shown", False):
-                    try:
-                        from PyQt6.QtWidgets import QSystemTrayIcon
-                        self._tray_icon.showMessage(
-                            "Localize Large is still running",
-                            "Click the tray icon to bring it back, or right-click "
-                            "for Quit.",
-                            QSystemTrayIcon.MessageIcon.Information,
-                            5000,
-                        )
-                    except Exception:
-                        pass
-                    prefs["close_to_tray_hint_shown"] = True
-                    self._save_settings_section("ui", prefs)
-                return
-
         # Check for unsaved project changes
         if getattr(self, 'project_modified', False):
             reply = QMessageBox.question(
@@ -33205,39 +32697,6 @@ class SupervertalerQt(QMainWindow):
                 event.ignore()
                 self._really_quit = False
                 return
-
-        try:
-            if hasattr(self, 'lookup_tab'):
-                # Clean up pynput hotkey manager (cross-platform)
-                if hasattr(self.lookup_tab, '_hotkey_manager') and self.lookup_tab._hotkey_manager:
-                    try:
-                        self.lookup_tab._hotkey_manager.stop()
-                        print("[Superlookup] pynput hotkey manager stopped")
-                    except Exception as e:
-                        print(f"[Superlookup] Error stopping pynput: {e}")
-
-                # Clean up ahk library if used (Windows fallback)
-                if hasattr(self.lookup_tab, '_using_ahk_library') and self.lookup_tab._using_ahk_library:
-                    if hasattr(self.lookup_tab, '_ahk') and self.lookup_tab._ahk:
-                        try:
-                            self.lookup_tab._ahk.stop_hotkeys()
-                            print("[Superlookup] ahk library hotkeys stopped")
-                        except Exception as e:
-                            print(f"[Superlookup] Error stopping ahk library: {e}")
-
-                # Terminate external AutoHotkey process if running (Windows fallback)
-                if hasattr(self.lookup_tab, 'ahk_process') and self.lookup_tab.ahk_process:
-                    try:
-                        self.lookup_tab.ahk_process.terminate()
-                        self.lookup_tab.ahk_process.wait(timeout=2)
-                        print("[Superlookup] AHK process terminated")
-                    except Exception:
-                        try:
-                            self.lookup_tab.ahk_process.kill()
-                        except Exception:
-                            pass
-        except Exception as e:
-            print(f"[Superlookup] Error during hotkey cleanup: {e}")
 
         # Each step guards itself, so one failing can't skip the quit below.
         self._stop_okapi_sidecar()
@@ -61979,17 +61438,6 @@ class SupervertalerQt(QMainWindow):
             pass
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_dir)))
     
-    def _show_ahk_setup_from_menu(self):
-        """Show AutoHotkey setup dialog from Help menu"""
-        if hasattr(self, 'lookup_tab') and self.lookup_tab:
-            self.lookup_tab._show_autohotkey_setup_dialog()
-        else:
-            QMessageBox.warning(
-                self,
-                "SuperLookup Not Available",
-                "SuperLookup tab is not available. Please restart the application."
-            )
-
     def show_about(self):
         """Show the About dialog (localizelarge/about.py)."""
         from localizelarge.about import show_about_dialog
@@ -66488,9 +65936,6 @@ class SuperlookupTab(QWidget):
         # UI setup
         self.init_ui()
 
-        # Register global hotkey (primary instance only — see __init__ docstring)
-        if self._register_hotkeys:
-            self.register_global_hotkey()
     
     def keyPressEvent(self, event):
         """Handle key presses - Escape returns to Grid"""
@@ -66563,20 +66008,9 @@ class SuperlookupTab(QWidget):
         self._header_label.setStyleSheet("font-size: 11pt; font-weight: bold; color: #1976D2;")
         layout.addWidget(self._header_label, 0)
 
-        if os.name == 'nt':
-            description_text = (
-                f"Press {format_shortcut_for_display('Ctrl+Alt+L')} or paste text to search your TMs and Termbases."
-            )
-        elif IS_MACOS:
-            description_text = (
-                f"Press {format_shortcut_for_display('Meta+Ctrl+L')} or paste text to search your TMs and Termbases.\n"
-                "Requires Accessibility permission in System Settings → Privacy & Security."
-            )
-        else:
-            description_text = (
-                f"Press {format_shortcut_for_display('Ctrl+Alt+L')} or paste text to search your TMs and Termbases.\n"
-                "Requires pynput installed (pip install pynput)."
-            )
+        description_text = (
+            f"Press {format_shortcut_for_display('Ctrl+Alt+L')} or paste text to search your TMs and Termbases."
+        )
 
         self._description_label = QLabel(description_text)
         self._description_label.setWordWrap(True)
@@ -69073,42 +68507,6 @@ class SuperlookupTab(QWidget):
     # clear of Read flags can be added to the main TMs / Termbases tabs
     # in a future iteration if users ask for it.
     
-    def __del__(self):
-        """Destructor - cleanup AHK process when widget is destroyed"""
-        try:
-            self.unregister_global_hotkey()
-        except:
-            pass
-    
-    def capture_text(self):
-        """
-        Capture text from the active application (triggered by global hotkey).
-        """
-        if not self.SuperlookupEngine:
-            return
-        
-        # Initialize engine if needed
-        if not self.engine:
-            self.engine = self.SuperlookupEngine(mode='universal')
-            
-            # Set TM database if available
-            if self.tm_database:
-                self.engine.set_tm_database(self.tm_database)
-        
-        self.status_label.setText(self.tr("⏳ Capturing text..."))
-        QApplication.processEvents()
-        
-        # Capture text
-        text = self.engine.capture_text()
-        
-        if text:
-            self.source_text.setCurrentText(text)
-            self.status_label.setText(f"✓ Captured {len(text)} characters. Searching...")
-            # Auto-search after capture
-            self.perform_lookup()
-        else:
-            self.status_label.setText(self.tr("✗ No text captured. Try again."))
-    
     def perform_lookup(self):
         """Perform lookup on the source text.
 
@@ -70619,756 +70017,6 @@ class SuperlookupTab(QWidget):
         if self.engine:
             self.engine.set_tm_database(tm_db)
     
-    def _find_autohotkey_executable(self):
-        """Find AutoHotkey executable, checking saved path first
-        
-        Returns tuple: (exe_path, source) where source is 'saved', 'detected', or None
-        """
-        # First, check if user has a saved custom path. (Read through
-        # load_general_settings: the main window has no general_settings
-        # attribute, so the old attribute lookup never found a saved path.)
-        if self.main_window and hasattr(self.main_window, 'load_general_settings'):
-            saved_path = (self.main_window.load_general_settings() or {}).get('autohotkey_path', '')
-            if saved_path and os.path.exists(saved_path):
-                print(f"[Superlookup] Using saved AutoHotkey path: {saved_path}")
-                return saved_path, 'saved'
-        
-        # Standard installation paths
-        username = os.environ.get('USERNAME', '')
-        ahk_paths = [
-            r"C:\Program Files\AutoHotkey\v2\AutoHotkey.exe",
-            r"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
-            r"C:\Program Files\AutoHotkey\AutoHotkey.exe",
-            r"C:\Program Files (x86)\AutoHotkey\AutoHotkey.exe",
-            fr"C:\Users\{username}\AppData\Local\Programs\AutoHotkey\AutoHotkey.exe",
-            # v1 paths
-            r"C:\Program Files\AutoHotkey\v1.1\AutoHotkeyU64.exe",
-            r"C:\Program Files\AutoHotkey\v1.1\AutoHotkeyU32.exe",
-        ]
-        
-        for path in ahk_paths:
-            if os.path.exists(path):
-                print(f"[Superlookup] Detected AutoHotkey at: {path}")
-                return path, 'detected'
-        
-        return None, None
-    
-    def _show_autohotkey_setup_dialog(self):
-        """Show dialog to help user install or locate AutoHotkey"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle(self.tr("AutoHotkey Setup - SuperLookup"))
-        dialog.setMinimumWidth(500)
-        
-        layout = QVBoxLayout(dialog)
-        
-        # Header
-        header = QLabel(self.tr("⌨️ AutoHotkey Required for Global Hotkey"))
-        header.setStyleSheet("font-size: 14px; font-weight: bold; margin-bottom: 10px;")
-        layout.addWidget(header)
-        
-        # Explanation
-        explanation = QLabel(
-            f"SuperLookup uses AutoHotkey to provide a global hotkey ({format_shortcut_for_display('Ctrl+Alt+L')}) "
-            "that works from any application.\n\n"
-            "Without AutoHotkey, SuperLookup will still work, but only when "
-            "Localize Large is the active window."
-        )
-        explanation.setWordWrap(True)
-        explanation.setStyleSheet("margin-bottom: 15px;")
-        layout.addWidget(explanation)
-        
-        # Options group
-        options_group = QGroupBox(self.tr("Choose an option:"))
-        options_layout = QVBoxLayout(options_group)
-        
-        # Option 1: Download AutoHotkey
-        download_btn = QPushButton(self.tr("📥 Download AutoHotkey (Recommended)"))
-        download_btn.setStyleSheet("padding: 8px; font-size: 11px;")
-        download_btn.setToolTip(self.tr("Opens the AutoHotkey download page in your browser"))
-        download_btn.clicked.connect(lambda: self._open_ahk_download())
-        options_layout.addWidget(download_btn)
-        
-        # Option 2: Browse for existing installation
-        browse_layout = QHBoxLayout()
-        browse_btn = QPushButton(self.tr("📁 Browse for AutoHotkey.exe"))
-        browse_btn.setStyleSheet("padding: 8px; font-size: 11px;")
-        browse_btn.setToolTip(self.tr("Locate AutoHotkey.exe if you have it installed in a custom location"))
-        browse_btn.clicked.connect(lambda: self._browse_for_autohotkey(dialog))
-        browse_layout.addWidget(browse_btn)
-        options_layout.addLayout(browse_layout)
-        
-        # Option 3: Skip
-        skip_btn = QPushButton(self.tr("⏭️ Skip (Use SuperLookup without global hotkey)"))
-        skip_btn.setStyleSheet("padding: 8px; font-size: 11px; color: #666;")
-        skip_btn.clicked.connect(dialog.reject)
-        options_layout.addWidget(skip_btn)
-        
-        layout.addWidget(options_group)
-        
-        # Status label (for showing selected path)
-        self._ahk_setup_status = QLabel("")
-        self._ahk_setup_status.setStyleSheet("color: green; margin-top: 10px;")
-        self._ahk_setup_status.setWordWrap(True)
-        layout.addWidget(self._ahk_setup_status)
-        
-        # Note about restart
-        note = QLabel(
-            self.tr("💡 Note: After installing AutoHotkey, restart Localize Large to enable the global hotkey.")
-        )
-        note.setStyleSheet("color: #666; font-size: 10px; margin-top: 15px;")
-        note.setWordWrap(True)
-        layout.addWidget(note)
-        
-        # Don't show again checkbox
-        dont_show_cb = CheckmarkCheckBox(self.tr("Do not show this dialog again"))
-        dont_show_cb.setStyleSheet("margin-top: 10px;")
-        layout.addWidget(dont_show_cb)
-        
-        # Close button
-        close_btn = QPushButton(self.tr("Close"))
-        def on_close():
-            # Save preference if checkbox is checked
-            if dont_show_cb.isChecked():
-                if self.main_window and hasattr(self.main_window, 'load_general_settings'):
-                    settings = self.main_window.load_general_settings() or {}
-                    settings['hide_autohotkey_dialog'] = True
-                    self.main_window.save_general_settings(settings)
-            dialog.accept()
-        close_btn.clicked.connect(on_close)
-        layout.addWidget(close_btn)
-        
-        dialog.exec()
-    
-    def _open_ahk_download(self):
-        """Open AutoHotkey download page"""
-        import webbrowser
-        webbrowser.open("https://www.autohotkey.com/download/")
-        QMessageBox.information(
-            self,
-            "Download AutoHotkey",
-            "The AutoHotkey download page has been opened in your browser.\n\n"
-            "Download and install AutoHotkey v2.x, then restart Localize Large."
-        )
-    
-    def _browse_for_autohotkey(self, parent_dialog):
-        """Let user browse for AutoHotkey executable"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            parent_dialog,
-            "Locate AutoHotkey Executable",
-            "C:\\Program Files",
-            "Executable Files (*.exe);;All Files (*.*)"
-        )
-        
-        if file_path:
-            # Verify it looks like AutoHotkey
-            if 'autohotkey' not in file_path.lower():
-                result = QMessageBox.question(
-                    parent_dialog,
-                    "Confirm Selection",
-                    f"The selected file doesn't appear to be AutoHotkey:\n{file_path}\n\n"
-                    "Are you sure you want to use this file?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-                )
-                if result != QMessageBox.StandardButton.Yes:
-                    return
-            
-            # Save the path
-            if self.main_window and hasattr(self.main_window, 'load_general_settings'):
-                settings = self.main_window.load_general_settings() or {}
-                settings['autohotkey_path'] = file_path
-                self.main_window.save_general_settings(settings)
-                print(f"[Superlookup] Saved AutoHotkey path: {file_path}")
-            
-            self._ahk_setup_status.setText(f"✓ Saved: {file_path}\n\nRestart Localize Large to use this path.")
-            
-            QMessageBox.information(
-                parent_dialog,
-                "Path Saved",
-                f"AutoHotkey path saved:\n{file_path}\n\n"
-                "Please restart Localize Large to enable the global hotkey."
-            )
-    
-    def register_global_hotkey(self):
-        """Register global hotkeys for Superlookup, QuickTrans, Sidekick
-        and the Voice Always-On toggle.
-
-        Idempotent: if a manager from a previous registration is still
-        running, it is stopped first. That makes this safe to call from
-        ``reload_global_hotkeys`` after the user changes a binding in
-        Settings \u2192 Keyboard Shortcuts.
-
-        Strategy:
-        1. Try WinAPI RegisterHotKey / pynput GlobalHotKeys (cross-platform)
-        2. On Windows, fall back to AHK external script if that fails
-        3. On macOS/Linux, if pynput fails, hotkeys are unavailable
-
-        Shortcut keys are read from the ShortcutManager (customizable in Settings).
-        """
-        global _ahk_process, _hotkey_manager
-
-        # Stop any previously-running manager so re-registration applies a
-        # clean set of bindings instead of stacking new keys on top of old.
-        prev_manager = getattr(self, '_hotkey_manager', None)
-        if prev_manager is not None:
-            try:
-                prev_manager.stop()
-            except Exception:
-                pass
-        self._using_pynput = False
-        self._hotkey_manager = None
-
-        # Read customizable shortcuts from ShortcutManager. Each action used
-        # to have a separate `global_*` ID; that's been merged into a single
-        # entry per action with `global: True`. Legacy IDs still resolve via
-        # ShortcutManager._LEGACY_IDS, so old saved settings keep working.
-        sm = getattr(self.main_window, 'shortcut_manager', None) if self.main_window else None
-        if sm:
-            sl_shortcut = sm.get_shortcut('tools_universal_lookup').lower()
-            qt_shortcut = sm.get_shortcut('mt_quick_lookup').lower()
-            sk_shortcut = sm.get_shortcut('sidekick_open').lower()
-            ao_shortcut = sm.get_shortcut('voice_alwayson_toggle').lower()
-
-            # Honour the per-shortcut enabled flag and the `global` field:
-            # if disabled, or if the entry is no longer flagged global, skip
-            # OS-level registration. (In-app QShortcut binding is still set
-            # up by the regular create_shortcut path.)
-            def _skip(sid):
-                return (not sm.is_enabled(sid)) or (not sm.is_global(sid))
-            if _skip('tools_universal_lookup'):       sl_shortcut = ''
-            if _skip('mt_quick_lookup'):              qt_shortcut = ''
-            if _skip('voice_alwayson_toggle'):  ao_shortcut = ''
-        else:
-            sl_shortcut = 'ctrl+alt+l'
-            qt_shortcut = 'ctrl+alt+q'
-            ao_shortcut = 'ctrl+alt+o'
-
-        # No platform-specific rewrite needed: GlobalHotkeyManager's macOS
-        # NSEvent backend now follows Qt's Mac convention internally
-        # (stored "Ctrl" → ⌘ Cmd, "Alt" → ⌥ Option, "Meta" → ⌃ Control),
-        # so the same shortcut string fires on the SAME physical keystroke
-        # whether triggered via QShortcut in-app or via the global hotkey
-        # outside the app. The previous alt→cmd rewrite was a workaround
-        # for an older NSEvent parser that took modifier names literally
-        # and produced different physical chords for local vs global; that
-        # parser was fixed in modules/platform_helpers.py:_MacNSEventHotkey._parse.
-
-        # Logging helper: mirrors to the main window's log as well.
-        def _log(m):
-            print(m, flush=True)
-            if self.main_window and hasattr(self.main_window, 'log'):
-                self.main_window.log(m)
-
-        # --- Attempt 1: WinAPI / pynput (cross-platform) ---
-        import sys as _sys
-        try:
-            from modules.platform_helpers import GlobalHotkeyManager, CrossPlatformKeySender
-            manager = GlobalHotkeyManager()
-            _log(f"[Global Hotkeys] Manager available: {manager.is_available}")
-            if manager.is_available:
-                # Skip empty shortcuts (action disabled or `global` flag off)
-                _bindings = [
-                    (sl_shortcut, self._on_pynput_superlookup),
-                    (qt_shortcut, self._on_pynput_quicktrans),
-                    (ao_shortcut, self._on_pynput_alwayson_toggle),
-                ]
-                _to_register = [(s, cb) for s, cb in _bindings if s]
-                if not _to_register:
-                    _log("[Global Hotkeys] Nothing to register (all global shortcuts disabled or unset).")
-                    self.hotkey_registered = False
-                    return
-                for s, cb in _to_register:
-                    manager.register(s, cb)
-                _log(f"[Global Hotkeys] Registering: {', '.join(s for s, _ in _to_register)}")
-                started = manager.start()
-                _log(f"[Global Hotkeys] Started: {started}")
-                if started:
-                    self._hotkey_manager = manager
-                    _hotkey_manager = manager  # global for atexit cleanup
-                    self._using_pynput = True
-                    self.hotkey_registered = True
-                    failed = getattr(manager, 'failed_hotkeys', [])
-                    if failed:
-                        _log(f"\u26A0 [Global Hotkeys] Failed to register: {', '.join(failed)} (claimed by another app)")
-                    ok_keys = [s for s, _ in _to_register if s not in failed]
-                    _log(f"\u2328 [Global Hotkeys] Registered via {manager._backend}: {', '.join(ok_keys)}")
-                    return
-                else:
-                    _log("[Global Hotkeys] manager.start() returned False")
-        except Exception as e:
-            _log(f"[Global Hotkeys] Registration failed: {e}")
-            import traceback
-            traceback.print_exc()
-            if IS_MACOS:
-                _log("[Global Hotkeys] macOS: grant Accessibility permission "
-                     "to whichever binary launched Python (Terminal.app / "
-                     "iTerm2.app for terminal launches, Supervertaler.app "
-                     "for the bundled app) in System Settings → Privacy & "
-                     "Security → Accessibility, then restart Localize Large.")
-
-        # --- Attempt 2: AHK external script (Windows only) ---
-        if IS_WINDOWS:
-            self._register_hotkey_external_script()
-        else:
-            self.hotkey_registered = False
-
-    def _on_pynput_superlookup(self):
-        """Called from pynput background thread when Ctrl+Alt+L is pressed.
-
-        IMPORTANT: Do NO work here – pynput callbacks on macOS crash if they
-        touch pyperclip, pynput Controller, or Qt objects.  Just signal the
-        Qt main thread and return immediately.
-        """
-        try:
-            from PyQt6.QtCore import QMetaObject, Qt as QtConst
-            QMetaObject.invokeMethod(
-                self, "_handle_superlookup_hotkey",
-                QtConst.ConnectionType.QueuedConnection,
-            )
-        except Exception as e:
-            print(f"[Superlookup] Error signaling main thread: {e}")
-
-    def _on_pynput_quicktrans(self):
-        """Called from pynput background thread when Ctrl+Alt+Q is pressed.
-
-        IMPORTANT: Do NO work here – see _on_pynput_superlookup docstring.
-        """
-        try:
-            from PyQt6.QtCore import QMetaObject, Qt as QtConst
-            QMetaObject.invokeMethod(
-                self, "_handle_quicktrans_hotkey",
-                QtConst.ConnectionType.QueuedConnection,
-            )
-        except Exception as e:
-            print(f"[QuickTrans] Error signaling main thread: {e}")
-
-    def _on_pynput_alwayson_toggle(self):
-        """Voice Always-On toggle hotkey – fires on the pynput
-        background thread.
-
-        IMPORTANT: Do NO work here – see _on_pynput_superlookup docstring.
-        """
-        try:
-            from PyQt6.QtCore import QTimer
-            QTimer.singleShot(0, self._handle_alwayson_toggle_hotkey)
-        except Exception as e:
-            print(f"[Voice] Error signaling main thread: {e}")
-
-    @pyqtSlot()
-    def _handle_alwayson_toggle_hotkey(self):
-        """Runs on Qt main thread – toggle Always-On listening on/off.
-
-        Listening stays on until pressed again. Visual feedback: the
-        system tray icon appears when Always-On is active, plus the
-        grid toolbar button and the Voice tab update via
-        _update_alwayson_ui."""
-        try:
-            mw = self.main_window or self.window()
-            if mw and hasattr(mw, '_toggle_alwayson_listening'):
-                mw._toggle_alwayson_listening()
-            else:
-                print("[Voice] Workbench unavailable for Always-On toggle")
-        except Exception as e:
-            print(f"[Voice] Error in Always-On toggle handler: {e}")
-
-    def _try_ahk_library_method(self):
-        """Try to register hotkey using ahk Python library
-        
-        Returns True if successful, False otherwise
-        """
-        try:
-            from ahk import AHK
-            print("[Superlookup] ahk library available, attempting to use it...")
-            
-            # Find AutoHotkey executable using shared function
-            ahk_exe, source = self._find_autohotkey_executable()
-            
-            # Create AHK instance (with executable path if found)
-            if ahk_exe:
-                print(f"[Superlookup] Using AutoHotkey at: {ahk_exe} (source: {source})")
-                self._ahk = AHK(executable_path=ahk_exe)
-            else:
-                # Let it try to find AHK on PATH (may fail)
-                self._ahk = AHK()
-            print(f"[Superlookup] AHK instance created: {self._ahk}")
-            
-            # Define hotkey callback
-            def on_hotkey():
-                """Called when Ctrl+Alt+L is pressed"""
-                print("[Superlookup] Hotkey triggered via ahk library!")
-                try:
-                    # Copy selection to clipboard
-                    self._ahk.send('^c')  # Ctrl+C
-                    time.sleep(0.2)  # Give clipboard time to update
-                    
-                    # Get clipboard text
-                    text = pyperclip.paste()
-                    
-                    # Activate Localize Large window
-                    try:
-                        self._ahk.win_activate('Localize Large')
-                    except Exception as e:
-                        print(f"[Superlookup] win_activate error (non-critical): {e}")
-                    
-                    # Trigger lookup in main thread
-                    if text:
-                        # Use QTimer to call from main thread
-                        QTimer.singleShot(0, lambda: self.on_ahk_capture(text))
-                        
-                except Exception as e:
-                    print(f"[Superlookup] Error in hotkey callback: {e}")
-            
-            # Register the hotkey
-            self._ahk.add_hotkey('^!l', callback=on_hotkey)  # Ctrl+Alt+L
-            self._ahk.start_hotkeys()
-            
-            print("[Superlookup] ✓ Hotkey registered via ahk library: Ctrl+Alt+L")
-            self.hotkey_registered = True
-            self._using_ahk_library = True
-            return True
-            
-        except ImportError:
-            print("[Superlookup] ahk library not installed (pip install ahk)")
-            return False
-        except Exception as e:
-            print(f"[Superlookup] ahk library method failed: {e}")
-            # Clean up on failure
-            if hasattr(self, '_ahk'):
-                try:
-                    self._ahk.stop_hotkeys()
-                except:
-                    pass
-                self._ahk = None
-            return False
-    
-    def _register_hotkey_external_script(self):
-        """Register hotkey using external AHK script (fallback method)"""
-        global _ahk_process
-        self._using_ahk_library = False
-        try:
-            # Kill any existing instances of the AHK script first
-            if os.name == 'nt':
-                try:
-                    # Use multiple methods to ensure cleanup
-                    # Method 1: Kill by window title
-                    subprocess.run(['taskkill', '/F', '/FI', 'WINDOWTITLE eq supervertaler_hotkeys.ahk*'],
-                                 capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                    
-                    # Method 2: Kill AutoHotkey processes more aggressively
-                    subprocess.run(['taskkill', '/F', '/IM', 'AutoHotkey.exe'],
-                                 capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                    
-                    # Method 3: Kill by process name pattern
-                    import psutil
-                    try:
-                        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                            try:
-                                if 'supervertaler_hotkeys' in ' '.join(proc.cmdline() or []):
-                                    proc.kill()
-                            except:
-                                pass
-                    except:
-                        pass
-                except:
-                    pass
-            
-            # Find AutoHotkey executable using shared function
-            ahk_exe, source = self._find_autohotkey_executable()
-            
-            if not ahk_exe:
-                print("[Hotkeys] AutoHotkey not found.")
-                print("[Hotkeys] Global hotkeys (Ctrl+Alt+L, Shift+Shift) will not be available.")
-                self.hotkey_registered = False
-                # Show setup dialog (deferred to avoid blocking startup) - unless user opted out
-                if self.main_window and hasattr(self.main_window, 'load_general_settings'):
-                    if not (self.main_window.load_general_settings() or {}).get('hide_autohotkey_dialog', False):
-                        QTimer.singleShot(2000, self._show_autohotkey_setup_dialog)
-                else:
-                    QTimer.singleShot(2000, self._show_autohotkey_setup_dialog)
-                return
-            
-            print(f"[Hotkeys] Found AutoHotkey at: {ahk_exe} (source: {source})")
-            
-            ahk_script = Path(__file__).parent / "supervertaler_hotkeys.ahk"
-            print(f"[Hotkeys] Looking for script at: {ahk_script}")
-            print(f"[Hotkeys] Script exists: {ahk_script.exists()}")
-            
-            if ahk_script.exists():
-                # Start AHK script in background (hidden)
-                self.ahk_process = subprocess.Popen([ahk_exe, str(ahk_script)],
-                                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
-                # Store in global variable for atexit cleanup
-                _ahk_process = self.ahk_process
-                print(f"[Hotkeys] AHK hotkeys registered (Ctrl+Alt+L, Shift+Shift)")
-                
-                # Start file watcher
-                self.start_file_watcher()
-                self.hotkey_registered = True
-            else:
-                print(f"[Hotkeys] AHK script not found: {ahk_script}")
-                self.hotkey_registered = False
-        except Exception as e:
-            print(f"[Hotkeys] Could not start AHK hotkeys: {e}")
-            self.hotkey_registered = False
-    
-    def start_file_watcher(self):
-        """Watch for signal files from AHK (Superlookup and MT Quick Lookup)"""
-        self.signal_file = Path(__file__).parent / "lookup_signal.txt"
-        self.capture_file = Path(__file__).parent / "temp_capture.txt"
-        self.mt_lookup_signal_file = Path(__file__).parent / "mt_lookup_signal.txt"
-
-        print(f"[Superlookup] File watcher started, watching: {self.signal_file}")
-        print(f"[QuickTrans] File watcher started, watching: {self.mt_lookup_signal_file}")
-        
-        # Create timer to check for signal file
-        self.file_check_timer = QTimer()
-        self.file_check_timer.timeout.connect(self.check_for_signal)
-        self.file_check_timer.start(100)  # Check every 100ms
-    
-    def check_for_signal(self):
-        """Check if AHK wrote a signal file"""
-        # Check for Superlookup signal
-        if self.signal_file.exists():
-            print(f"[Superlookup] Signal file detected!")
-            try:
-                # Delete signal file
-                self.signal_file.unlink()
-                print(f"[Superlookup] Signal file deleted")
-
-                # Get text from clipboard (AHK already copied it)
-                time.sleep(0.1)  # Give clipboard a moment
-                text = pyperclip.paste()
-
-                # Trigger lookup
-                if text:
-                    self.on_ahk_capture(text)
-            except Exception as e:
-                print(f"[Superlookup] Error reading capture: {e}")
-
-        # Check for MT Quick Lookup signal
-        if hasattr(self, 'mt_lookup_signal_file') and self.mt_lookup_signal_file.exists():
-            print(f"[QuickTrans] Signal file detected!")
-            try:
-                # Small delay to let AHK finish writing/close the file
-                time.sleep(0.05)
-
-                # Delete signal file with retry for file lock
-                for attempt in range(3):
-                    try:
-                        self.mt_lookup_signal_file.unlink()
-                        print(f"[QuickTrans] Signal file deleted")
-                        break
-                    except PermissionError:
-                        if attempt < 2:
-                            time.sleep(0.05)
-                        else:
-                            raise
-
-                # Get text from clipboard (AHK already copied it)
-                time.sleep(0.1)  # Give clipboard a moment
-                text = pyperclip.paste()
-
-                # Trigger MT Quick Lookup
-                if text:
-                    self.on_ahk_mt_lookup_capture(text)
-            except Exception as e:
-                print(f"[QuickTrans] Error reading capture: {e}")
-    
-    @pyqtSlot()
-    def _handle_superlookup_hotkey(self):
-        """Runs on Qt main thread after the global hotkey fires.
-
-        Sends Cmd+C / Ctrl+C to the foreground app, waits for the clipboard
-        to update, then dispatches to Superlookup.  Everything here runs on
-        the main thread, avoiding the macOS crash caused by calling pyperclip
-        or pynput from a background thread.
-        """
-        try:
-            from modules.platform_helpers import CrossPlatformKeySender
-            sender = CrossPlatformKeySender()
-            sender.send_copy()
-            # Read clipboard after a short delay (give OS time to process Cmd+C)
-            QTimer.singleShot(250, self._read_clipboard_for_superlookup)
-        except Exception as e:
-            print(f"[Superlookup] Error in hotkey handler: {e}")
-
-    def _read_clipboard_for_superlookup(self):
-        """Read clipboard and dispatch to SuperLookup.
-
-        v1.10.1 (Phase 2 of issue #199): the hotkey now bring Workbench
-        forward and switches to its SuperLookup top tab, instead of
-        opening Sidekick. Sidekick still works for users who summon it
-        manually via Ctrl+Alt+K. Empty clipboard still triggers the
-        navigation – without text we skip the auto-search and let the
-        user type into the search field manually, which is the same
-        visible-feedback contract Sidekick had.
-        """
-        text = pyperclip.paste() or ""
-
-        mw = self.main_window
-        # New path: route to Workbench's SuperLookup top tab.
-        if mw and hasattr(mw, 'open_workbench_to_superlookup'):
-            try:
-                mw.open_workbench_to_superlookup(text)
-                return
-            except Exception as e:
-                print(f"[Superlookup] Workbench top-tab route failed: {e}")
-                # Last-ditch fallback: main-window AHK-capture handler.
-                if text:
-                    self.on_ahk_capture(text)
-
-    @pyqtSlot()
-    def _handle_quicktrans_hotkey(self):
-        """Runs on Qt main thread after the QuickTrans global hotkey fires."""
-        try:
-            # If the user is working inside Workbench itself (e.g. the cursor
-            # is in a target cell), skip the clipboard round-trip entirely and
-            # use the in-app popup. show_mt_quick_popup() already does the
-            # right thing: translate the current selection if there is one,
-            # otherwise fall back to the whole source segment. The clipboard
-            # flow below would instead copy nothing and reuse stale clipboard
-            # text when nothing is selected – which is the bug the user hit.
-            #
-            # NOTE: this handler lives on SuperlookupTab, not the main window,
-            # so show_mt_quick_popup() must be called on self.main_window.
-            from PyQt6.QtWidgets import QApplication
-            main_window = getattr(self, 'main_window', None) or self.window()
-            if (QApplication.activeWindow() is not None
-                    and main_window is not None
-                    and hasattr(main_window, 'show_mt_quick_popup')):
-                main_window.show_mt_quick_popup()
-                return
-
-            # Otherwise the hotkey came from another application (browser,
-            # Trados, etc.). Capture that foreground window BEFORE we do
-            # anything, then copy the user's selection to the clipboard.
-            from modules.platform_helpers import CrossPlatformKeySender, get_foreground_window
-            self._quicktrans_source_window = get_foreground_window()
-            print(f"[QuickTrans] Captured source window: {self._quicktrans_source_window}")
-
-            sender = CrossPlatformKeySender()
-            sender.send_copy()
-            QTimer.singleShot(250, self._read_clipboard_for_quicktrans)
-        except Exception as e:
-            print(f"[QuickTrans] Error in hotkey handler: {e}")
-
-    def _read_clipboard_for_quicktrans(self):
-        """Read clipboard and show the QuickTrans popup.
-
-        Pre-v1.10.4 this opened Sidekick's QuickTrans sub-tab. With
-        Sidekick retired, QuickTrans uses the standalone always-on-
-        top popup (the same one the editor's right-click → QuickTrans
-        triggers). `_quicktrans_source_window` is still captured by
-        the hotkey handler so the popup's paste-back flow has the
-        original app to return to.
-        """
-        text = pyperclip.paste() or ""
-        if text:
-            self.on_ahk_mt_lookup_capture(text)
-
-    def on_ahk_capture(self, text):
-        """Handle text captured by AHK"""
-        try:
-            print(f"[Superlookup] on_ahk_capture called with text: {text[:50]}...")
-
-            # Bring Localize Large to foreground using platform-native method
-            # On Windows: AttachThreadInput + SetForegroundWindow (reliable)
-            # On macOS: osascript
-            # On Linux: wmctrl / xdotool
-            from modules.platform_helpers import activate_window_by_title
-
-            main_window = self.window()
-            if main_window:
-                # Restore if minimized first (Qt side)
-                if main_window.isMinimized():
-                    main_window.showNormal()
-                elif main_window.isHidden():
-                    main_window.show()
-
-                # Use native API to bring window to foreground
-                # This uses the window title, which always contains "Localize Large"
-                activate_window_by_title("Localize Large")
-
-                # Qt side: raise + activate as fallback
-                main_window.raise_()
-                main_window.activateWindow()
-
-            # Longer delay to allow all window focus events to settle
-            # Window activation triggers focus restoration which takes time
-            QTimer.singleShot(250, lambda: self.show_superlookup(text))
-
-        except Exception as e:
-            print(f"[Superlookup] Error handling capture: {e}")
-
-    def on_ahk_mt_lookup_capture(self, text):
-        """Handle MT Quick Lookup text captured by AHK (Ctrl+Alt+Q)"""
-        try:
-            print(f"[QuickTrans] on_ahk_mt_lookup_capture called with text: {text[:50]}...")
-
-            # Show popup directly without bringing Localize Large to foreground
-            # The popup has WindowStaysOnTopHint so it will appear over any app
-            QTimer.singleShot(100, lambda: self.show_mt_quick_lookup_from_ahk(text))
-
-        except Exception as e:
-            print(f"[QuickTrans] Error handling capture: {e}")
-
-    def show_mt_quick_lookup_from_ahk(self, text):
-        """Show MT Quick Lookup popup with text from AHK capture"""
-        try:
-            print(f"[QuickTrans] show_mt_quick_lookup_from_ahk called with text: {text[:50]}...")
-
-            # Get main window reference for settings access
-            main_window = self.main_window
-            if not main_window:
-                main_window = self.window()
-
-            if not main_window:
-                print("[QuickTrans] ERROR: Could not find main window")
-                return
-
-            # Resolve direction the same way as the in-app popup: sticky manual
-            # override (chosen in the popup's language selector) → else per-text
-            # auto-detect → else project pair.
-            if hasattr(main_window, 'resolve_quicktrans_direction'):
-                source_lang, target_lang = main_window.resolve_quicktrans_direction(text)
-            else:
-                source_lang = getattr(main_window, 'source_language', 'English')
-                target_lang = getattr(main_window, 'target_language', 'Dutch')
-
-            # Import and show MT Quick Lookup popup
-            from modules.quicktrans import MTQuickPopup
-
-            # Create popup without Qt parent so it can appear independently over any app
-            # Pass main_window as parent_app for API access
-            popup = MTQuickPopup(
-                parent_app=main_window,
-                source_text=text,
-                source_lang=source_lang,
-                target_lang=target_lang,
-                parent=None,  # No Qt parent - allows independent window
-                external_mode=True  # Tool window: no taskbar flash
-            )
-
-            # Connect signal: when user selects a translation, copy to clipboard
-            # and paste at cursor in the external app (browser, Trados, etc.)
-            popup.translation_selected.connect(
-                lambda translation: self._paste_translation_to_external_app(translation)
-            )
-
-            # Store reference to prevent garbage collection
-            self._ahk_mt_popup = popup
-
-            # Show popup on top – Tool window type prevents the main
-            # Localize Large icon from flashing in the taskbar
-            popup.show()
-            popup.raise_()
-            popup.activateWindow()
-            print(f"[QuickTrans] Popup shown for text: {text[:30]}...")
-
-        except Exception as e:
-            print(f"[QuickTrans] Error showing popup: {e}")
-            import traceback
-            traceback.print_exc()
-
     def show_supervertaler_assistant(self, initial_text=None, external_mode=False):
         """Navigate to the Localize Large Sidekick (AI Assistant tab) and optionally insert text.
 
@@ -72286,19 +70934,7 @@ def main():
 
     window = SupervertalerQt()
 
-    # Decide visibility BEFORE creating the tray icon, so the main window
-    # is fully realised on screen first – some Windows configs render a
-    # cold-started QMainWindow incorrectly when a tray icon is installed
-    # ahead of the first show().
-    ui_prefs = window._load_settings_section("ui")
-    start_minimized = bool(ui_prefs.get("start_minimized_to_tray"))
-    if not start_minimized:
-        window.show()
-
-    # System-tray icon + close-to-tray / start-minimized handling.
-    # _setup_tray_icon also flips QApplication.setQuitOnLastWindowClosed(False)
-    # if a tray is available, so hiding the main window won't terminate the app.
-    window._setup_tray_icon()
+    window.show()
 
     sys.exit(app.exec())
 
