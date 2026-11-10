@@ -117,11 +117,6 @@ def cache_dir() -> Path:
     return local_root() / "cache"
 
 
-def dictionaries_dir() -> Path:
-    """Spelling dictionaries the user added."""
-    return local_root() / "dictionaries"
-
-
 def ensure_roots() -> None:
     """Create both roots and their standard folders."""
     for folder in (settings_root(), settings_dir(), database_dir(), logs_dir(), cache_dir()):

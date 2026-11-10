@@ -31,7 +31,7 @@ _HELP_TOPIC_PROPERTY = "_help_topic"
 class Topics:
     """Help topic identifiers, each holding a path appended to ``DOCS_BASE_URL``.
 
-    The unified help site at https://docs.supervertaler.com (Astro
+    The help site of the base app (Astro
     Starlight on Cloudflare Pages, sources from the Supervertaler-Help
     repo) uses **folder-based URLs**: every page's URL mirrors its
     on-disk path under ``workbench/`` or ``trados/``. README.md files

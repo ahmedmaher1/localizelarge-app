@@ -122,3 +122,19 @@ def test_no_java_process_is_left_running(launch):
         if "okapi-sidecar" in cmdline and "java" in (proc.info.get("name") or "").lower():
             left.append(cmdline[:120])
     assert left == []
+
+
+def test_nothing_is_written_to_the_windows_registry_by_qt_settings():
+    """Qt's default QSettings writes to the registry on Windows. Every use
+    must name a file (IniFormat) instead."""
+    import re
+    offenders = []
+    for path in [ROOT / "Supervertaler.py", *sorted((ROOT / "modules").glob("*.py")),
+                 *sorted((ROOT / "localizelarge").rglob("*.py"))]:
+        text = path.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            if "QSettings(" in line and "IniFormat" not in line:
+                offenders.append(f"{path.name}: {line.strip()[:80]}")
+        if re.search(r"\bimport winreg\b|\bHKEY_", text):
+            offenders.append(f"{path.name}: registry access")
+    assert offenders == []

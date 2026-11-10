@@ -111,6 +111,14 @@ def _canonical_lang_name(value):
     return value
 
 
+def _window_settings():
+    """Where the QuickTrans window remembers its size and position: a small
+    file in the settings folder. Never the Windows registry."""
+    from localizelarge import paths
+    paths.ensure_roots()
+    return QSettings(str(paths.settings_dir() / "quicktrans-window.ini"), QSettings.Format.IniFormat)
+
+
 @dataclass
 class MTSuggestion:
     """A single MT suggestion from a provider"""
@@ -637,7 +645,7 @@ class MTQuickPopup(QuickTransProviderMixin, QDialog):
         self.setMinimumHeight(200)
 
         # Restore saved size and position or use defaults
-        settings = QSettings("Localize Large", "MTQuickPopup")
+        settings = _window_settings()
         saved_width = settings.value("width", 650, type=int)
         saved_height = settings.value("height", 400, type=int)
         self.resize(saved_width, saved_height)
@@ -1355,7 +1363,7 @@ class MTQuickPopup(QuickTransProviderMixin, QDialog):
     def closeEvent(self, event):
         """Clean up worker on close and save window size and position"""
         # Save window size and position for next time
-        settings = QSettings("Localize Large", "MTQuickPopup")
+        settings = _window_settings()
         settings.setValue("width", self.width())
         settings.setValue("height", self.height())
         settings.setValue("x", self.x())

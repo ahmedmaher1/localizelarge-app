@@ -24,20 +24,21 @@ Inherited from the base and working: projects, DOCX and other imports through th
 sidecar, translation memory, termbases, AI translation, find and replace, spellcheck, the
 file-based bilingual formats (memoQ, Trados, Phrase, CafeTran, Déjà Vu).
 
-Done for Localize Large so far (Phases 1 and 2 of 8):
+Done for Localize Large so far (Phases 1 to 3 of 8):
 
-- The new name and icon, fixed data folders, the `.llproj` project format (older `.svproj`
-  files open and are saved as `.llproj`), the About dialog.
-- Everything outside the v1 scope is removed or disabled: global hotkeys, the tray icon,
-  voice, the embedded browser and web lookups, PDF tools, machine-translation services, AI
-  providers other than Claude, OpenAI, Gemini and Ollama, the Trados and memoQ bridges, the
-  usage ping, the update check and the sidecar download. `docs/REMOVED.md` lists each one,
-  and which parts are disabled but not yet deleted.
+- **Identity.** The new name and icon, fixed data folders, the `.llproj` project format
+  (older `.svproj` files open and are saved as `.llproj`), the About dialog.
+- **Scope.** Everything outside the v1 scope is removed or disabled; `docs/REMOVED.md` lists
+  each item, and which parts are disabled but not yet deleted.
+- **Security.** The file-format service listens on `127.0.0.1` only, on a random port, and
+  needs a per-session token. API keys live in one file locked by Windows DPAPI and nowhere
+  in clear text. One network layer allows only Claude, OpenAI, Gemini, the configured Ollama
+  address and a LanguageTool server you enter, and logs host names only. The app says where
+  text goes. See `docs/security/`.
 
-Not done yet: the security hardening (Phase 3: the sidecar still listens on all network
-interfaces and API keys are still also written to a plain file), the extra file formats,
-the quality features, quality packs and the Windows release build. **Do not use this code
-with real client files yet.**
+Not done yet: the extra file formats, the better fuzzy matching and TBX glossaries
+(Phase 4), the quality features (Phase 5), quality packs (Phase 6), the AI provider rework
+(Phase 7) and the Windows release build (Phase 8). There is no downloadable build yet.
 
 ## Where it keeps data
 
@@ -47,7 +48,7 @@ with real client files yet.**
 | Databases, logs, caches | `%LOCALAPPDATA%\LocalizeLarge\` |
 
 `localizelarge/paths.py` owns every path. The app does not read or write any Supervertaler
-folder.
+folder. Details: `docs/DATA_LOCATIONS.md` and `docs/security/SECURITY_FACTS.md`.
 
 ## Development
 

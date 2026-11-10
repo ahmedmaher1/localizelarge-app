@@ -1,0 +1,68 @@
+[
+  {
+    "id": "claude",
+    "name": "Anthropic Claude",
+    "destination": "api.anthropic.com (HTTPS)",
+    "when": "Only when you use an AI feature (AI translation, batch translation, the AI Assistant, QuickTrans) with Claude selected and a Claude API key saved",
+    "whatIsSent": "The text you ask the AI to work on and its context: the segment, neighbouring segments, matching translation memory entries, glossary terms, your prompt instructions, and any document you attach in the AI Assistant. Your API key goes in the request header. Nothing else.",
+    "defaultOn": false,
+    "howToTurnOff": "Do not save a Claude API key, or remove it under Settings → AI Settings → LLM API Keys.",
+    "inShippedApp": true,
+    "confirmed": false
+  },
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "destination": "api.openai.com (HTTPS)",
+    "when": "As for Claude, with OpenAI selected and an OpenAI API key saved",
+    "whatIsSent": "As for Claude",
+    "defaultOn": false,
+    "howToTurnOff": "Do not save an OpenAI API key, or remove it under Settings → AI Settings → LLM API Keys.",
+    "inShippedApp": true,
+    "confirmed": false
+  },
+  {
+    "id": "gemini",
+    "name": "Google Gemini",
+    "destination": "generativelanguage.googleapis.com (HTTPS)",
+    "when": "As for Claude, with Gemini selected and a Gemini API key saved",
+    "whatIsSent": "As for Claude",
+    "defaultOn": false,
+    "howToTurnOff": "Do not save a Gemini API key, or remove it under Settings → AI Settings → LLM API Keys.",
+    "inShippedApp": true,
+    "confirmed": false
+  },
+  {
+    "id": "ollama",
+    "name": "Ollama (local model)",
+    "destination": "http://localhost:11434 by default; the address can be changed under Settings → AI Settings",
+    "when": "When you select Ollama in AI Settings or click the refresh button beside its model list, when you translate with Ollama selected, and, if you turn on 'keep the model warm', every four minutes while the app is open",
+    "whatIsSent": "As for Claude, sent to the Ollama server. It stays on this computer while the address points to this computer. If you enter the address of another computer, the app says 'Text is sent to Ollama at <host>'.",
+    "defaultOn": false,
+    "howToTurnOff": "Do not select Ollama as the provider and do not click its refresh button.",
+    "inShippedApp": true,
+    "confirmed": false
+  },
+  {
+    "id": "languagetool",
+    "name": "LanguageTool grammar check",
+    "destination": "Only a LanguageTool server whose address you enter, for example http://localhost:8081. LanguageTool's public service is never used and is refused if entered.",
+    "when": "Only when you run QA → Check with LanguageTool after entering a server address",
+    "whatIsSent": "The target text being checked, in batches of up to 15,000 characters, and the language code",
+    "defaultOn": false,
+    "howToTurnOff": "It is off until you enter a server address. Leave the address empty.",
+    "inShippedApp": true,
+    "confirmed": false
+  },
+  {
+    "id": "okapi-sidecar",
+    "name": "Okapi file-format service (on this computer only)",
+    "destination": "127.0.0.1, on a free port chosen each time the app starts. Not reachable from the network; not the internet.",
+    "when": "While the app is open. It starts with the app and stops when the app closes.",
+    "whatIsSent": "The files you import and export, between the app and its own file-format service on the same computer. Each request must carry a random token created for that session.",
+    "defaultOn": true,
+    "howToTurnOff": "It cannot be turned off: it reads and writes the document formats. It never contacts another computer.",
+    "inShippedApp": true,
+    "confirmed": false
+  }
+]

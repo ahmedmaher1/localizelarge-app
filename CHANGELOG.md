@@ -19,6 +19,25 @@ License). The history of that project is in its own repository.
 - License of the app as a whole: GPL-3.0-or-later. Files from Supervertaler Workbench keep
   their MIT notice (see `NOTICE`).
 
+### Security
+
+- The Okapi file-format service listens on `127.0.0.1` only, on a free port chosen at each
+  start, and requires a random per-session token. It has no CORS, sanitises upload names,
+  deletes temporary files after each request and exits when the app closes or is killed.
+- Okapi Framework 1.48.0, Javalin 6.7.0, Jackson 2.22.4.
+- API keys are stored in one file, `%APPDATA%\LocalizeLarge\api-keys.locked.json`,
+  encrypted by Windows DPAPI for your Windows account. They are never written in clear text.
+  A key found in clear text in an old settings file is moved into the locked file.
+- One network layer creates every connection to an AI provider or LanguageTool. It allows
+  only the configured hosts, refuses everything else and logs host names only.
+- The status bar, AI Settings and the batch translate dialog say "Text stays on this
+  computer" or "Text is sent to {provider}".
+- LanguageTool is off until you enter the address of your own server. The public
+  LanguageTool service is never used.
+- Model lists are never fetched at start-up. You can type any model ID.
+- The app writes nothing to the Windows registry.
+- Fixed a crash that could happen while the app was closing.
+
 ### Removed
 
 Details and reasons are in `docs/REMOVED.md`.

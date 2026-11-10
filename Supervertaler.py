@@ -22734,8 +22734,7 @@ class SupervertalerQt(QMainWindow):
         ])
         openrouter_combo.setToolTip(
             "OpenRouter gives you access to 200+ models with a single API key.\n"
-            "Select a model from the dropdown or type any model ID from openrouter.ai/models.\n\n"
-            "Pricing varies per model – see openrouter.ai for details.\n"
+            "Not available in Localize Large.\n"
             "Providers of free models may keep what you send: not for confidential work."
         )
         _select_saved_model(openrouter_combo,
@@ -22813,7 +22812,7 @@ class SupervertalerQt(QMainWindow):
         model_layout.addWidget(custom_endpoint_label)
 
         custom_endpoint_input = QLineEdit()
-        custom_endpoint_input.setPlaceholderText(self.tr("https://api.example.com/v1"))
+        custom_endpoint_input.setPlaceholderText("")
         custom_endpoint_input.setEnabled(custom_radio.isChecked())
         model_layout.addWidget(custom_endpoint_input)
 
@@ -57456,23 +57455,9 @@ class SupervertalerQt(QMainWindow):
         """Create an LLMClient with proper base_url and proxy handling."""
         from modules.llm_clients import LLMClient
         api_key = api_keys.get(provider) or (api_keys.get('google') if provider == 'gemini' else None)
+        # The address of each provider is fixed inside the client; there are no
+        # custom endpoints in Localize Large.
         base_url = None
-        if provider == 'openrouter':
-            base_url = 'https://openrouter.ai/api/v1'
-        elif provider == 'custom_openai':
-            if settings is None:
-                settings = self.load_llm_settings()
-            profile = self._get_active_custom_profile(settings)
-            if profile:
-                base_url = profile.get('endpoint') or None
-                # Active profile's model is the source of truth; only fall
-                # back to a passed-in model if the profile has none set.
-                model = (profile.get('model') or '').strip() or model or 'custom-model'
-                # Profile API key takes priority, then api_keys.txt fallback
-                profile_key = (profile.get('api_key') or '').strip()
-                api_key = profile_key or api_keys.get('custom_openai', '') or 'not-needed'
-            elif not api_key:
-                api_key = api_keys.get('custom_openai', '') or 'not-needed'
         # Pass proxy URL to client (None if proxy disabled or not configured)
         # Gemini uses env vars instead (set by _apply_gemini_proxy at startup/settings save)
         http_proxy = self._get_proxy_url() if provider != 'gemini' else None

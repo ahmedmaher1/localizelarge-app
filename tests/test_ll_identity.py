@@ -51,7 +51,7 @@ def test_no_path_names_a_supervertaler_folder(windows_profile):
         paths.settings_root(), paths.local_root(), paths.settings_dir(), paths.settings_file(),
         paths.api_keys_file(), paths.prompt_library_dir(), paths.packs_dir(),
         paths.pricing_override_file(), paths.database_dir(), paths.database_file(),
-        paths.logs_dir(), paths.crash_log_file(), paths.cache_dir(), paths.dictionaries_dir(),
+        paths.logs_dir(), paths.crash_log_file(), paths.cache_dir(),
     ]
     for path in every_path:
         assert "supervertaler" not in str(path).lower()

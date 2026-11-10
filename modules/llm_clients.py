@@ -1509,9 +1509,12 @@ class LLMClient:
             model_size_str = f"{param_billions}B" if param_billions > 0 else "unknown size"
             print(f"🟠 Calling Ollama API... (model: {model_size_str}, timeout: {timeout_seconds}s, streaming: {use_streaming})")
 
-            proxies = {"http": self.http_proxy, "https": self.http_proxy} if self.http_proxy else None
             from localizelarge.security import net as _net
             _ollama_http = _net.session("ollama")
+            # Ollama on this computer is never reached through a proxy.
+            _ollama_is_local = _net.is_local_host(_net.host_of(endpoint))
+            proxies = ({"http": self.http_proxy, "https": self.http_proxy}
+                       if self.http_proxy and not _ollama_is_local else None)
 
             if use_streaming:
                 # Streaming mode: read tokens incrementally to avoid timeout on large responses
