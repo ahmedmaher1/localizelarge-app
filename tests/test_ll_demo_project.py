@@ -104,8 +104,7 @@ def test_the_reviewed_text_has_no_qa_findings_and_uses_the_glossary(reviewed):
                              forbidden=[v.text for v in e.target_variants if v.forbidden])
                for e in tbx.read_tbx(str(SAMPLES / "demo-glossary.tbx"), "en", "ar").entries]
     found = glossary_check.run(segments, Glossary(entries, "en", "ar"))
-    # Only the "possibly the term" note for the article attached to the term is left.
-    assert [(i.rule_id, i.severity) for i in found] == [("glossary.required", "minor")]
+    assert found == []
 
 
 @pytest.mark.parametrize("name", ["demo-en-ar.llproj", "demo-en-ar-reviewed.llproj"])

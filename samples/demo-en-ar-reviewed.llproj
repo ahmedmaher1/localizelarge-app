@@ -10,7 +10,7 @@
   "quality": {
     "issues": [
       {
-        "id": "c09e0864-82b3-444f-bbe5-6185aeda3b83",
+        "id": "197dcf5f-b3e6-40d0-a554-85138d7fb64f",
         "segment_id": 6,
         "origin": "human",
         "rule_id": "mqm",
@@ -28,7 +28,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "dd5cb156-57be-46e2-bc40-b59397a626b5",
+        "id": "2bac705b-5229-4ade-9c32-0c935a443157",
         "segment_id": 2,
         "origin": "human",
         "rule_id": "mqm",
@@ -46,7 +46,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "9d44f762-5410-465b-9f90-11411dde190b",
+        "id": "ecb86994-ff67-4e53-9fe8-349456330683",
         "segment_id": 7,
         "origin": "ai",
         "rule_id": "mqm",
@@ -64,7 +64,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "9f2a5ee6-6bef-4706-979b-8f6ff5604740",
+        "id": "66bee060-e5a0-4c25-adb6-e80caaa76b63",
         "segment_id": 11,
         "origin": "ai",
         "rule_id": "mqm",
@@ -79,24 +79,6 @@
         "comment": null,
         "status": "rejected",
         "author": "AI: sample/written by hand for this demo",
-        "created_at": "2026-11-10T12:00:00Z"
-      },
-      {
-        "id": "3a74aafa-349c-48db-ad2e-8092041b9987",
-        "segment_id": 1,
-        "origin": "glossary",
-        "rule_id": "glossary.required",
-        "category": "terminology/wrong-term",
-        "severity": "minor",
-        "side": "target",
-        "start": 11,
-        "end": 17,
-        "text_hash": "a6dde0d8d10dc1b61e8dc0ab6cd8c9e0c8377bd2",
-        "message": "“المضخة” is possibly the glossary term “مضخة” for “pump”, written differently. Check it.",
-        "suggestion": null,
-        "comment": null,
-        "status": "rejected",
-        "author": "Localize Large",
         "created_at": "2026-11-10T12:00:00Z"
       }
     ],

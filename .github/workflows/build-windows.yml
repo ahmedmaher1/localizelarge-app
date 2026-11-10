@@ -1,7 +1,9 @@
 name: Build Windows ZIP
 
 # Started by hand. Builds the ZIP and keeps it as a private workflow artifact.
-# It does not publish anything.
+# It does not publish anything. With "stage" ticked it also pushes the ZIP, cut into parts
+# under GitHub's 100 MB file limit, to the branch build-artifact of this (private)
+# repository, from where it can be fetched with git and uploaded to the website's hosting.
 on:
   workflow_dispatch:
     inputs:
@@ -9,9 +11,14 @@ on:
         description: "Label added to the file name (empty for a release build)"
         required: false
         default: "preview"
+      stage:
+        description: "Also put the ZIP on the branch build-artifact, in parts (for uploading to the website)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write   # only used by the optional "stage" step, which pushes the branch build-artifact
 
 jobs:
   build:
@@ -61,3 +68,22 @@ jobs:
           path: release/
           retention-days: 14
           if-no-files-found: error
+
+      - name: Stage the ZIP on the branch build-artifact
+        if: ${{ inputs.stage }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/stage"
+          mkdir -p "$work"
+          cp release/*.sha256 release/release.json "$work/"
+          zip=$(ls release/*.zip)
+          split -b 90m -d "$zip" "$work/$(basename "$zip").part"
+          cd "$work"
+          git init -q -b build-artifact
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add .
+          git commit -q -m "Build artifact of ${GITHUB_SHA} (run ${GITHUB_RUN_NUMBER})"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" build-artifact
+          ls -la

@@ -99,14 +99,25 @@ def test_a_longer_term_wins_over_a_term_inside_it():
     "قطع غيار للمضخة.",      # ل + ال → لل
     "فبالمضخة نبدأ.",        # ف + ب + ال
     "كمضخة صغيرة.",          # ك
+])
+def test_an_attached_arabic_prefix_is_a_plain_match(target):
+    assert check("Check the pump.", target, [PUMP]) == []
+
+
+@pytest.mark.parametrize("target", [
     "افحص مِضَخَّة الماء.",     # diacritics
     "افحص مضـــخة الماء.",    # tatweel
+    "افحص المِضَخَّة.",         # diacritics and a prefix
 ])
-def test_arabic_forms_count_as_possible_not_missing(target):
+def test_a_term_written_differently_counts_as_possible_not_missing(target):
     (issue,) = check("Check the pump.", target, [PUMP])
     assert (issue.rule_id, issue.severity) == ("glossary.required", "minor")
     assert "possibly" in issue.message
     assert issue.start is not None and plain_text(target)[issue.start:issue.end]
+
+
+def test_a_forbidden_term_is_found_with_a_prefix_too():
+    assert ("glossary.forbidden", "major") in rules(check("Check the pump.", "افحص بالطلمبة.", [PUMP]))
 
 
 def test_alef_forms_are_unified():
@@ -118,7 +129,7 @@ def test_alef_forms_are_unified():
 
 def test_possible_matches_can_be_switched_off():
     quiet = {"glossary.required": {"report_possible": False}}
-    assert check("Check the pump.", "افحص المضخة.", [PUMP], settings=quiet) == []
+    assert check("Check the pump.", "افحص مِضَخَّة.", [PUMP], settings=quiet) == []
     assert rules(check("Check the pump.", "افحص الجهاز.", [PUMP], settings=quiet)) == \
         [("glossary.required", "major")]
 

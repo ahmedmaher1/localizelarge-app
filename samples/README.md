@@ -15,8 +15,7 @@ What the delivered project holds:
 
 - **QA findings**: a missing full stop, a wrong number, a word written twice, a wrong e-mail
   address, an empty target.
-- **Glossary findings**: a forbidden term, approved terms that are missing, and two "possibly
-  the term" findings (the Arabic article attached to the term).
+- **Glossary findings**: a forbidden term, and approved terms that are missing.
 - **Issues a reviewer added**: an omission in a safety instruction (critical) and a
   mistranslation (minor).
 - **Two AI proposals**, open and not counted. They were written by hand for this sample

@@ -37,8 +37,9 @@ stays rejected for as long as the text is unchanged.
 | `glossary.inconsistent` | One term is translated with different approved variants in the project (minor). |
 
 Matching is by whole words, in Unicode NFC, case-folded unless the entry is case-sensitive.
-For Arabic script, tatweel and diacritics are ignored and alef forms unified; in Arabic the
-prefixes و ف ب ل ك ال may be attached. Chinese, Japanese and Thai terms are searched as
+In Arabic the prefixes و ف ب ل ك ال may be attached to a term; that is a plain match. For
+Arabic script, tatweel and diacritics are ignored and alef forms unified; a term found only
+that way is the "possibly the term" case. Chinese, Japanese and Thai terms are searched as
 strings.
 
 ## MQM

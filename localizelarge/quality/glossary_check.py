@@ -12,11 +12,12 @@ Matching
 * Whole words by default. Text written without spaces (Chinese, Japanese, Thai) is
   searched as a string.
 * Text is compared in Unicode NFC, and case-folded unless the entry is case-sensitive.
+* Arabic: a word may carry the attached prefixes و ف ب ل ك ال and their combinations
+  (والمضخة, بالمضخة, للمضخة for مضخة). That is a plain match.
 * Arabic script: tatweel and diacritics are ignored and the alef forms أ إ آ ٱ are read
-  as ا. In Arabic, a word may also carry the attached prefixes و ف ب ل ك ال and their
-  combinations (والمضخة, بالمضخة, للمضخة for مضخة).
-* A target term found only through the Arabic rules is reported as "possibly" the term,
-  with minor severity, not as missing. (``report_possible`` switches that off.)
+  as ا. A target term found only that way (written differently from the glossary) is
+  reported as "possibly" the term, with minor severity, not as missing.
+  (``report_possible`` switches that off.)
 """
 from __future__ import annotations
 
@@ -79,6 +80,29 @@ def arabic_stems(word: str) -> set:
             cuts.add(position + 1)            # ب|المضخة
         if article:
             cuts.add(position + len(prep) + 2)   # (ب)ال|مضخة
+    for cut in cuts:
+        if len(word) - cut >= 2:
+            stems.add(word[cut:])
+    return stems
+
+
+def _exact_stems(word: str) -> set:
+    """Like ``arabic_stems``, but the letters are kept as written (diacritics, tatweel
+    and alef forms are not touched), so that only an attached prefix is taken off."""
+    stems = {word}
+    match = _AR_PREFIX.match(word)
+    conj, lam_lam, prep, article = match.groups()
+    position = len(conj)
+    cuts = set()
+    if conj:
+        cuts.add(position)
+    if lam_lam:
+        cuts.add(position + 2)
+    else:
+        if prep:
+            cuts.add(position + 1)
+        if article:
+            cuts.add(position + len(prep) + 2)
     for cut in cuts:
         if len(word) - cut >= 2:
             stems.add(word[cut:])
@@ -167,8 +191,11 @@ class _TermIndex:
             if arabic_normal(text_token.folded) == arabic_normal(term_token.folded):
                 return LOOSE
             if self.prefixes and first:
-                term_stems = arabic_stems(term_token.folded)
-                if arabic_stems(text_token.folded) & term_stems:
+                # An attached prefix is grammar, not another spelling of the term:
+                # والمضخة, بالمضخة and للمضخة are the term مضخة, a plain match.
+                if _exact_stems(text_token.folded) & _exact_stems(term_token.folded):
+                    return EXACT
+                if arabic_stems(text_token.folded) & arabic_stems(term_token.folded):
                     return LOOSE
         return None
 

@@ -10,7 +10,7 @@
   "quality": {
     "issues": [
       {
-        "id": "be2528dc-4464-496a-a046-4e243bb7fe4b",
+        "id": "5e85145e-1087-402f-ae52-c028142d20b7",
         "segment_id": 3,
         "origin": "qa",
         "rule_id": "qa.end_punctuation",
@@ -28,7 +28,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "eb7c12c6-999d-4fce-b9ae-4ca4fa6ef2d4",
+        "id": "33b4d5b5-0cc3-40e1-b3c5-29a50bdee912",
         "segment_id": 4,
         "origin": "qa",
         "rule_id": "qa.numbers",
@@ -46,7 +46,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "86cd6ae6-1fbe-49d9-a791-55a66512ca6c",
+        "id": "58c8a5c9-e598-4408-b1f5-88bdc9b7d8ec",
         "segment_id": 4,
         "origin": "qa",
         "rule_id": "qa.numbers",
@@ -64,7 +64,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "c0849dda-06e9-45a0-85f5-4626968e081d",
+        "id": "b2044337-e990-4dc1-a2ec-0d2a9c67fea2",
         "segment_id": 7,
         "origin": "qa",
         "rule_id": "qa.repeated_word",
@@ -82,7 +82,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "fdf6eadc-c56a-4862-a103-151c4b39ff5c",
+        "id": "40a01cc4-5def-44f4-a33b-8bb516d4a33e",
         "segment_id": 9,
         "origin": "qa",
         "rule_id": "qa.urls_emails",
@@ -100,7 +100,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "8ae9a015-13e8-4566-a7f5-48a8bf03abb0",
+        "id": "a453a65d-b72c-4c23-befc-f21f80df6db4",
         "segment_id": 9,
         "origin": "qa",
         "rule_id": "qa.urls_emails",
@@ -118,7 +118,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "c1b94fcf-5f6f-444f-be05-a28ad1b1ee28",
+        "id": "2275281c-9b7e-4e19-b49e-00bb1d56c1cb",
         "segment_id": 10,
         "origin": "qa",
         "rule_id": "qa.empty",
@@ -136,25 +136,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "3a74aafa-349c-48db-ad2e-8092041b9987",
-        "segment_id": 1,
-        "origin": "glossary",
-        "rule_id": "glossary.required",
-        "category": "terminology/wrong-term",
-        "severity": "minor",
-        "side": "target",
-        "start": 11,
-        "end": 17,
-        "text_hash": "a6dde0d8d10dc1b61e8dc0ab6cd8c9e0c8377bd2",
-        "message": "“المضخة” is possibly the glossary term “مضخة” for “pump”, written differently. Check it.",
-        "suggestion": null,
-        "comment": null,
-        "status": "open",
-        "author": "Localize Large",
-        "created_at": "2026-11-10T12:00:00Z"
-      },
-      {
-        "id": "1e251919-1945-452c-aa04-347f6778c0d1",
+        "id": "0a410395-cfee-453f-831b-8b79bff8b253",
         "segment_id": 2,
         "origin": "glossary",
         "rule_id": "glossary.forbidden",
@@ -172,7 +154,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "79cd7b51-4e94-48f3-8fc5-377ccf096f7c",
+        "id": "bf8d1682-84e9-48ca-9570-e304785453d1",
         "segment_id": 2,
         "origin": "glossary",
         "rule_id": "glossary.required",
@@ -190,7 +172,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "f9275e6a-aced-4897-b66b-177891f2beb0",
+        "id": "2d36cad8-ea42-42f4-9218-6dc9e29bd807",
         "segment_id": 5,
         "origin": "glossary",
         "rule_id": "glossary.required",
@@ -208,7 +190,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "5e09dc10-5443-484d-aeba-6259463912b1",
+        "id": "827d8250-106d-4768-b245-cb905637337c",
         "segment_id": 6,
         "origin": "glossary",
         "rule_id": "glossary.required",
@@ -226,25 +208,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "725e4eeb-0c9d-4edb-ac1c-dc8b3a25a817",
-        "segment_id": 7,
-        "origin": "glossary",
-        "rule_id": "glossary.required",
-        "category": "terminology/wrong-term",
-        "severity": "minor",
-        "side": "target",
-        "start": 10,
-        "end": 16,
-        "text_hash": "ecbcc20cbc4dfe22bc3d26c8d93f2320a72a020a",
-        "message": "“المضخة” is possibly the glossary term “مضخة” for “pump”, written differently. Check it.",
-        "suggestion": null,
-        "comment": null,
-        "status": "open",
-        "author": "Localize Large",
-        "created_at": "2026-11-10T12:00:00Z"
-      },
-      {
-        "id": "c09e0864-82b3-444f-bbe5-6185aeda3b83",
+        "id": "197dcf5f-b3e6-40d0-a554-85138d7fb64f",
         "segment_id": 6,
         "origin": "human",
         "rule_id": "mqm",
@@ -262,7 +226,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "dd5cb156-57be-46e2-bc40-b59397a626b5",
+        "id": "2bac705b-5229-4ade-9c32-0c935a443157",
         "segment_id": 2,
         "origin": "human",
         "rule_id": "mqm",
@@ -280,7 +244,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "9d44f762-5410-465b-9f90-11411dde190b",
+        "id": "ecb86994-ff67-4e53-9fe8-349456330683",
         "segment_id": 7,
         "origin": "ai",
         "rule_id": "mqm",
@@ -298,7 +262,7 @@
         "created_at": "2026-11-10T12:00:00Z"
       },
       {
-        "id": "9f2a5ee6-6bef-4706-979b-8f6ff5604740",
+        "id": "66bee060-e5a0-4c25-adb6-e80caaa76b63",
         "segment_id": 11,
         "origin": "ai",
         "rule_id": "mqm",
