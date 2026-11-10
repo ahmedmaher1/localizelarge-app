@@ -6337,29 +6337,6 @@ Output ONLY the delimiters and prompt content. No text before ===PROMPT_START===
         """
         context = self._build_ai_context(user_text)
 
-        # Trados-aware mode: prepend the active Trados project context
-        # (fetched via the localhost Localize Large Bridge) when the bridge is
-        # reachable AND the user hasn't toggled the Trados chip off.
-        # Failure here is silently swallowed – the message is sent anyway
-        # without Trados grounding rather than being blocked on a
-        # transient network/bridge issue.
-        trados_block = ""
-        try:
-            from modules.trados_bridge_client import TradosBridgeClient, format_context_for_prompt
-            pref = getattr(self.parent_app, "_trados_chip_pref", "auto")
-            if pref != "off":
-                # Always use the shared singleton so connection pooling
-                # and the cached-availability flag (kept fresh by
-                # TradosBridgePoller) work across every call site.
-                client = TradosBridgeClient.shared()
-                self.parent_app._trados_bridge_client = client
-                if client.is_available():
-                    ctx = client.fetch_active_context()
-                    if ctx:
-                        trados_block = format_context_for_prompt(ctx) or ""
-        except Exception:
-            trados_block = ""
-
         # Choose system prompt
         system_prompt = """You are an AI assistant for Localize Large, a professional translation workbench.
 
@@ -6380,8 +6357,6 @@ IMPORTANT:
 3. Use valid JSON for PARAMS (double quotes for strings, escape special characters)
 4. Do not wrap in code fences or add any markdown formatting"""
 
-        if trados_block:
-            system_prompt = trados_block + "\n" + system_prompt
 
         try:
             response, metadata = self.chat_backend.send_ai_request(

@@ -84,3 +84,17 @@ exit in QtWebEngine), and time to the first window fell from 8.7 s to about 5.5 
 images to an AI request when a segment mentions a figure. With the viewer gone there is no
 way to load images, so that code never runs. The "4. Image Context" section of the Prompt
 Manager is hidden. It should be deleted or brought back as a whole in a later version.
+
+### 6. Trados and memoQ live bridges
+
+| Removed | Why |
+|---|---|
+| The bridge server (`modules/supervertaler_bridge_server.py`): a local HTTP service the Trados plugin called | v1 runs one local service only, the Okapi sidecar |
+| The Trados bridge client (`modules/trados_bridge_client.py`), the "Trados" context chip in the AI Assistant and the Trados context added to prompts | The app does not talk to other CAT tools |
+| Headless batch-offload mode (`--batch`, `--translate-sdlxliff`; `modules/batch_offload.py`) | It existed for the Trados plugin |
+
+**Disabled, not deleted:** the "Bridge" column of the Translation Memories table and its two
+bulk buttons are hidden. The database column behind them (`bridged_to_trados`) is left in
+place so existing databases need no migration.
+
+Kept: the file-based bilingual formats (memoQ, Trados, Phrase, CafeTran, Déjà Vu).

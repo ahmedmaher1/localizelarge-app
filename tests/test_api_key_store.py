@@ -533,23 +533,6 @@ def test_profile_keys_are_locked_under_their_own_ids_and_go_with_their_profile(s
 
 
 @windows_only
-def test_the_batch_offload_settings_path_reads_through_the_same_function(scratch):
-    from modules import batch_offload
-    write_settings(scratch, {"claude": K2, "gemini": ""})
-    job = {"provider": "claude", "settingsPath": scratch.settings}
-    assert batch_offload._resolve_api_key(job) == K2               # own copy, the shared store having none
-    assert store.set_key("claude", K1)
-    assert batch_offload._resolve_api_key(job) == K1               # the shared key first
-    assert batch_offload._resolve_api_key({**job, "apiKey": "sk-job-PROJ-001"}) == "sk-job-PROJ-001"
-    write_plain(scratch)
-    write_locked(scratch, {"claude": lock_with_entropy(K1)})
-    assert batch_offload._resolve_api_key(job) == ""
-    with pytest.raises(RuntimeError) as e:
-        batch_offload._build_client(job)
-    assert str(e.value).startswith("Can't use your Anthropic key – it can't be read on this computer")
-
-
-@windows_only
 def test_no_key_reaches_the_log(scratch, caplog):
     caplog.set_level(logging.DEBUG)
     write_settings(scratch, {"openai": OAI_OWN, "deepl": DL}, profiles=[{"name": "Acme", "api_key": K2}])

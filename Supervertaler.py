@@ -10426,101 +10426,6 @@ class SupervertalerQt(QMainWindow):
             import traceback
             traceback.print_exc()
 
-    def _on_bridge_prompt_request(self, expanded: str, display_prompt: str, prompt_name: str):
-        """Handle a QuickLauncher prompt forwarded by the Trados plugin.
-
-        Connected via Qt::QueuedConnection (cross-thread emit from the
-        bridge's HTTP handler thread) so this always runs on the GUI
-        thread. We:
-
-          1. Bring Workbench forward (full hammer chain – Trados is
-             the source of these requests and aggressive about
-             foreground retention).
-          2. Switch to the ✨ AI top tab and select its 💬 Chat sub-
-             tab. There are two Chat surfaces in Workbench – one in
-             the right panel next to the editor (translation
-             workflow), and one as a full-width sub-tab inside the
-             AI tab (general AI conversation). QuickLauncher prompts
-             from Trados are explicitly the *general* kind, so they
-             land on the latter where the user has more screen real
-             estate to read the response.
-          3. Echo the *display* version of the prompt as a "user"
-             message (the Trados plugin builds a redacted display
-             version – e.g. "[source document – N segments]" instead
-             of the full project text – so the chat doesn't get
-             spammed with kilobytes of context the LLM needs but the
-             user has already seen).
-          4. Send the fully-expanded prompt to the LLM directly via
-             ``ChatBackend.send_ai_request``. We bypass the chat
-             view's ``_context_aware_send`` override because the
-             Trados side has already done all the context
-             substitution; running it again would prepend Workbench's
-             idea of the active context, which would be wrong for a
-             Trados-originated prompt.
-
-        Pre-v1.10.4 this lived on FloatingAssistant. v1.10.10 moved
-        it to the main window targeting the right-panel Chat;
-        v1.10.24 retargeted at the AI tab's Chat sub-tab per user
-        request – the right panel is for translating, the AI tab's
-        Chat is for general conversation.
-
-        Both Chat surfaces share the same ChatBackend, so the user
-        message + LLM response appear in *both* places automatically
-        – we just need to make the AI tab's Chat the *visible* one
-        when the prompt arrives.
-        """
-        try:
-            self._bring_workbench_forward()
-        except Exception:
-            pass
-
-        try:
-            # Switch the main top tabs to ✨ AI. The index isn't
-            # stored on self, so look it up by tab text – cheap, and
-            # robust if future builds shift indices.
-            if hasattr(self, 'main_tabs'):
-                ai_tab_index = -1
-                for i in range(self.main_tabs.count()):
-                    if "AI" in self.main_tabs.tabText(i) and "✨" in self.main_tabs.tabText(i):
-                        ai_tab_index = i
-                        break
-                if ai_tab_index >= 0:
-                    self.main_tabs.setCurrentIndex(ai_tab_index)
-
-            # Switch the AI tab's inner sub-tabs to 💬 Chat. The
-            # ai_subtabs property is set up in create_main_layout
-            # and points at prompt_manager_qt.sub_tabs.
-            ai_subtabs = getattr(self, 'ai_subtabs', None)
-            if ai_subtabs is not None:
-                for i in range(ai_subtabs.count()):
-                    if "Chat" in ai_subtabs.tabText(i):
-                        ai_subtabs.setCurrentIndex(i)
-                        break
-        except Exception:
-            pass
-
-        backend = getattr(
-            getattr(self, 'prompt_manager_qt', None), 'chat_backend', None
-        )
-        if backend is None:
-            self.log("⚠ Trados bridge: chat backend unavailable")
-            return
-
-        label = f"[{prompt_name}] " if prompt_name else ""
-        try:
-            backend.add_message("user", label + (display_prompt or expanded))
-            system_prompt = "You are an AI assistant. Follow the instructions precisely."
-            response, metadata = backend.send_ai_request(expanded, system_prompt)
-            if response and response.strip():
-                backend.add_message("assistant", response, metadata=metadata)
-            else:
-                backend.add_message("system", "⚠ No response received.")
-        except Exception as e:
-            try:
-                backend.add_message("system", f"⚠ Error: {e}")
-            except Exception:
-                print(f"[Trados bridge] Error handling prompt: {e}")
-
     def show_term_insert_popup(self):
         """Show the TermLens-mirror popup for the current segment.
 
@@ -13172,17 +13077,6 @@ class SupervertalerQt(QMainWindow):
         # bridge for mismatched product versions. The consumer here is
         # the in-Workbench Chat tab (FloatingAssistant was retired in
         # v1.10.4). See modules/supervertaler_bridge_server.py.
-        self._bridge_server = None
-        try:
-            from modules.supervertaler_bridge_server import SupervertalerBridgeServer
-            self._bridge_server = SupervertalerBridgeServer(self)
-            self._bridge_server.run_prompt_requested.connect(
-                self._on_bridge_prompt_request
-            )
-            self._bridge_server.start()
-            QApplication.instance().aboutToQuit.connect(self._bridge_server.stop)
-        except Exception as e:
-            self.log(f"⚠ Trados bridge server failed to start: {e}")
 
         # Keep backward compatibility reference
         self.document_views_widget = self.main_tabs
@@ -14189,7 +14083,6 @@ class SupervertalerQt(QMainWindow):
             "💡 <b>Translation Memories</b><br>"
             "• <b>Read</b> (green ✓): TM is used for matching segments<br>"
             "• <b>Write</b> (blue ✓): TM is updated with new translations<br>"
-            "• <b>Bridge</b> (orange ✓): TM is visible to the Supervertaler for Trados plugin (Phase 2)<br>"
             "• <b>🔍 SuperLookup</b> (teal ✓): TM is searched by SuperLookup (independent of Read)<br>"
             "• <b>Typical Setup</b>: Main TM (Read + Write) + Reference TMs (Read only)"
         )
@@ -14228,11 +14121,13 @@ class SupervertalerQt(QMainWindow):
         bridge_header_checkbox = CheckmarkCheckBox(self.tr("Select All Bridge"))
         bridge_header_checkbox.setStyleSheet("QCheckBox::indicator:checked { background-color: #FF8C00; }")
         bulk_layout.addWidget(bridge_header_checkbox)
+        bridge_header_checkbox.setVisible(False)  # no bridge in Localize Large v1
 
         tm_clear_all_bridge_btn = QPushButton(self.tr("Clear All Bridge"))
         tm_clear_all_bridge_btn.setToolTip(self.tr("Uncheck the Bridge flag on every TM (hide all TMs from the Trados plugin)"))
         tm_clear_all_bridge_btn.clicked.connect(lambda: toggle_all_bridge(False))
         bulk_layout.addWidget(tm_clear_all_bridge_btn)
+        tm_clear_all_bridge_btn.setVisible(False)
 
         # v1.10.247: SuperLookup bulk toggles. "Select All SuperLookup"
         # includes every TM in SuperLookup, "Clear All SuperLookup" excludes
@@ -14263,6 +14158,7 @@ class SupervertalerQt(QMainWindow):
         tm_table.setColumnWidth(3, 60)
         tm_table.setColumnWidth(4, 60)
         tm_table.setColumnWidth(5, 60)   # Bridge
+        tm_table.setColumnHidden(5, True)  # the Bridge flag is unused in Localize Large v1
         tm_table.setColumnWidth(6, 100)  # SuperLookup
         tm_table.setColumnWidth(7, 150)  # Last Modified
         # v1.10.169: click-header-to-sort on the data columns (TM Name,
@@ -67171,13 +67067,6 @@ def _install_log_hooks():
 
 def main():
     """Application entry point"""
-    # Headless batch-offload mode for the Supervertaler-for-Trados large-file
-    # offload (#42 / Workbench#230). Pure Python – no Qt/GUI, no window – so it
-    # must run before the diagnostic-log redirect or any QApplication setup.
-    if "--batch" in sys.argv or "--translate-sdlxliff" in sys.argv:
-        from modules.batch_offload import cli_main
-        raise SystemExit(cli_main(sys.argv[1:]))
-
     # Redirect stdout/stderr to a rolling log file FIRST – so even crashes
     # during QApplication import or QWebEngine init get captured.
     _setup_diagnostic_log()
