@@ -214,6 +214,33 @@ class QualityController(QObject):
         self.refresh([issue.segment_id])
         return True
 
+    # ── AI proposals ───────────────────────────────────────────────
+    def glossary_terms_for(self, segment) -> list:
+        """(source term, approved targets) for the glossary terms in a segment's source."""
+        glossary = self.glossary()
+        if glossary is None or not len(glossary):
+            return []
+        return [(hit.term, hit.entry.targets) for hit in glossary.source_hits(segment.source)
+                if hit.entry.targets]
+
+    def add_ai_results(self, issues, summary) -> int:
+        """Add the proposals of an AI run. Earlier open proposals for the same segments
+        are replaced; ones a person accepted, rejected or fixed stay."""
+        quality = self.quality
+        if quality is None:
+            return 0
+        touched = {i.segment_id for i in issues}
+        for old in [i for i in quality.issues if i.origin == "ai" and i.status == "open"
+                    and i.segment_id in touched]:
+            quality.issues.remove(old.id)
+        for issue in issues:
+            quality.issues.add(issue)
+        self.ai_runs.append(summary.to_report())
+        if issues:
+            self._modified()
+        self.refresh(sorted(touched) or None)
+        return len(issues)
+
     # ── the score and the report ───────────────────────────────────
     def score(self) -> Optional[scoring.Score]:
         quality = self.quality

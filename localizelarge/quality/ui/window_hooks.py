@@ -50,11 +50,15 @@ def install(window, version: str = "") -> QualityController:
         export = QAction("&Export quality report…", window)
         export.setObjectName("llExportQualityReportAction")
         export.triggered.connect(lambda: (panel.show(), panel.export_report()))
+        ai = QAction("AI pre-annotation (&beta)…", window)
+        ai.setObjectName("llAiAnnotateAction")
+        ai.setToolTip("Let the configured AI propose MQM issues; you accept or reject them")
+        ai.triggered.connect(lambda: ai_annotate(window))
         first = menu.actions()[0] if menu.actions() else None
-        for action in (run, add, toggle, export):
+        for action in (run, add, ai, toggle, export):
             menu.insertAction(first, action)
         menu.insertSeparator(first)
-        window._ll_quality_actions = (run, add, toggle, export)
+        window._ll_quality_actions = (run, add, ai, toggle, export)
     return controller
 
 
@@ -189,3 +193,84 @@ def add_issue(window, editor=None):
                                  suggestion=dialog.suggestion_text())
     show_panel(window)
     return issue
+
+
+def _ai_setup(window):
+    """(provider, model, ask) for the configured AI, or raises RuntimeError with a
+    message for the user."""
+    settings = window.load_llm_settings()
+    provider = settings.get("provider", "") or ""
+    from modules.llm_clients import SUPPORTED_PROVIDERS, LLMClient
+    if provider not in SUPPORTED_PROVIDERS:
+        raise RuntimeError("Choose an AI provider in Settings → AI first.")
+    model = settings.get(f"{provider}_model") or ""
+    if not model:
+        from modules.llm_clients import _load_default_models
+        model = (_load_default_models() or {}).get(provider, "")
+    if not model:
+        raise RuntimeError(f"Choose a model for {provider} in Settings → AI first.")
+    keys = window.load_api_keys()
+    key = keys.get(provider, "") or ("not-needed" if provider == "ollama" else "")
+    if not key:
+        raise RuntimeError(f"There is no API key for {provider}. Add it in Settings → AI.")
+    proxy = getattr(window, "_get_proxy_url", lambda: None)() if provider != "gemini" else None
+    client = LLMClient(api_key=key, provider=provider, model=model, http_proxy=proxy)
+
+    def ask(prompt: str):
+        return client.translate_with_usage(text="", source_lang="", target_lang="", custom_prompt=prompt)
+
+    return provider, model, ask
+
+
+def ai_annotate(window, setup=None):
+    """QA → AI pre-annotation (beta). ``setup`` replaces the real AI in tests."""
+    from .ai_dialog import AiAnnotateDialog, AnnotateWorker
+    controller = controller_of(window)
+    if controller is None or controller.project is None:
+        QMessageBox.information(window, "AI pre-annotation", "Open a project first.")
+        return None
+    try:
+        provider, model, ask = (setup or _ai_setup)(window)
+    except RuntimeError as error:
+        QMessageBox.information(window, "AI pre-annotation", str(error))
+        return None
+    except Exception as error:
+        QMessageBox.critical(window, "AI pre-annotation", f"The AI could not be set up:\n{error}")
+        return None
+
+    segments = controller.segments
+    table = getattr(window, "table", None)
+    selected_ids = set()
+    if table is not None:
+        for index in table.selectionModel().selectedRows() if table.selectionModel() else []:
+            item = table.item(index.row(), 0)
+            if item is not None and item.text().isdigit():
+                selected_ids.add(int(item.text()))
+    translated = [s for s in segments if (s.target or "").strip()]
+    groups = {
+        "selected": [s for s in translated if s.id in selected_ids],
+        "confirmed": [s for s in translated if getattr(s, "status", "") == "confirmed"],
+        "translated": translated,
+    }
+    where = getattr(window, "_where_text_goes", None)
+    destination = where(provider) if callable(where) else f"Text is sent to {provider}"
+    project = controller.project
+
+    def start(scope: str):
+        options = dict(provider=provider, model=model, source_lang=project.source_lang,
+                       target_lang=project.target_lang, categories=controller.quality.profile.categories,
+                       glossary_for=controller.glossary_terms_for)
+        if setup is not None:
+            options["min_interval"] = 0
+        return AnnotateWorker(groups[scope], ask, options, window)
+
+    controller.glossary()        # read on this thread, before the worker starts
+    dialog = AiAnnotateDialog(window, destination=destination, provider=provider, model=model,
+                              counts={key: len(value) for key, value in groups.items()}, start=start)
+    window._ll_ai_dialog = dialog
+    dialog.exec()
+    if dialog.summary is None:
+        return None
+    controller.add_ai_results(dialog.issues, dialog.summary)
+    show_panel(window)
+    return dialog.summary

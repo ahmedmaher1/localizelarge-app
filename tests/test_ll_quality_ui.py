@@ -85,7 +85,8 @@ def test_install_adds_the_actions_and_a_hidden_dock(window):
     assert isinstance(controller, QualityController)
     assert window_hooks.install(window) is controller                 # only once
     texts = [a.text() for a in window.qa_menu.actions() if a.text()]
-    assert texts[:4] == ["Run &QA (all checks)", "&Add issue…", "Quality &panel", "&Export quality report…"]
+    assert texts[:5] == ["Run &QA (all checks)", "&Add issue…", "AI pre-annotation (&beta)…", "Quality &panel",
+                         "&Export quality report…"]
     assert "Existing action" in texts
     add = next(a for a in window.qa_menu.actions() if a.text() == "&Add issue…")
     assert add.shortcut().toString() == "Ctrl+Shift+E"
@@ -384,3 +385,98 @@ def test_underlines_in_a_right_to_left_cell(qtbot):
         assert selection.format.underlineStyle() == QTextCharFormat.UnderlineStyle.WaveUnderline
     finally:
         rtl.set_language_provider(None)
+
+
+# ── AI pre-annotation (beta) ──────────────────────────────────────────
+
+def _fake_ai(replies):
+    """A stand-in for the configured AI: (provider, model, ask)."""
+    calls = []
+
+    def setup(_window):
+        def ask(prompt):
+            calls.append(prompt)
+            return replies[min(len(calls), len(replies)) - 1], {"input_tokens": 50, "output_tokens": 10}
+        return "ollama", "llama3", ask
+
+    return setup, calls
+
+
+def test_ai_pre_annotation_shows_where_text_goes_and_adds_open_proposals(window, qtbot, monkeypatch):
+    import json
+    from localizelarge.quality.ui.ai_dialog import AiAnnotateDialog
+    controller = window_hooks.controller_of(window)
+    window._where_text_goes = lambda provider=None: "Text stays on this computer"
+    good = {"side": "target", "quote": "Enregistrer", "category": "accuracy/mistranslation",
+            "severity": "major", "explanation": "Wrong verb.", "suggestion": "Sauvegarder"}
+    invented = {**good, "quote": "words that are not there"}
+    setup, calls = _fake_ai([json.dumps([]), json.dumps([good, invented])])
+    seen = {}
+
+    def fake_exec(dialog):
+        seen["destination"] = dialog.destination.text()
+        seen["scopes"] = {key: (radio.isEnabled(), radio.text()) for key, radio in dialog.scope.items()}
+        dialog.scope["translated"].setChecked(True)
+        dialog.begin()
+        qtbot.waitUntil(lambda: dialog.summary is not None, timeout=10000)
+        seen["result"] = dialog.result.text()
+        return AiAnnotateDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(AiAnnotateDialog, "exec", fake_exec)
+    summary = window_hooks.ai_annotate(window, setup)
+
+    assert seen["destination"] == "Text stays on this computer"
+    assert seen["scopes"]["translated"] == (True, "All translated segments (2)")
+    assert seen["scopes"]["selected"][0] is False
+    assert len(calls) == 2                                             # the untranslated segment is not sent
+    assert (summary.issues_kept, summary.issues_dropped, summary.segments) == (1, 1, 2)
+    assert "Proposals dropped" in seen["result"] and "kept: 1" in seen["result"]
+
+    (issue,) = controller.quality.issues.all()
+    assert (issue.origin, issue.status, issue.author, issue.segment_id) == ("ai", "open", "AI: ollama/llama3", 2)
+    assert issue.quoted(window.current_project.segments[1].target) == "Enregistrer"
+    # Not counted until a person accepts it.
+    assert controller.score().absolute_penalty_total == 0
+    controller.set_status(issue.id, "accepted")
+    assert controller.score().absolute_penalty_total == 5
+    # The run is recorded for the report.
+    report = controller.build_report()
+    assert report["ai"][0]["provider"] == "ollama" and report["ai"][0]["issuesDropped"] == 1
+    assert report["ai"][0]["inputTokens"] == 100 and report["ai"][0]["estimatedCostUsd"] == 0.0
+    assert window._ll_quality_panel.table.item(0, 3).text() == "AI (beta)"
+
+
+def test_a_second_ai_run_replaces_open_proposals_but_keeps_decided_ones(window):
+    from localizelarge.mqm.ai_annotate import RunSummary
+    from localizelarge.quality.model import make_issue
+    controller = window_hooks.controller_of(window)
+    segment = window.current_project.segments[1]
+
+    def proposal(message):
+        return make_issue(segment, origin="ai", rule_id="mqm", category="style/awkward-style",
+                          severity="minor", message=message, author="AI: ollama/llama3")
+
+    first, second = proposal("first"), proposal("second")
+    controller.add_ai_results([first, second], RunSummary("ollama", "llama3"))
+    controller.set_status(first.id, "rejected")
+    controller.add_ai_results([proposal("third")], RunSummary("ollama", "llama3"))
+    assert sorted(i.message for i in controller.quality.issues) == ["first", "third"]
+    assert len(controller.ai_runs) == 2
+
+
+def test_ai_pre_annotation_needs_a_configured_provider(window, monkeypatch):
+    from PyQt6.QtWidgets import QMessageBox
+    shown = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: shown.append(a[2]))
+
+    def no_key(_window):
+        raise RuntimeError("There is no API key for claude. Add it in Settings → AI.")
+
+    assert window_hooks.ai_annotate(window, no_key) is None
+    assert shown == ["There is no API key for claude. Add it in Settings → AI."]
+    assert len(window_hooks.controller_of(window).quality.issues) == 0
+
+
+def test_the_ai_action_is_in_the_qa_menu_and_marked_beta(window):
+    texts = [a.text() for a in window.qa_menu.actions() if a.text()]
+    assert "AI pre-annotation (&beta)…" in texts

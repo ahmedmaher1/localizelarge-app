@@ -32,6 +32,12 @@ def licenses_file() -> Path:
     return Path(__file__).resolve().parent.parent / LICENSES_FILE_NAME
 
 
+# Credit asked for by the licence of the MQM typology (CC BY 4.0).
+MQM_ATTRIBUTION = ("Quality categories and scoring: MQM Core typology and MQM scoring models "
+                   "© The MQM Council (themqm.org), licensed under CC BY 4.0. "
+                   "The MQM Council does not endorse this app.")
+
+
 def about_html(version: str) -> str:
     link = f'style="color: {ACCENT}; text-decoration: none;"'
     return (
@@ -39,6 +45,7 @@ def about_html(version: str) -> str:
         '<p style="text-align: center;">A translation tool for in-house localization teams, '
         "with built-in quality checks.</p>"
         f'<p style="text-align: center;">{ATTRIBUTION}</p>'
+        f'<p style="text-align: center;">{MQM_ATTRIBUTION}</p>'
         '<p style="text-align: center;">'
         f'<b>Website:</b> <a href="{WEBSITE_URL}" {link}>{WEBSITE}</a><br>'
         f'<b>Support:</b> <a href="mailto:{SUPPORT_EMAIL}" {link}>{SUPPORT_EMAIL}</a><br>'

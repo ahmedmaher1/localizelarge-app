@@ -145,6 +145,7 @@ def test_about_text_carries_the_attribution_and_contacts():
     html = about.about_html("1.0.0")
     assert "Localize Large 1.0.0" in html
     assert "Based on Supervertaler Workbench 1.10.376 by Michael Beijer (MIT License)" in html
+    assert "The MQM Council (themqm.org), licensed under CC BY 4.0" in html
     assert "localizelarge.com" in html
     assert "contact@localizelarge.com" in html
     assert "GPL-3.0-or-later" in html
