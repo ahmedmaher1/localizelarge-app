@@ -595,7 +595,12 @@ class OkapiSidecar:
         if bundled.exists():
             return bundled
 
-        # 2. JAVA_HOME environment variable
+        # The built app uses only the Java runtime that ships with it, never
+        # one installed on the computer.
+        if getattr(sys, 'frozen', False):
+            return None
+
+        # 2. JAVA_HOME environment variable (running from source only)
         java_home = os.environ.get("JAVA_HOME")
         if java_home:
             java_bin = Path(java_home) / "bin" / (

@@ -1,0 +1,63 @@
+name: Build Windows ZIP
+
+# Started by hand. Builds the ZIP and keeps it as a private workflow artifact.
+# It does not publish anything.
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: "Label added to the file name (empty for a release build)"
+        required: false
+        default: "preview"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Install Python packages
+        run: python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build
+        shell: pwsh
+        env:
+          BUILD_LABEL: ${{ inputs.label }}
+        run: ./scripts/build_release.ps1 -Label $env:BUILD_LABEL
+
+      - name: Show what was built
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path release) { Get-ChildItem release | Format-Table Name, Length }
+          if (Test-Path release/release.json) { Get-Content release/release.json }
+          if (Test-Path dist/LocalizeLarge) {
+            "Largest folders in the build:"
+            Get-ChildItem dist/LocalizeLarge/_internal -Directory | ForEach-Object {
+              [pscustomobject]@{ MB = [math]::Round((Get-ChildItem $_.FullName -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1); Name = $_.Name }
+            } | Sort-Object MB -Descending | Select-Object -First 15 | Format-Table
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LocalizeLarge-windows-build
+          path: release/
+          retention-days: 14
+          if-no-files-found: error

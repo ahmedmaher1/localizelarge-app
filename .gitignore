@@ -270,3 +270,6 @@ release-body-*.md
 *.svexport.json
 *_bilingual.txt
 *_bilingual.txt.svexport.json
+
+# Release build output (scripts/build_release.ps1)
+/release/
