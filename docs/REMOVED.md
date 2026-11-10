@@ -158,3 +158,12 @@ Installed packages, counted in a fresh environment without the test tools: 100 b
 brings in `onnxruntime` (about 62 MB) and `numpy` (about 30 MB). It is not in the v1 scope
 list. Dropping it would shrink the download; the AI Assistant would then read only plain
 text attachments.
+
+### Sidecar download
+
+| Removed | Why |
+|---|---|
+| The on-demand download of the Okapi sidecar JAR and Java runtime from GitHub, the "Download Okapi sidecar?" dialog and the automatic sidecar update | The release ZIP carries the sidecar and its Java runtime. Nothing is downloaded at first run or later. If the files are missing the app says so and asks the user to unzip it again |
+
+Until the Phase 8 build bundles the runtime, a development machine needs the sidecar built
+in `okapi-sidecar/target/` and a Java installation.

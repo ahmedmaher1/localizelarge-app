@@ -21,4 +21,17 @@ License). The history of that project is in its own repository.
 
 ### Removed
 
-- See `docs/REMOVED.md`.
+Details and reasons are in `docs/REMOVED.md`.
+
+- Global (system-wide) hotkeys, AutoHotkey support, start with the computer, the tray icon
+  and running in the background.
+- Voice commands.
+- The embedded browser, Superbrowser and SuperLookup's web resources. SuperLookup keeps its
+  translation-memory and termbase search.
+- PDF Rescue and the image extractor.
+- Machine-translation services (Google Translate, DeepL, Microsoft, Amazon, ModernMT,
+  MyMemory) and AI providers other than Claude, OpenAI, Gemini and Ollama.
+- The Trados and memoQ live bridges. The file-based bilingual formats stay.
+- The usage ping, the GitHub update check, the setup wizard and links to Supervertaler
+  sites.
+- The download of the Okapi sidecar and Java runtime at first use.

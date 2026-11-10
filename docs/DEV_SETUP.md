@@ -49,10 +49,14 @@ Tests, with a throwaway home folder so no real data is touched:
 HOME=$(mktemp -d) QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest tests/ -q --timeout=120 --continue-on-collection-errors
 ```
 
-Running the app headless as root, at the base commit, also needs
-`QTWEBENGINE_DISABLE_SANDBOX=1` and
-`QTWEBENGINE_CHROMIUM_FLAGS="--no-sandbox --disable-gpu"`. This goes away when WebEngine is
-removed in Phase 2.
+Start the app (it needs a display, or `QT_QPA_PLATFORM=offscreen` for a headless check):
+
+```bash
+.venv/bin/python Supervertaler.py
+```
+
+Setting `LOCALIZELARGE_SMOKE_EXIT_MS=3000` makes the app close its window after three
+seconds; `tests/test_ll_clean_profile_launch.py` uses this.
 
 Differences from the plan: JDK 21 instead of Temurin 17 (the sidecar still compiles for
 Java 17), and `uv` instead of `pip`.

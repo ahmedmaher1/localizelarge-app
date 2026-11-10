@@ -98,6 +98,18 @@ def test_no_removed_package_is_imported(launch):
     assert lines[-1] == "IMPORTED_REMOVED="
 
 
+def test_the_sidecar_client_cannot_download_anything():
+    """The sidecar ships in the app folder; the client has no download code."""
+    import re
+    from modules.okapi_sidecar import OkapiSidecar
+
+    source = (ROOT / "modules" / "okapi_sidecar.py").read_text(encoding="utf-8")
+    hosts = set(re.findall(r"https?://([A-Za-z0-9.\-]+)", source))
+    assert hosts <= {"127.0.0.1", "localhost"}, hosts
+    for name in ("download_install", "needs_update", "INSTALLER_URL_WINDOWS", "INSTALLER_URL_JAR_ONLY"):
+        assert not hasattr(OkapiSidecar, name), name
+
+
 def test_no_java_process_is_left_running(launch):
     psutil = pytest.importorskip("psutil")
     profile, _ = launch

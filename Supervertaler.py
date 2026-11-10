@@ -32871,239 +32871,46 @@ class SupervertalerQt(QMainWindow):
     def _ensure_okapi_sidecar(self) -> bool:
         """Make sure the Okapi sidecar is up. Returns True on success.
 
-        Handles three scenarios:
-
-        1. Sidecar is already running – return True immediately.
-        2. Sidecar is installed (JAR present) but not running – start it.
-        3. Sidecar is not installed (typical for pip-installed users
-           without the bundled JRE) – offer a one-click download from
-           the GitHub release, with a progress dialog. After the download
-           completes, start the sidecar and verify.
-
-        Shows a clear error dialog and returns False if any step fails
-        or the user declines the download.
+        The sidecar (a JAR and its Java runtime) ships inside the app folder.
+        Localize Large never downloads it: if it is missing, the install is
+        incomplete and the user is told to unzip the app again.
         """
         if not self.okapi_sidecar:
             QMessageBox.critical(
                 self,
-                "Okapi sidecar unavailable",
-                "The Okapi sidecar client is not initialised. This is "
-                "usually caused by a missing 'requests' Python package. "
-                "Please reinstall Localize Large."
+                "File-format engine unavailable",
+                "The file-format engine (Okapi sidecar) could not be set up. "
+                "Unzip Localize Large again from the original download."
             )
             return False
 
-        # Fast path: already running – unless it is an outdated lazy-downloaded
-        # JAR. Start-up (_start_okapi_sidecar) launches whatever JAR is on
-        # disk, so without this check the self-heal below was never reached.
-        # Stop it before updating: on Windows the update replaces the JRE the
-        # running sidecar is using.
         if self.okapi_sidecar.is_running():
-            if not self.okapi_sidecar.needs_update():
-                return True
-            self.okapi_sidecar.stop()
-            if self.okapi_sidecar.is_running():
-                # Not ours to stop (e.g. another Workbench window started
-                # it). Keep using it rather than replace files under it.
-                return True
+            return True
 
-        # Path 2: installed but not running. Try to start it.
         if self.okapi_sidecar.is_installed():
-            # Self-heal: a lazy-downloaded JAR left over from an older app
-            # version won't match what this build expects. Refresh it to the
-            # pinned version automatically so the user never has to rebuild or
-            # delete it by hand. Best-effort: if the download fails (e.g.
-            # offline) we fall back to starting the existing JAR.
-            if self.okapi_sidecar.needs_update():
-                old = self.okapi_sidecar.installed_version_hint() or "older"
-                self.log(f"Okapi sidecar is outdated ({old} → "
-                         f"v{self.okapi_sidecar.EXPECTED_VERSION}); downloading update…")
-                prog = QProgressDialog("Updating Okapi sidecar…", None, 0, 100, self)
-                prog.setWindowTitle(self.tr("Updating Okapi sidecar"))
-                prog.setWindowModality(Qt.WindowModality.WindowModal)
-                prog.setMinimumDuration(0)
-                prog.setAutoClose(False)
-                prog.setAutoReset(False)
-                prog.show()
-                QApplication.processEvents()
-
-                def _upd_progress(done, total):
-                    if total > 0:
-                        prog.setValue(int(done * 100 / total))
-                        prog.setLabelText(
-                            f"Updating Okapi sidecar… "
-                            f"({done // (1024*1024)} / {total // (1024*1024)} MB)")
-                    QApplication.processEvents()
-
-                try:
-                    if self.okapi_sidecar.download_install(progress_callback=_upd_progress):
-                        self.log(f"✅ Okapi sidecar updated to v{self.okapi_sidecar.EXPECTED_VERSION}")
-                    else:
-                        self.log("⚠ Sidecar update download failed – continuing with the existing version")
-                except Exception as e:
-                    self.log(f"⚠ Sidecar update error: {e} – continuing with the existing version")
-                finally:
-                    try:
-                        prog.close()
-                    except Exception:
-                        pass
-
             self.log("Starting Okapi sidecar…")
             if self.okapi_sidecar.start() and self.okapi_sidecar.is_running():
                 return True
             QMessageBox.critical(
                 self,
-                "Okapi sidecar failed to start",
-                "DOCX import requires the Okapi sidecar, but it failed "
-                "to start.\n\n"
+                "File-format engine failed to start",
+                "This file type needs the file-format engine (Okapi sidecar), "
+                "but it failed to start.\n\n"
                 "What to try:\n"
                 "• Restart Localize Large.\n"
-                "• Check that port 8090 isn't taken by another app.\n"
-                "• Check the diagnostic log for errors mentioning "
-                "\"okapi sidecar\"."
+                "• Open Help → Open Diagnostic Log and look for lines that "
+                "mention \"okapi sidecar\"."
             )
             return False
 
-        # Path 3: not installed at all – offer a download.
-        # Four flavours by platform + arch:
-        #  - Windows:        ~70 MB bundle (JAR + bundled Windows JRE).
-        #  - Apple Silicon:  ~50 MB bundle (JAR + bundled arm64 JRE).
-        #  - Intel Mac:      ~28 MB JAR; requires system Java.
-        #  - Linux:          ~28 MB JAR; requires system Java.
-        sysname = platform.system()
-        is_apple_silicon = (sysname == "Darwin"
-                            and platform.machine() == "arm64")
-        has_bundled_jre = (sysname == "Windows") or is_apple_silicon
-
-        if not has_bundled_jre:
-            # Intel Mac / Linux: verify Java is reachable before
-            # downloading the JAR. Otherwise we'd download 28 MB and
-            # then fail to launch, which is a worse experience than
-            # telling the user up-front what's missing.
-            java_path = self.okapi_sidecar._find_java()
-            if java_path is None:
-                if sysname == "Darwin":
-                    install_hint = (
-                        "Install Java first (one-time setup):\n"
-                        "  • Homebrew (recommended): brew install --cask temurin@17\n"
-                        "  • Or download from https://adoptium.net\n\n"
-                        "Verify with: java -version\n"
-                        "Then restart Localize Large and re-try the import."
-                    )
-                else:
-                    install_hint = (
-                        "Install Java first (one-time setup):\n"
-                        "  • Debian/Ubuntu: sudo apt install default-jre\n"
-                        "  • Fedora/RHEL:  sudo dnf install java-latest-openjdk\n"
-                        "  • Arch:         sudo pacman -S jre-openjdk\n"
-                        "  • Or download from https://www.java.com\n\n"
-                        "Then re-try the import."
-                    )
-                self.log("⚠️ Showing 'Java required' dialog – "
-                         "DOCX import blocked, no system Java found "
-                         f"({sysname})")
-                QMessageBox.critical(
-                    self,
-                    "Java required",
-                    "DOCX import requires the Okapi sidecar, a small "
-                    "Java service. No Java runtime was found on your "
-                    "system.\n\n" + install_hint
-                )
-                self.log("ℹ️ User dismissed 'Java required' dialog – "
-                         "import aborted")
-                return False
-
-        if has_bundled_jre:
-            size_text = "about 50 MB" if is_apple_silicon else "about 70 MB"
-            extra_note = ""
-        else:
-            size_text = "about 28 MB"
-            extra_note = (
-                "Java was detected on your system, so no separate "
-                "Java install is needed.\n\n"
-            )
-
-        self.log(f"ℹ️ Showing 'Download Okapi sidecar?' dialog "
-                 f"({size_text}, has_bundled_jre={has_bundled_jre})")
-        reply = QMessageBox.question(
-            self,
-            "Download Okapi sidecar?",
-            "DOCX import requires the Okapi sidecar – a small Java "
-            "service that handles document extraction.\n\n"
-            "Localize Large can download and install it for you "
-            f"({size_text}, one-time download). It will be saved to "
-            "your local app data folder.\n\n"
-            f"{extra_note}"
-            "Download now?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            self.log("ℹ️ User declined sidecar download – import aborted")
-            return False
-        self.log("ℹ️ User accepted sidecar download – starting fetch")
-
-        progress = QProgressDialog(
-            "Downloading Okapi sidecar…",
-            None,  # not cancellable mid-download (extraction would leave a mess)
-            0, 100, self
-        )
-        progress.setWindowTitle(self.tr("Installing Okapi sidecar"))
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setAutoClose(False)
-        progress.setAutoReset(False)
-        progress.show()
-        QApplication.processEvents()
-
-        def _dl_progress(done, total):
-            if total > 0:
-                pct = int(done * 100 / total)
-                progress.setValue(pct)
-                progress.setLabelText(
-                    f"Downloading Okapi sidecar… "
-                    f"({done // (1024*1024)} / {total // (1024*1024)} MB)"
-                )
-            else:
-                progress.setLabelText(
-                    f"Downloading Okapi sidecar… "
-                    f"({done // (1024*1024)} MB)"
-                )
-            QApplication.processEvents()
-
-        try:
-            ok = self.okapi_sidecar.download_install(progress_callback=_dl_progress)
-        finally:
-            try:
-                progress.close()
-            except Exception:
-                pass
-
-        if not ok:
-            QMessageBox.critical(
-                self,
-                "Sidecar download failed",
-                "The Okapi sidecar could not be downloaded. Check your "
-                "internet connection and try again.\n\n"
-                "If the problem persists, you can download the full "
-                "Localize Large release zip from GitHub – it ships with "
-                "the sidecar bundled."
-            )
-            return False
-
-        # Now try to start the freshly-installed sidecar.
-        self.log("Starting freshly-installed Okapi sidecar…")
-        if self.okapi_sidecar.start() and self.okapi_sidecar.is_running():
-            self.log(f"✅ Okapi sidecar v{self.okapi_sidecar.get_version() or '?'} ready")
-            return True
-
+        self.log("⚠ Okapi sidecar files not found in the app folder")
         QMessageBox.critical(
             self,
-            "Sidecar installed but failed to start",
-            "The Okapi sidecar was downloaded successfully, but it "
-            "failed to launch.\n\n"
-            "Check the diagnostic log for errors. You may need to "
-            "restart Localize Large."
+            "File-format engine missing",
+            "The file-format engine (Okapi sidecar) that ships with Localize "
+            "Large was not found in the app folder.\n\n"
+            "Unzip Localize Large again from the original download. The app "
+            "does not download this part by itself."
         )
         return False
 
@@ -58076,8 +57883,8 @@ class SupervertalerQt(QMainWindow):
                     self.log("⚠️ Okapi sidecar failed to start – "
                              "lazy install flow will retry on first use")
             elif not self.okapi_sidecar.is_installed():
-                self.log("ℹ️ Okapi sidecar not installed yet – "
-                         "will offer to download on first DOCX import")
+                self.log("⚠ Okapi sidecar files not found in the app folder – "
+                         "Okapi file formats are unavailable")
             else:
                 # JAR present but Java missing (Intel Mac / Linux only;
                 # Windows and Apple Silicon ship a bundled JRE).

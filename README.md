@@ -21,13 +21,23 @@ Localize Large is based on Supervertaler Workbench by Michael Beijer (MIT Licens
 ## What works today
 
 Inherited from the base and working: projects, DOCX and other imports through the Okapi
-sidecar, translation memory, termbases, AI translation, find and replace, spellcheck.
+sidecar, translation memory, termbases, AI translation, find and replace, spellcheck, the
+file-based bilingual formats (memoQ, Trados, Phrase, CafeTran, Déjà Vu).
 
-Done for Localize Large so far: the new name and icon, fixed data folders, the `.llproj`
-project format (older `.svproj` files open and are saved as `.llproj`), the About dialog.
+Done for Localize Large so far (Phases 1 and 2 of 8):
 
-Not done yet: removing the out-of-scope features, the security hardening, the extra file
-formats, the quality features, quality packs and the Windows release build.
+- The new name and icon, fixed data folders, the `.llproj` project format (older `.svproj`
+  files open and are saved as `.llproj`), the About dialog.
+- Everything outside the v1 scope is removed or disabled: global hotkeys, the tray icon,
+  voice, the embedded browser and web lookups, PDF tools, machine-translation services, AI
+  providers other than Claude, OpenAI, Gemini and Ollama, the Trados and memoQ bridges, the
+  usage ping, the update check and the sidecar download. `docs/REMOVED.md` lists each one,
+  and which parts are disabled but not yet deleted.
+
+Not done yet: the security hardening (Phase 3: the sidecar still listens on all network
+interfaces and API keys are still also written to a plain file), the extra file formats,
+the quality features, quality packs and the Windows release build. **Do not use this code
+with real client files yet.**
 
 ## Where it keeps data
 

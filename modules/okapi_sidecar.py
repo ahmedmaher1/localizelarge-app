@@ -67,35 +67,6 @@ class OkapiSidecar:
     # changes (keep it in sync with pom.xml / App.java).
     EXPECTED_VERSION = "0.1.9"
 
-    # URLs for lazy-downloading the sidecar when running from a pip
-    # install (no JAR + JRE bundled next to the application). Pinned to
-    # specific GitHub release assets for reproducibility – bump these
-    # whenever the sidecar JAR version changes.
-    #
-    # The Windows asset is a ZIP that extracts to a folder containing
-    # the JAR + a bundled Windows JRE, so Windows pip users don't need
-    # to install Java themselves.
-    #
-    # The cross-platform JAR-only asset is used on macOS (Intel and Apple
-    # Silicon) and Linux. Those users must have a system Java available
-    # (JAVA_HOME or `java` on PATH). We intentionally don't ship
-    # per-platform JRE bundles for them — see INSTALLER_URL_JAR_ONLY below.
-    INSTALLER_URL_WINDOWS = (
-        "https://github.com/Supervertaler/Supervertaler-Workbench/"
-        "releases/download/v1.10.373/okapi-sidecar-windows-v0.1.9.zip"
-    )
-    # All non-Windows platforms (macOS — Intel and Apple Silicon — and
-    # Linux) use the cross-platform JAR-only asset with the user's system
-    # Java. We deliberately do NOT ship per-platform JRE bundles for them:
-    # a macOS-arm64 bundle would need an arm64 JRE built on a Mac, so every
-    # sidecar update would require a Mac. JAR-only keeps sidecar releases
-    # buildable from any OS. (The macOS desktop .app still bundles its own
-    # JRE at build time — that's separate from this lazy-download path.)
-    INSTALLER_URL_JAR_ONLY = (
-        "https://github.com/Supervertaler/Supervertaler-Workbench/"
-        "releases/download/v1.10.373/okapi-sidecar-v0.1.9.jar"
-    )
-
     def __init__(self, port: int = DEFAULT_PORT,
                  sidecar_dir: Optional[str] = None):
         """
@@ -682,193 +653,6 @@ class OkapiSidecar:
         """
         return (self.sidecar_dir / "okapi-sidecar.jar").exists()
 
-    # ── Lazy-download version tracking ─────────────────────────────
-    # A small ".version" stamp written next to a lazy-downloaded JAR lets us
-    # detect — without launching Java — that a cached JAR from an older app
-    # version is now out of date, so we can refresh it automatically instead
-    # of warning forever.
-
-    def _version_stamp_path(self) -> Path:
-        return self.sidecar_dir / "okapi-sidecar.version"
-
-    def _write_version_stamp(self, target_dir: Path) -> None:
-        try:
-            (target_dir / "okapi-sidecar.version").write_text(
-                self.EXPECTED_VERSION, encoding="utf-8")
-        except Exception as e:
-            logger.warning("Could not write sidecar version stamp: %s", e)
-
-    def installed_version_hint(self) -> Optional[str]:
-        """Best-effort version of the installed JAR from its stamp (no JVM
-        launch). None if there's no stamp (e.g. a pre-stamp download)."""
-        try:
-            p = self._version_stamp_path()
-            if p.exists():
-                return p.read_text(encoding="utf-8").strip() or None
-        except Exception:
-            pass
-        return None
-
-    def is_user_downloaded(self) -> bool:
-        """True when the active JAR is the per-user lazy-downloaded copy (as
-        opposed to a dev source build or a bundled-exe install, which are
-        managed manually and must not be auto-overwritten)."""
-        ud = self._user_data_sidecar_dir()
-        try:
-            return (ud is not None and self.is_installed()
-                    and self.sidecar_dir.resolve() == ud.resolve())
-        except Exception:
-            return False
-
-    def needs_update(self) -> bool:
-        """True when the active JAR is a lazy-downloaded copy whose version is
-        not the one this client expects, so it should be re-downloaded. Always
-        False for dev/source builds and bundled installs. A downloaded JAR with
-        no version stamp (downloaded before stamping existed) is treated as
-        stale so it gets refreshed once."""
-        if not self.is_user_downloaded():
-            return False
-        return self.installed_version_hint() != self.EXPECTED_VERSION
-
-    def _user_data_sidecar_dir(self) -> Optional[Path]:
-        """Where lazy-downloaded sidecar files go. Per-user, persists
-        across reinstalls. None on unsupported platforms."""
-        # Localize Large ships the sidecar inside the app folder and never
-        # downloads one, so there is no per-user sidecar folder.
-        return None
-
-    def download_install(self, progress_callback=None) -> bool:
-        """Lazy-download the sidecar for the current platform.
-
-        Used by pip-installed copies of Localize Large that don't ship the
-        sidecar bundled alongside the application (the desktop EXE release
-        ships JAR + JRE in `_internal/okapi-sidecar/`).
-
-        Two strategies depending on platform:
-
-        * **Windows** – fetch a ZIP bundle containing the JAR plus a
-          bundled Windows JRE, extract under the per-user install
-          location. Self-contained; no system Java required.
-        * **macOS / Linux** – fetch the JAR alone, drop it into the
-          per-user install location. Requires the user to already have
-          Java available (JAVA_HOME or `java` on PATH). Caller is expected
-          to have verified this via `_find_java()` first.
-
-        progress_callback: optional callable(bytes_done, bytes_total).
-
-        Returns True on success. On success ``self.sidecar_dir`` is
-        updated and ``start()`` can be called to launch the JVM.
-        """
-        if requests is None:
-            logger.error("'requests' package not installed – can't download sidecar")
-            return False
-
-        target_dir = self._user_data_sidecar_dir()
-        if target_dir is None:
-            logger.error("Could not determine a per-user install location")
-            return False
-
-        target_dir.parent.mkdir(parents=True, exist_ok=True)
-
-        if platform.system() == "Windows":
-            return self._download_install_zip_bundle(
-                self.INSTALLER_URL_WINDOWS, target_dir, progress_callback)
-        else:
-            # macOS (Intel or Apple Silicon) and Linux: JAR only, system
-            # Java required. (No per-platform JRE bundles for these — keeps
-            # sidecar updates buildable without a Mac.)
-            return self._download_install_jar_only(
-                self.INSTALLER_URL_JAR_ONLY, target_dir, progress_callback)
-
-    def _download_install_zip_bundle(self, url: str, target_dir: Path,
-                                     progress_callback) -> bool:
-        """Fetch a ZIP containing JAR + JRE and extract it."""
-        tmp_zip = target_dir.parent / "okapi-sidecar-download.zip"
-        try:
-            logger.info("Downloading Okapi sidecar bundle from %s", url)
-            self._stream_to_file(url, tmp_zip, progress_callback)
-
-            # Wipe any previous (possibly partial) install before extracting.
-            if target_dir.exists():
-                import shutil as _sh
-                _sh.rmtree(target_dir, ignore_errors=True)
-
-            import zipfile
-            with zipfile.ZipFile(tmp_zip) as zf:
-                zf.extractall(target_dir.parent)
-
-            tmp_zip.unlink(missing_ok=True)
-
-            jar = target_dir / "okapi-sidecar.jar"
-            if not jar.exists():
-                logger.error(
-                    "Sidecar bundle did not contain okapi-sidecar.jar at %s",
-                    jar)
-                return False
-
-            self.sidecar_dir = target_dir
-            self._write_version_stamp(target_dir)
-            logger.info("Sidecar installed to %s", target_dir)
-            return True
-
-        except Exception as e:
-            logger.error("Failed to download/install sidecar bundle: %s", e)
-            try:
-                tmp_zip.unlink(missing_ok=True)
-            except Exception:
-                pass
-            return False
-
-    def _download_install_jar_only(self, url: str, target_dir: Path,
-                                   progress_callback) -> bool:
-        """Fetch the JAR alone (macOS/Linux). System Java required."""
-        target_dir.mkdir(parents=True, exist_ok=True)
-        jar_path = target_dir / "okapi-sidecar.jar"
-        tmp_path = target_dir / "okapi-sidecar.jar.download"
-        try:
-            logger.info("Downloading Okapi sidecar JAR from %s", url)
-            self._stream_to_file(url, tmp_path, progress_callback)
-
-            # Atomic-ish replace once download completes.
-            if jar_path.exists():
-                jar_path.unlink()
-            tmp_path.replace(jar_path)
-
-            self.sidecar_dir = target_dir
-            self._write_version_stamp(target_dir)
-            logger.info("Sidecar JAR installed to %s", jar_path)
-            return True
-
-        except Exception as e:
-            logger.error("Failed to download sidecar JAR: %s", e)
-            try:
-                tmp_path.unlink(missing_ok=True)
-            except Exception:
-                pass
-            return False
-
-    @staticmethod
-    def _stream_to_file(url: str, dest: Path, progress_callback) -> None:
-        """Stream a URL to disk, calling progress_callback if provided.
-
-        Raises on HTTP errors or network failures. dest is overwritten.
-        """
-        with requests.get(url, stream=True, timeout=60) as resp:
-            resp.raise_for_status()
-            total = int(resp.headers.get("Content-Length", 0))
-            downloaded = 0
-            with open(dest, "wb") as f:
-                for chunk in resp.iter_content(chunk_size=64 * 1024):
-                    if not chunk:
-                        continue
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if progress_callback:
-                        try:
-                            progress_callback(downloaded, total)
-                        except Exception:
-                            pass
-
     def _find_java(self) -> Optional[Path]:
         """Locate a Java runtime.  Prefers the bundled JRE."""
         # 1. Bundled JRE in the sidecar directory
@@ -901,24 +685,12 @@ class OkapiSidecar:
         jar = self.sidecar_dir / "okapi-sidecar.jar"
         return jar.exists() and self._find_java() is not None
 
-    @staticmethod
-    def platform_bundles_jre() -> bool:
-        """True on platforms whose sidecar download bundles a private JRE.
-
-        Currently only Windows (any arch). All Macs (Intel and Apple
-        Silicon) and Linux use the JAR-only download and must rely on a
-        system Java install.
-        """
-        return platform.system() == "Windows"
-
     def needs_system_java_install(self) -> bool:
-        """True iff this platform requires the user to install Java AND
-        no Java runtime is currently reachable.
+        """True on a development machine (not Windows) where no Java is found.
 
-        Used by the GUI to surface a proactive startup warning on Intel
-        Macs and Linux, where the sidecar can't run until the user has
-        installed a JDK themselves.
+        The Windows build ships its own Java runtime, so this is always False
+        there.
         """
-        if self.platform_bundles_jre():
+        if platform.system() == "Windows":
             return False
         return self._find_java() is None
