@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tbx type="TBX-Basic" style="dca" xml:lang="en" xmlns="urn:iso:std:iso:30042:ed-2">
+  <tbxHeader>
+    <fileDesc><sourceDesc><p>TBX 3 sample</p></sourceDesc></fileDesc>
+  </tbxHeader>
+  <text>
+    <body>
+      <conceptEntry id="k1">
+        <descrip type="subjectField">Safety</descrip>
+        <langSec xml:lang="en-US">
+          <termSec>
+            <term>emergency stop</term>
+            <termNote type="partOfSpeech">noun</termNote>
+          </termSec>
+        </langSec>
+        <langSec xml:lang="ar-EG">
+          <termSec><term>إيقاف الطوارئ</term></termSec>
+          <termSec>
+            <term>توقف طارئ</term>
+            <termNote type="administrativeStatus">deprecatedTerm-admn-sts</termNote>
+          </termSec>
+        </langSec>
+      </conceptEntry>
+    </body>
+  </text>
+</tbx>

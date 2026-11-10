@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE martif SYSTEM "TBXBasiccoreStructV02.dtd">
+<martif type="TBX-Basic" xml:lang="en">
+  <martifHeader>
+    <fileDesc>
+      <titleStmt><title>Pump glossary</title></titleStmt>
+      <sourceDesc><p>Sample for the Localize Large tests</p></sourceDesc>
+    </fileDesc>
+    <encodingDesc><p type="XCSURI">TBXBasiccoreStructV02.dtd</p></encodingDesc>
+  </martifHeader>
+  <text>
+    <body>
+      <termEntry id="c1">
+        <descrip type="subjectField">Mechanical engineering</descrip>
+        <descrip type="definition">A device that moves a liquid.</descrip>
+        <note>Use in all manuals.</note>
+        <langSet xml:lang="en">
+          <tig>
+            <term>pump</term>
+            <termNote type="partOfSpeech">noun</termNote>
+            <termNote type="administrativeStatus">preferredTerm-admn-sts</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="ar">
+          <tig>
+            <term>مضخة</term>
+            <termNote type="administrativeStatus">preferredTerm-admn-sts</termNote>
+          </tig>
+          <tig>
+            <term>طلمبة</term>
+            <termNote type="administrativeStatus">deprecatedTerm-admn-sts</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="fr">
+          <tig><term>pompe</term></tig>
+        </langSet>
+      </termEntry>
+      <termEntry id="c2">
+        <langSet xml:lang="en">
+          <tig>
+            <term>pressure gauge</term>
+            <termNote type="partOfSpeech">noun</termNote>
+            <termNote type="administrativeStatus">preferredTerm-admn-sts</termNote>
+          </tig>
+          <tig>
+            <term>manometer</term>
+            <termNote type="administrativeStatus">admittedTerm-admn-sts</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="ar">
+          <tig>
+            <term>مقياس الضغط</term>
+            <termNote type="administrativeStatus">preferredTerm-admn-sts</termNote>
+          </tig>
+          <tig>
+            <term>مانومتر</term>
+            <termNote type="administrativeStatus">admittedTerm-admn-sts</termNote>
+          </tig>
+        </langSet>
+      </termEntry>
+      <termEntry id="c3">
+        <note>Brand name. First note.</note>
+        <note>Second note.</note>
+        <langSet xml:lang="en">
+          <tig><term>FlowMax &amp; Co.</term></tig>
+        </langSet>
+        <langSet xml:lang="ar">
+          <tig><term>FlowMax &amp; Co.</term></tig>
+        </langSet>
+      </termEntry>
+      <termEntry id="c4">
+        <langSet xml:lang="en">
+          <tig><term>only in English</term></tig>
+        </langSet>
+      </termEntry>
+    </body>
+  </text>
+</martif>

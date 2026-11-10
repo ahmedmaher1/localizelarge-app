@@ -20447,14 +20447,23 @@ class SupervertalerQt(QMainWindow):
         
         # File dialog
         from PyQt6.QtWidgets import QFileDialog
+        from localizelarge.terms import ui as ll_terms_ui
         filepath, _ = QFileDialog.getOpenFileName(
             self,
             "Import Termbase",
             "",
-            "TSV Files (*.tsv *.txt);;All Files (*.*)"
+            ll_terms_ui.IMPORT_FILTER
         )
         
         if not filepath:
+            return
+
+        # TBX, XLSX and CSV have their own import (with a column-mapping
+        # dialog); TSV continues below.
+        if ll_terms_ui.handles_import(filepath):
+            if ll_terms_ui.import_file(self, termbase_mgr, termbase_id, filepath) is not None:
+                self.log(f"📥 Imported glossary file {os.path.basename(filepath)} into '{tb_name}'")
+                self._refresh_termbase_table(termbase_table, termbase_mgr)
             return
 
         # Count rows and get language pair for the confirmation dialog
@@ -20685,14 +20694,20 @@ class SupervertalerQt(QMainWindow):
         # File dialog
         from PyQt6.QtWidgets import QFileDialog
         default_filename = f"{tb_name.replace(' ', '_')}.tsv"
+        from localizelarge.terms import ui as ll_terms_ui
         filepath, _ = QFileDialog.getSaveFileName(
             self,
             "Export Termbase",
             default_filename,
-            "TSV Files (*.tsv);;Text Files (*.txt);;All Files (*.*)"
+            ll_terms_ui.EXPORT_FILTER
         )
         
         if not filepath:
+            return
+
+        if ll_terms_ui.is_tbx(filepath):
+            if ll_terms_ui.export_tbx(self, termbase_mgr, termbase_id, filepath):
+                self.log(f"📤 Exported '{tb_name}' as TBX to {filepath}")
             return
         
         # Show options dialog

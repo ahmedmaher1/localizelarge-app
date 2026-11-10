@@ -45,6 +45,14 @@ License). The history of that project is in its own repository.
   could miss a near match completely.
 - A fuzzy lookup in a 100,000-unit memory takes about 0.12 s (see `docs/PERFORMANCE.md`).
 
+### Glossaries
+
+- TBX-Basic import and export. Term variants, forbidden terms, part of speech, definition,
+  notes and domain are kept in both directions. TBX 3 files can be read.
+- XLSX and CSV import with a dialog to choose which column is which.
+- Importing a file twice adds nothing twice: new variants and missing details are merged
+  into the entries that are already there.
+
 ### Security
 
 - The Okapi file-format service listens on `127.0.0.1` only, on a free port chosen at each
