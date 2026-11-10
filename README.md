@@ -3,7 +3,8 @@
 A free Windows desktop CAT (computer-assisted translation) tool for localization managers
 in companies that translate in-house with AI.
 
-**Status: in development. Version 1.0.0 is not released yet.** This file describes the
+**Status: in development. A preview (1.0.0-preview.1, unsigned) is on localizelarge.com;
+version 1.0.0 is not released yet.** This file describes the
 state of the code, not the finished product. The build plan has eight phases; see
 `CHANGELOG.md` for what is done.
 
@@ -51,7 +52,7 @@ Done for Localize Large so far (Phases 1 to 5 of 8):
 
 Not done yet: quality packs (Phase 6), the AI provider
 rework (Phase 7) and the release work (Phase 8: SBOM, signing, user guide, test on a clean
-Windows 11 machine). A preview ZIP can be built for testing; nothing is published.
+Windows 11 machine). A preview ZIP is published for testing (see `docs/RELEASING.md`).
 
 ## Where it keeps data
 

@@ -1,8 +1,25 @@
 # Building and releasing the Windows ZIP
 
-**Status:** the build pipeline exists. No release has been made. Version 1.0.0 is not
-finished: Phases 6 to 8 of the build plan are still to do. A build made today is a preview
-for testing, not something to publish.
+**Status:** a **preview** is published. Version 1.0.0 is not finished: Phases 6 to 8 of
+the build plan are still to do.
+
+| Preview | |
+|---|---|
+| Version on the website | `1.0.0-preview.1` |
+| Built from | commit `b61388a`, GitHub Actions run 10 of "Build Windows ZIP", 2026-11-10 |
+| File | `LocalizeLarge-1.0.0-preview-win-x64.zip`, 173,588,065 bytes |
+| SHA-256 | `74d7778fc9544eeaff2349ae9a5b88671ae1a45d4971e3cb78495e994052554f` |
+| Address | `https://localizelarge.com/downloads/windows/1.0.0-preview.1/LocalizeLarge-1.0.0-preview-win-x64.zip` |
+| Source of that build | `https://localizelarge.com/downloads/windows/1.0.0-preview.1/LocalizeLarge-1.0.0-preview-source.zip` (`git archive` of the commit) |
+| Signed | no |
+
+The owner asked for the preview to be published on 2026-11-10. It was not tested by hand
+on a clean Windows 11 machine first; the checks it passed are the automatic ones of the
+build script (below) and the test suite on a Windows runner.
+
+The app is licensed under the GPL (and includes PyQt6, which is GPL), so everyone who can
+download the program must be able to download its source. That is why the source archive
+is hosted beside the ZIP. Every published build needs its own source archive.
 
 ## Build
 
@@ -48,7 +65,12 @@ python -m pip install -r requirements.txt pyinstaller
 Not done by the script yet (Phase 8): the SBOM, code signing, and the test on a clean
 Windows 11 machine, which a person has to do.
 
-## Before a build may be published
+With **stage** ticked, the workflow also pushes the ZIP, cut into two parts under GitHub's
+100 MB file limit, to the branch `build-artifact` of this repository. From there it can be
+fetched with git, joined (`cat part00 part01 > file.zip`), checked against the `.sha256`
+file and uploaded to the hosting. Delete the branch afterwards.
+
+## Before a final (non-preview) build may be published
 
 - All eight phases are done and their tests pass on Windows.
 - The ZIP has been tested by hand on a clean Windows 11 machine with no Python and no Java:
