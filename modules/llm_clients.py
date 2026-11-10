@@ -87,9 +87,14 @@ def load_api_keys(settings_path: Optional[str] = None) -> Dict[str, str]:
     api_keys = _read_settings_section(settings_path)
     api_keys.update(_key_store().all())
 
-    # Set environment variable for Ollama endpoint if configured
+    # The Ollama address the network guard allows is the one in settings
+    # (the default, http://localhost:11434, when none is set).
+    from localizelarge.security import net as _net
+    _net.configure(ollama_endpoint=api_keys.get('ollama_endpoint') or "")
     if api_keys.get('ollama_endpoint'):
         os.environ['OLLAMA_ENDPOINT'] = api_keys['ollama_endpoint']
+    else:
+        os.environ.pop('OLLAMA_ENDPOINT', None)
 
     return api_keys
 
@@ -233,16 +238,38 @@ class LLMConfig:
     max_tokens: int = 16384  # Increased from 4096 for batch translation (100 segments needs ~16K tokens)
 
 
+_BUILT_IN_DEFAULT_MODELS = {
+    "openai": "gpt-6.1-sol",
+    "claude": "claude-sonnet-5-5",
+    "gemini": "gemini-3.1-flash-lite",
+    "ollama": "translategemma:12b",
+}
+
+
+def _load_default_models() -> Dict[str, str]:
+    """Default model IDs from the data file, for the four supported providers.
+    Falls back to the built-in values if the file is missing or damaged."""
+    import json
+    from pathlib import Path
+    models = dict(_BUILT_IN_DEFAULT_MODELS)
+    try:
+        import localizelarge
+        path = Path(localizelarge.__file__).resolve().parent / "data" / "model_defaults.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for provider, model in (data.get("defaults") or {}).items():
+            if provider in models and isinstance(model, str) and model.strip():
+                models[provider] = model.strip()
+    except Exception:
+        pass
+    return models
+
+
 class LLMClient:
     """Universal LLM client for translation tasks"""
 
     # Default models for each provider
-    DEFAULT_MODELS = {
-        "openai": "gpt-6.1-sol",  # GPT-6.1 Sol - the middle of OPENAI_MODELS, not its first
-        "claude": "claude-sonnet-5-5",  # Claude Sonnet 5.5 (older IDs still selectable)
-        "gemini": "gemini-3.1-flash-lite",  # Gemini 3.1 Flash-Lite
-        "ollama": "translategemma:12b",  # Local LLM via Ollama - purpose-built translation model
-    }
+    # Default model per provider, from localizelarge/data/model_defaults.json.
+    DEFAULT_MODELS = _load_default_models()
 
     # The only providers Localize Large v1 talks to.
     SUPPORTED_PROVIDERS = ("openai", "claude", "gemini", "ollama")
@@ -467,13 +494,16 @@ class LLMClient:
                 - error: str - error message if not running
         """
         import requests
+        from localizelarge.security import net as _net
 
-        endpoint = endpoint or os.environ.get('OLLAMA_ENDPOINT', 'http://localhost:11434')
-        endpoint = _sanitize_ollama_endpoint(endpoint)
+        if endpoint:
+            _net.configure(ollama_endpoint=_sanitize_ollama_endpoint(endpoint))
+        endpoint = _net.ollama_endpoint()
+        http = _net.session("ollama")
 
         try:
             # Check if Ollama is running
-            response = requests.get(f"{endpoint}/api/tags", timeout=5)
+            response = http.get(f"{endpoint}/api/tags", timeout=5)
             if response.status_code == 200:
                 data = response.json()
                 models = [m['name'] for m in data.get('models', [])]
@@ -486,7 +516,7 @@ class LLMClient:
             else:
                 error_msg = f"Ollama returned status {response.status_code}"
                 try:
-                    root_resp = requests.get(endpoint, timeout=3)
+                    root_resp = http.get(endpoint, timeout=3)
                     if root_resp.status_code == 200 and 'ollama' in root_resp.text.lower():
                         error_msg = (f"Ollama is reachable but /api/tags returned {response.status_code}. "
                                      f"Check your Ollama endpoint – it should be just the base URL "
@@ -887,12 +917,14 @@ class LLMClient:
         is_reasoning_model = any(x in model_lower for x in self.REASONING_MODELS)
         timeout_seconds = 600.0 if is_reasoning_model else 120.0
 
-        client_kwargs = {"api_key": self.api_key, "timeout": timeout_seconds}
-        if self.base_url:
-            client_kwargs["base_url"] = self.base_url
-        if self.http_proxy:
-            import httpx
-            client_kwargs["http_client"] = httpx.Client(proxy=self.http_proxy, timeout=timeout_seconds)
+        # The address is fixed and the HTTP client comes from the network
+        # guard, which refuses any other host.
+        from localizelarge.security import net as _net
+        client_kwargs = {
+            "api_key": self.api_key, "timeout": timeout_seconds,
+            "base_url": _net.provider_base_url("openai") + "/v1",
+            "http_client": _net.httpx_client("openai", proxy=self.http_proxy, timeout=timeout_seconds),
+        }
         client = OpenAI(**client_kwargs)
 
         if max_tokens is not None:
@@ -1002,10 +1034,12 @@ class LLMClient:
         else:
             timeout_seconds = 120.0
 
-        claude_kwargs = {"api_key": self.api_key, "timeout": timeout_seconds}
-        if self.http_proxy:
-            import httpx
-            claude_kwargs["http_client"] = httpx.Client(proxy=self.http_proxy, timeout=timeout_seconds)
+        from localizelarge.security import net as _net
+        claude_kwargs = {
+            "api_key": self.api_key, "timeout": timeout_seconds,
+            "base_url": _net.provider_base_url("claude"),
+            "http_client": _net.httpx_client("claude", proxy=self.http_proxy, timeout=timeout_seconds),
+        }
         client = anthropic.Anthropic(**claude_kwargs)
 
         tokens_to_use = max_tokens if max_tokens is not None else self.max_tokens
@@ -1075,81 +1109,8 @@ class LLMClient:
         return text, usage
 
     def _call_gemini_with_usage(self, prompt: str, max_tokens: Optional[int] = None, images: Optional[List] = None, system_prompt: Optional[str] = None) -> Tuple[str, Dict]:
-        """Call Gemini API and return (text, usage_dict)."""
-        try:
-            import google.generativeai as genai
-        except ImportError:
-            raise ImportError("Google AI library not installed. Install with: pip install google-generativeai")
-
-        genai.configure(api_key=self.api_key)
-
-        if system_prompt:
-            model = genai.GenerativeModel(self.model, system_instruction=system_prompt)
-        else:
-            model = genai.GenerativeModel(self.model)
-
-        if images:
-            content = [prompt]
-            for img_ref, pil_image in images:
-                content.append(pil_image)
-        else:
-            content = prompt
-
-        response = model.generate_content(content)
-
-        # Defensive .text access: response.text raises ValueError when the
-        # candidate was blocked, finish_reason isn't STOP, or a thinking
-        # model spent its whole budget on thoughts and left no text part.
-        # Surface the actual cause instead of a generic ValueError (mirrors
-        # _call_gemini).
-        try:
-            text = response.text.strip()
-        except (ValueError, AttributeError) as e:
-            details = []
-            try:
-                if response.prompt_feedback and response.prompt_feedback.block_reason:
-                    details.append(
-                        f"prompt blocked: {response.prompt_feedback.block_reason}"
-                    )
-            except Exception:
-                pass
-            try:
-                for i, cand in enumerate(response.candidates or []):
-                    fr = getattr(cand, 'finish_reason', None)
-                    if fr is not None:
-                        details.append(f"candidate {i} finish_reason={fr}")
-                    sr = getattr(cand, 'safety_ratings', None) or []
-                    blocked = [
-                        f"{getattr(r, 'category', '?')}={getattr(r, 'probability', '?')}"
-                        for r in sr if getattr(r, 'blocked', False)
-                    ]
-                    if blocked:
-                        details.append(f"candidate {i} safety: {', '.join(blocked)}")
-            except Exception:
-                pass
-            reason = "; ".join(details) if details else f"{type(e).__name__}: {e}"
-            raise RuntimeError(f"Gemini returned no usable text ({reason})") from e
-
-        usage = {}
-        if hasattr(response, 'usage_metadata') and response.usage_metadata:
-            um = response.usage_metadata
-            # Gemini 2.5+ implicit caching: when the prompt prefix is stable
-            # and ≥1024 tokens, the API reports the cached portion in
-            # cached_content_token_count. Cached tokens are billed at 25% of
-            # the input rate (75% discount).
-            cached_tokens = getattr(um, 'cached_content_token_count', 0) or 0
-
-            usage = {
-                'input_tokens': getattr(um, 'prompt_token_count', 0) or 0,
-                'output_tokens': getattr(um, 'candidates_token_count', 0) or 0,
-                # Normalised cache fields, matching the Anthropic / OpenAI shape.
-                # cache_read = tokens served from cache (75% off for Gemini).
-                # cache_creation is N/A for Gemini's implicit cache and stays 0.
-                'cache_read_input_tokens': cached_tokens,
-                'cache_creation_input_tokens': 0,
-            }
-
-        return text, usage
+        """Call Gemini and return (text, usage_dict)."""
+        return self._gemini_rest(prompt, max_tokens=max_tokens, images=images, system_prompt=system_prompt)
 
     def _call_openai(self, prompt: str, max_tokens: Optional[int] = None, images: Optional[List] = None, system_prompt: Optional[str] = None, enable_prompt_caching: bool = False) -> str:
         """Call OpenAI API with GPT-5/o1/o3 reasoning model support and vision capability.
@@ -1172,12 +1133,14 @@ class LLMClient:
 
         # Reasoning models need MUCH longer timeout (they can take 5-10 minutes for large prompts)
         timeout_seconds = 600.0 if is_reasoning_model else 120.0  # 10 min vs 2 min
-        client_kwargs = {"api_key": self.api_key, "timeout": timeout_seconds}
-        if self.base_url:
-            client_kwargs["base_url"] = self.base_url
-        if self.http_proxy:
-            import httpx
-            client_kwargs["http_client"] = httpx.Client(proxy=self.http_proxy, timeout=timeout_seconds)
+        # The address is fixed and the HTTP client comes from the network
+        # guard, which refuses any other host.
+        from localizelarge.security import net as _net
+        client_kwargs = {
+            "api_key": self.api_key, "timeout": timeout_seconds,
+            "base_url": _net.provider_base_url("openai") + "/v1",
+            "http_client": _net.httpx_client("openai", proxy=self.http_proxy, timeout=timeout_seconds),
+        }
         client = OpenAI(**client_kwargs)
         print(f"🔵 OpenAI client created successfully (timeout: {timeout_seconds}s)")
 
@@ -1313,10 +1276,12 @@ class LLMClient:
         else:
             timeout_seconds = 120.0  # 2 minutes for normal operations
         
-        claude_kwargs = {"api_key": self.api_key, "timeout": timeout_seconds}
-        if self.http_proxy:
-            import httpx
-            claude_kwargs["http_client"] = httpx.Client(proxy=self.http_proxy, timeout=timeout_seconds)
+        from localizelarge.security import net as _net
+        claude_kwargs = {
+            "api_key": self.api_key, "timeout": timeout_seconds,
+            "base_url": _net.provider_base_url("claude"),
+            "http_client": _net.httpx_client("claude", proxy=self.http_proxy, timeout=timeout_seconds),
+        }
         client = anthropic.Anthropic(**claude_kwargs)
         
         # Use provided max_tokens or default (Claude uses 4096 as default)
@@ -1377,110 +1342,26 @@ class LLMClient:
         return translation
 
     def _call_gemini(self, prompt: str, max_tokens: Optional[int] = None, images: Optional[List] = None, system_prompt: Optional[str] = None) -> str:
-        """Call Google Gemini API with vision support."""
-        # gemini-3.5+ forces "thinking" (default level=medium), which bills
-        # hundreds of reasoning tokens at the output rate even for tiny
-        # translation segments (~65x the cost of flash-lite for no quality
-        # gain on short text). The thinking level can only be lowered via
-        # thinkingConfig, which the legacy google-generativeai 0.8.5 SDK
-        # cannot pass. Route 3.5+ models through REST with thinking pinned
-        # to "minimal"; all other models stay on the proven SDK path below.
-        if self.model.startswith("gemini-3.5"):
-            return self._call_gemini_rest(
-                prompt, max_tokens=max_tokens, images=images,
-                system_prompt=system_prompt, thinking_level="minimal",
-            )
+        """Call Google Gemini (text, with optional images)."""
+        text, _usage = self._gemini_rest(prompt, max_tokens=max_tokens, images=images, system_prompt=system_prompt)
+        return text
 
-        # v1.10.34: preserve the original exception text in the
-        # ImportError. The old "Google AI library not installed"
-        # blanket message was misleading – it fired even when the
-        # package was installed but failed at import time for an
-        # unrelated reason (e.g. a transitive dependency tripping
-        # on a missing stdlib module in a PyInstaller bundle that
-        # excluded ``unittest``). v1.10.33's Windows EXE hit
-        # exactly that case: pyparsing.testing imports unittest at
-        # module load and the spec file had unittest in excludes,
-        # so importing google.generativeai threw
-        # ModuleNotFoundError but users saw the misleading message.
-        try:
-            import google.generativeai as genai
-            from PIL import Image
-        except ImportError as e:
-            raise ImportError(
-                f"Could not load Google Gemini SDK: {type(e).__name__}: {e}. "
-                "If 'pip list' shows google-generativeai is installed, "
-                "this is likely a transitive-import failure (often a "
-                "stdlib module excluded from a frozen bundle). Otherwise "
-                "install with: pip install google-generativeai pillow"
-            )
+    def _gemini_rest(self, prompt: str, max_tokens: Optional[int] = None,
+                     images: Optional[List] = None, system_prompt: Optional[str] = None):
+        """Call Gemini over HTTPS through the network guard. Returns (text, usage).
 
-        genai.configure(api_key=self.api_key)
+        Localize Large does not use the google-generativeai SDK: it creates
+        its own network client, which the guard could not restrict. The
+        request shape is the Gemini API's generateContent call.
 
-        # Gemini supports system instructions via GenerativeModel parameter
-        if system_prompt:
-            model = genai.GenerativeModel(self.model, system_instruction=system_prompt)
-        else:
-            model = genai.GenerativeModel(self.model)
-
-        # Build content (text + optional images)
-        if images:
-            # Gemini format: list with prompt text followed by PIL Image objects
-            content = [prompt]
-            for img_ref, pil_image in images:
-                content.append(pil_image)  # Gemini accepts PIL.Image directly
-            print(f"🟢 Gemini vision mode: {len(images)} images added to message")
-        else:
-            # Standard text-only
-            content = prompt
-
-        response = model.generate_content(content)
-
-        # Defensive .text access: response.text raises ValueError
-        # ("response did not contain a valid Part") when the candidate
-        # was blocked or finish_reason isn't STOP. Surface the actual
-        # cause instead of letting a generic ValueError bubble up.
-        try:
-            translation = response.text.strip()
-        except (ValueError, AttributeError) as e:
-            details = []
-            try:
-                if response.prompt_feedback and response.prompt_feedback.block_reason:
-                    details.append(
-                        f"prompt blocked: {response.prompt_feedback.block_reason}"
-                    )
-            except Exception:
-                pass
-            try:
-                for i, cand in enumerate(response.candidates or []):
-                    fr = getattr(cand, 'finish_reason', None)
-                    if fr is not None:
-                        details.append(f"candidate {i} finish_reason={fr}")
-                    sr = getattr(cand, 'safety_ratings', None) or []
-                    blocked = [
-                        f"{getattr(r, 'category', '?')}={getattr(r, 'probability', '?')}"
-                        for r in sr if getattr(r, 'blocked', False)
-                    ]
-                    if blocked:
-                        details.append(f"candidate {i} safety: {', '.join(blocked)}")
-            except Exception:
-                pass
-            reason = "; ".join(details) if details else f"{type(e).__name__}: {e}"
-            raise RuntimeError(f"Gemini returned no usable text ({reason})") from e
-
-        return translation
-
-    def _call_gemini_rest(self, prompt: str, max_tokens: Optional[int] = None,
-                          images: Optional[List] = None, system_prompt: Optional[str] = None,
-                          thinking_level: str = "minimal") -> str:
-        """Call Gemini via REST so thinkingConfig can be set (legacy SDK can't).
-
-        Used for gemini-3.5+ to pin the thinking level to "minimal" and avoid
-        the large hidden reasoning-token cost on short translation segments.
+        gemini-3.5+ models "think" by default, which bills hidden reasoning
+        tokens even for a short segment; for those the thinking level is set
+        to "minimal".
         """
         import base64
         import io
         import json as json_module
-        import requests
+        from localizelarge.security import net as _net
 
         parts = [{"text": prompt}]
         if images:
@@ -1494,35 +1375,38 @@ class LLMClient:
                         "data": base64.b64encode(buf.getvalue()).decode("ascii"),
                     }
                 })
-            print(f"🟢 Gemini vision mode (REST): {len(images)} images added to message")
 
-        gen_config: Dict = {"thinkingConfig": {"thinkingLevel": thinking_level}}
+        gen_config: Dict = {}
+        if self.model.startswith("gemini-3.5"):
+            gen_config["thinkingConfig"] = {"thinkingLevel": "minimal"}
         if max_tokens:
             gen_config["maxOutputTokens"] = max_tokens
 
-        body: Dict = {
-            "contents": [{"role": "user", "parts": parts}],
-            "generationConfig": gen_config,
-        }
+        body: Dict = {"contents": [{"role": "user", "parts": parts}]}
+        if gen_config:
+            body["generationConfig"] = gen_config
         if system_prompt:
             body["systemInstruction"] = {"parts": [{"text": system_prompt}]}
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
-        resp = requests.post(
+        url = f"{_net.provider_base_url('gemini')}/v1beta/models/{self.model}:generateContent"
+        http = _net.session("gemini")
+        proxies = {"http": self.http_proxy, "https": self.http_proxy} if self.http_proxy else None
+        resp = http.post(
             url,
             headers={"Content-Type": "application/json", "x-goog-api-key": self.api_key},
             data=json_module.dumps(body),
             timeout=120,
+            proxies=proxies,
+            allow_redirects=False,
         )
         if resp.status_code != 200:
-            raise RuntimeError(f"Gemini REST error {resp.status_code}: {resp.text[:500]}")
+            raise RuntimeError(f"Gemini error {resp.status_code}: {resp.text[:500]}")
 
         data = resp.json()
         try:
             cand = data["candidates"][0]
             # Skip "thought" parts so a thinking model's reasoning summary
-            # never leaks into the returned text (the SDK's .text accessor
-            # excludes them too).
+            # never leaks into the returned text.
             text = "".join(
                 p.get("text", "") for p in cand["content"]["parts"]
                 if not p.get("thought")
@@ -1540,7 +1424,18 @@ class LLMClient:
 
         if not text:
             raise RuntimeError("Gemini returned an empty response")
-        return text
+
+        um = data.get("usageMetadata") or {}
+        usage = {}
+        if um:
+            usage = {
+                'input_tokens': um.get('promptTokenCount', 0) or 0,
+                'output_tokens': um.get('candidatesTokenCount', 0) or 0,
+                # Tokens served from Gemini's implicit cache.
+                'cache_read_input_tokens': um.get('cachedContentTokenCount', 0) or 0,
+                'cache_creation_input_tokens': 0,
+            }
+        return text, usage
 
     def _call_ollama(self, prompt: str, max_tokens: Optional[int] = None, system_prompt: Optional[str] = None) -> str:
         """
@@ -1569,9 +1464,8 @@ class LLMClient:
             )
         
         # Get Ollama endpoint from environment or use default
-        endpoint = _sanitize_ollama_endpoint(
-            os.environ.get('OLLAMA_ENDPOINT', 'http://localhost:11434')
-        )
+        from localizelarge.security import net as _net
+        endpoint = _net.ollama_endpoint()
 
         # Use provided max_tokens or default
         tokens_to_use = max_tokens if max_tokens is not None else min(self.max_tokens, 8192)
@@ -1616,11 +1510,13 @@ class LLMClient:
             print(f"🟠 Calling Ollama API... (model: {model_size_str}, timeout: {timeout_seconds}s, streaming: {use_streaming})")
 
             proxies = {"http": self.http_proxy, "https": self.http_proxy} if self.http_proxy else None
+            from localizelarge.security import net as _net
+            _ollama_http = _net.session("ollama")
 
             if use_streaming:
                 # Streaming mode: read tokens incrementally to avoid timeout on large responses
                 # Connection timeout = 120s (model loading), no read timeout (tokens arrive gradually)
-                response = requests.post(
+                response = _ollama_http.post(
                     f"{endpoint}/api/chat",
                     json=payload,
                     timeout=(120, timeout_seconds),  # (connect_timeout, read_timeout for first chunk)
@@ -1663,7 +1559,7 @@ class LLMClient:
                 return translation
             else:
                 # Non-streaming mode for small/simple requests
-                response = requests.post(
+                response = _ollama_http.post(
                     f"{endpoint}/api/chat",
                     json=payload,
                     timeout=timeout_seconds,

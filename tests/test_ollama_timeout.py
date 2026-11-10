@@ -86,12 +86,15 @@ def test_call_ollama_uses_the_override(monkeypatch, max_tokens, expected):
         def iter_lines(self):
             yield json_module.dumps({"message": {"content": "Hallo"}, "done": True}).encode()
 
-    def fake_post(url, json=None, timeout=None, proxies=None, stream=False):
+    def fake_post(self, url, json=None, timeout=None, proxies=None, stream=False):
         seen["timeout"] = timeout
+        seen["url"] = url
         return _Resp()
 
-    monkeypatch.setattr(requests, "post", fake_post)
+    # The call goes through the network guard's session, to the configured address.
+    monkeypatch.setattr(requests.Session, "post", fake_post)
     set_ollama_timeout(45 * 60)
     client = llm_clients.LLMClient(provider="ollama", model="translategemma:4b")
     assert client._call_ollama("Hello", max_tokens=max_tokens) == "Hallo"
     assert seen["timeout"] == expected
+    assert seen["url"].startswith("http://localhost:11434/")

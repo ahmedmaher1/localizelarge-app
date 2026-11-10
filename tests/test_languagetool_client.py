@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 
 from modules.languagetool_client import (
-    PUBLIC_API_URL, LTFinding, apply_replacement, build_batches, check_texts, lt_language,
+    LTFinding, apply_replacement, build_batches, check_texts, lt_language,
 )
 
 
@@ -47,19 +47,14 @@ def test_findings_map_back_to_their_segments():
     assert found[0].replacements == ["de", "the"] and found[0].category == "Grammar"
 
 
-def test_batches_split_by_size_and_the_public_api_is_paced():
+def test_batches_split_by_size_and_a_private_server_is_not_slowed_down():
     texts = [f"Zin nummer {i} met de de fout." for i in range(40)]
     calls, pauses = [], []
-    found = check_texts(texts, "nl", PUBLIC_API_URL, request=fake_server(calls),
+    found = check_texts(texts, "nl", "http://localhost:8081", request=fake_server(calls),
                         sleep=pauses.append, max_chars=200)
-    assert len(calls) > 1 and len(pauses) == len(calls) - 1
+    assert len(calls) > 1 and pauses == []
     assert sorted({f.segment_index for f in found}) == list(range(40))
     assert all(texts[f.segment_index][f.offset:f.offset + f.length] == "de de" for f in found)
-    # A private server (or a Premium key) is not slowed down
-    pauses.clear()
-    check_texts(texts, "nl", "http://localhost:8081", request=fake_server([]),
-                sleep=pauses.append, max_chars=200)
-    assert pauses == []
 
 
 def test_progress_can_stop_the_run():

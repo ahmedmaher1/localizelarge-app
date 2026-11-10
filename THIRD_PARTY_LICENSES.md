@@ -25,7 +25,6 @@ Licenses are taken from each package's own metadata.
 | lxml | 6.1.3 | BSD-3-Clause |
 | openai | 3.48.0 | Apache-2.0 |
 | anthropic | 2.7.0 | Apache-2.0 |
-| google-generativeai | 0.8.6 | Apache-2.0 |
 | requests | 2.34.2 | Apache-2.0 |
 | httpx | 0.28.1 | BSD-3-Clause |
 | rapidfuzz | 3.14.6 | MIT |

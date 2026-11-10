@@ -796,46 +796,14 @@ Now provide the change summary for each segment, formatted as:
             
             # Call AI based on provider
             self.log_queue.put(f"[Export] Checking provider condition: {provider} == gemini? {provider == 'gemini'}, GEMINI_AVAILABLE? {self.GEMINI_AVAILABLE}")
-            if provider == "gemini" and self.GEMINI_AVAILABLE:
-                import google.generativeai as genai
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(model_name)
-                
-                response = model.generate_content(batch_prompt)
-                response_text = response.text.strip()
-                
-            elif provider == "claude" and self.ANTHROPIC_AVAILABLE:
-                import anthropic
-                client = anthropic.Anthropic(api_key=api_key)
-                
-                message = client.messages.create(
-                    model=model_name,
-                    max_tokens=2000,  # Larger for batch
-                    messages=[{
-                        "role": "user",
-                        "content": batch_prompt
-                    }]
-                )
-                
-                response_text = "".join(
-                    b.text for b in message.content
-                    if getattr(b, 'type', None) == 'text'
-                ).strip()
-                
-            elif provider == "openai" and self.OPENAI_AVAILABLE:
-                import openai
-                client = openai.OpenAI(api_key=api_key)
-                
-                response = client.chat.completions.create(
-                    model=model_name,
-                    max_tokens=2000,  # Larger for batch
-                    messages=[{
-                        "role": "user",
-                        "content": batch_prompt
-                    }]
-                )
-                
-                response_text = response.choices[0].message.content.strip()
+            # All AI calls go through the one client (modules/llm_clients.py),
+            # which uses the network guard and refuses unsupported providers.
+            if provider in ("gemini", "claude", "openai"):
+                from modules.llm_clients import LLMClient
+                client = LLMClient(api_key=api_key, provider=provider, model=model_name, max_tokens=2000)
+                call = {"gemini": client._call_gemini, "claude": client._call_claude,
+                        "openai": client._call_openai}[provider]
+                response_text = (call(batch_prompt, max_tokens=2000) or "").strip()
             else:
                 self.log_queue.put(f"[Export] ERROR: No matching provider condition for {provider}")
                 return {i: "Provider not available" for i in range(start_index, start_index + len(changes_batch))}

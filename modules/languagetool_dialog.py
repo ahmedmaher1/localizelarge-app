@@ -48,13 +48,12 @@ class LanguageToolDialog(QDialog):
         server_row.addWidget(QLabel("Server:"))
         self.server_combo = QComboBox()
         self.server_combo.setEditable(True)
-        self.server_combo.addItem(ltc.PUBLIC_API_URL)
         self.server_combo.addItem(ltc.LOCAL_SERVER_URL)
         self.server_combo.setMinimumWidth(280)
         self.server_combo.setCurrentText(self._saved_server())
         self.server_combo.setToolTip(
-            "The free public LanguageTool API, or the address of your own LanguageTool\n"
-            "server. A local server is free, unlimited and keeps the text on your computer.")
+            "The address of your own LanguageTool server, for example one running on\n"
+            "this computer. Localize Large never uses LanguageTool's public service.")
         server_row.addWidget(self.server_combo)
         server_row.addSpacing(12)
         server_row.addWidget(QLabel("Language:"))
@@ -124,22 +123,31 @@ class LanguageToolDialog(QDialog):
     # ── Settings ────────────────────────────────────────────────────────────
     def _saved_server(self):
         try:
-            return (self._load_settings() or {}).get(SERVER_KEY) or ltc.PUBLIC_API_URL
+            saved = (self._load_settings() or {}).get(SERVER_KEY) or ""
         except Exception:
-            return ltc.PUBLIC_API_URL
+            saved = ""
+        # An address saved by the base app that points at the public service is dropped.
+        return "" if ltc.is_public_api(saved) else saved
 
     def _server(self):
-        return self.server_combo.currentText().strip().rstrip("/") or ltc.PUBLIC_API_URL
+        return self.server_combo.currentText().strip().rstrip("/")
 
     def _update_privacy(self, *_):
-        if self._server() == ltc.PUBLIC_API_URL:
+        from localizelarge.security import net
+        server = self._server()
+        if not server:
             self.privacy.setText(
-                "The free public API sends the text to LanguageTool's servers and allows about "
-                "20 checks a minute, so a large project takes a while. For confidential work, "
-                "run your own LanguageTool server (free, unlimited, offline) and enter its "
-                "address, e.g. http://localhost:8081.")
+                "LanguageTool is off until you enter the address of your own LanguageTool "
+                "server, for example http://localhost:8081. Localize Large never sends text "
+                "to LanguageTool's public service.")
+        elif ltc.is_public_api(server):
+            self.privacy.setText(
+                "That is LanguageTool's public service. Localize Large does not send text "
+                "there. Enter the address of your own LanguageTool server.")
+        elif net.is_local_host(net.host_of(server)):
+            self.privacy.setText("Text stays on this computer (LanguageTool server on this computer).")
         else:
-            self.privacy.setText("Using your own LanguageTool server – the text stays there.")
+            self.privacy.setText(f"Text is sent to your LanguageTool server at {net.host_of(server)}.")
 
     # ── Checking ────────────────────────────────────────────────────────────
     def _cancel(self):
@@ -166,7 +174,11 @@ class LanguageToolDialog(QDialog):
         if not any(t.strip() for t in texts):
             QMessageBox.information(self, "LanguageTool", "There is no target text to check yet.")
             return
-        server = self._server()
+        try:
+            server = ltc.validate_server(self._server())
+        except Exception as e:
+            QMessageBox.information(self, "LanguageTool", str(e))
+            return
         try:
             settings = self._load_settings() or {}
             settings[SERVER_KEY] = server

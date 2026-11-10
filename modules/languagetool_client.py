@@ -17,8 +17,39 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
-PUBLIC_API_URL = "https://api.languagetool.org"
+# Localize Large never uses LanguageTool's public service: text is checked only
+# by a LanguageTool server whose address the user entered (normally one on
+# this computer). There is no default server: the feature is off until an
+# address is entered.
+PUBLIC_API_HOSTS = ("languagetool.org", "languagetoolplus.com")
 LOCAL_SERVER_URL = "http://localhost:8081"
+
+
+class NoServerConfigured(Exception):
+    """No LanguageTool server address was entered."""
+
+
+def is_public_api(base_url: str) -> bool:
+    """True for LanguageTool's own hosted services, which are never used."""
+    from localizelarge.security import net
+    host = net.host_of(base_url or "")
+    return any(host == h or host.endswith("." + h) for h in PUBLIC_API_HOSTS)
+
+
+def validate_server(base_url: str) -> str:
+    """The server address, cleaned, or an exception that says what is wrong."""
+    base_url = (base_url or "").strip().rstrip("/")
+    if not base_url:
+        raise NoServerConfigured(
+            "Enter the address of your own LanguageTool server first, for example "
+            f"{LOCAL_SERVER_URL}.")
+    if not base_url.lower().startswith(("http://", "https://")):
+        raise ValueError("The LanguageTool server address must start with http:// or https://.")
+    if is_public_api(base_url):
+        raise ValueError(
+            "Localize Large does not send text to LanguageTool's public service. "
+            "Enter the address of your own LanguageTool server.")
+    return base_url
 SEPARATOR = "\n\n"
 MAX_BATCH_CHARS = 15000          # the public API refuses requests over ~20 KB
 PUBLIC_API_DELAY_S = 3.2         # ~20 requests a minute
@@ -102,25 +133,30 @@ def check_request(base_url: str, text: str, language: str, *, username: str = ""
         data.update(username=username, apiKey=api_key)
     if mother_tongue:
         data["motherTongue"] = mother_tongue
-    http = session or requests
-    response = http.post(base_url.rstrip("/") + "/v2/check", data=data,
-                         timeout=timeout, proxies=proxies)
+    from localizelarge.security import net
+    base_url = validate_server(base_url)
+    # The guard allows this one server, and only because the user entered it.
+    net.configure(languagetool_url=base_url)
+    http = session or net.session("languagetool")
+    response = http.post(base_url + "/v2/check", data=data,
+                         timeout=timeout, proxies=proxies, allow_redirects=False)
     if response.status_code == 429:
-        raise RuntimeError("LanguageTool's free API limit was reached. Wait a minute and "
-                           "try again, or use your own LanguageTool server.")
+        raise RuntimeError("The LanguageTool server refused the request because of its "
+                           "rate limit. Wait a minute and try again.")
     response.raise_for_status()
     return response.json().get("matches", [])
 
 
-def check_texts(texts: Sequence[str], language: str, base_url: str = PUBLIC_API_URL, *,
+def check_texts(texts: Sequence[str], language: str, base_url: str = "", *,
                 username: str = "", api_key: str = "", proxies: Optional[Dict] = None,
                 progress: Optional[Callable[[int, int], bool]] = None,
                 request: Callable = check_request, sleep: Callable = time.sleep,
                 max_chars: int = MAX_BATCH_CHARS) -> List[LTFinding]:
     """Check ``texts`` (one per segment) and return the findings, each tied to
     its text's index. ``progress(done, total)`` may return False to stop."""
+    base_url = validate_server(base_url)
     batches = list(build_batches(texts, max_chars))
-    public = base_url.rstrip("/") == PUBLIC_API_URL and not api_key
+    public = False   # the public service is never used; no rate-limit pause is needed
     findings: List[LTFinding] = []
     for number, (joined, spans) in enumerate(batches):
         if progress and progress(number, len(batches)) is False:

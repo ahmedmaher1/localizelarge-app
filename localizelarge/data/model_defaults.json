@@ -1,0 +1,10 @@
+{
+  "formatVersion": 1,
+  "note": "Default model ID for each AI provider. These are suggestions only: a user can type any model ID in Settings, and the app never fetches a model list by itself. The IDs are the ones the base app (Supervertaler Workbench 1.10.376) used; they are to be checked against each provider's documentation in Phase 7.",
+  "defaults": {
+    "openai": "gpt-6.1-sol",
+    "claude": "claude-sonnet-5-5",
+    "gemini": "gemini-3.1-flash-lite",
+    "ollama": "translategemma:12b"
+  }
+}

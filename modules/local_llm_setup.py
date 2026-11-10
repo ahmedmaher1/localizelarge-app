@@ -156,6 +156,12 @@ RECOMMENDED_MODELS = {
 # UTILITY FUNCTIONS
 # =============================================================================
 
+def _ollama_http():
+    """A session that can reach only the configured Ollama address."""
+    from localizelarge.security import net
+    return net.session("ollama")
+
+
 def _sanitize_ollama_endpoint(endpoint: str) -> str:
     """Strip trailing slashes and common path suffixes that cause double-path issues."""
     endpoint = endpoint.rstrip('/')
@@ -201,7 +207,7 @@ def check_ollama_status(endpoint: str = None) -> Dict:
 
     try:
         # Check if Ollama is running by getting model list
-        response = requests.get(f"{endpoint}/api/tags", timeout=5)
+        response = _ollama_http().get(f"{endpoint}/api/tags", timeout=5)
         if response.status_code == 200:
             data = response.json()
             models = [m['name'] for m in data.get('models', [])]
@@ -209,7 +215,7 @@ def check_ollama_status(endpoint: str = None) -> Dict:
             # Try to get version
             version = None
             try:
-                ver_response = requests.get(f"{endpoint}/api/version", timeout=2)
+                ver_response = _ollama_http().get(f"{endpoint}/api/version", timeout=2)
                 if ver_response.status_code == 200:
                     version = ver_response.json().get('version')
             except:
@@ -226,7 +232,7 @@ def check_ollama_status(endpoint: str = None) -> Dict:
             # Check if Ollama is reachable at root (may be a path issue)
             error_msg = f"Ollama returned status {response.status_code}"
             try:
-                root_resp = requests.get(endpoint, timeout=3)
+                root_resp = _ollama_http().get(endpoint, timeout=3)
                 if root_resp.status_code == 200 and 'ollama' in root_resp.text.lower():
                     error_msg = (f"Ollama is reachable but /api/tags returned {response.status_code}. "
                                  f"Check your Ollama endpoint – it should be just the base URL "
@@ -411,7 +417,7 @@ class ModelDownloadWorker(QThread):
             self.progress.emit(f"Starting download of {self.model_name}...")
             
             # Use streaming pull endpoint
-            response = requests.post(
+            response = _ollama_http().post(
                 f"{self.endpoint}/api/pull",
                 json={"name": self.model_name, "stream": True},
                 stream=True,
@@ -476,7 +482,7 @@ class ConnectionTestWorker(QThread):
             # Simple test prompt
             test_prompt = "Translate to Dutch: Hello, how are you today?"
             
-            response = requests.post(
+            response = _ollama_http().post(
                 f"{self.endpoint}/api/chat",
                 json={
                     "model": self.model_name,
@@ -934,8 +940,17 @@ class LocalLLMStatusWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.init_ui()
-        self.refresh_status()
-    
+        # Localize Large does not look for Ollama (or fetch its model list)
+        # by itself: nothing is contacted until the user clicks refresh.
+        self.show_not_checked()
+
+    def show_not_checked(self):
+        """The state before the user has asked for a check."""
+        self.status_icon.setText("•")
+        self.status_text.setText("Ollama not checked yet")
+        self.status_text.setStyleSheet("color: #666;")
+        self.info_label.setText("Click the refresh button to look for Ollama and list its models")
+
     def init_ui(self):
         """Initialize the compact UI."""
         layout = QVBoxLayout(self)

@@ -153,6 +153,12 @@ from localizelarge import paths as _ll_paths  # the one owner of every data path
 from localizelarge import project_format as _ll_project_format
 
 
+def _ll_default_model(provider: str) -> str:
+    """The default model ID of a provider (localizelarge/data/model_defaults.json)."""
+    from modules.llm_clients import LLMClient
+    return LLMClient.DEFAULT_MODELS.get(provider, "")
+
+
 def get_config_pointer_path() -> Path:
     """Kept for callers of the old name. Localize Large has no pointer file:
     its folders are fixed (see localizelarge/paths.py)."""
@@ -10401,6 +10407,12 @@ class SupervertalerQt(QMainWindow):
         self.llm_indicator_label.setStyleSheet("color: #888; font-size: 11px;")
         self.llm_indicator_label.setToolTip(self.tr("Current LLM provider and model"))
         progress_layout.addWidget(self.llm_indicator_label)
+
+        # Where text goes: "Text stays on this computer" or "Text is sent to …"
+        self.text_destination_label = QLabel("")
+        self.text_destination_label.setObjectName("textDestinationLabel")
+        self.text_destination_label.setStyleSheet("font-size: 11px; font-weight: bold;")
+        progress_layout.addWidget(self.text_destination_label)
         
         # Update LLM indicator on startup
         self._update_llm_indicator()
@@ -10519,8 +10531,41 @@ class SupervertalerQt(QMainWindow):
         except Exception:
             return currency_settings({})
 
+    def _where_text_goes(self, provider: str = None) -> str:
+        """The where-text-goes sentence for a provider (the saved one by
+        default). A cloud provider with no API key cannot receive anything,
+        so it counts as "no AI"."""
+        from localizelarge.security import net as _net
+        if provider is None:
+            provider = self.load_llm_settings().get('provider', '')
+        keys = self.load_api_keys()          # also tells the guard the Ollama address
+        if provider in _net.CLOUD_HOSTS and not keys.get(provider):
+            provider = None
+        return _net.where_text_goes(provider)
+
+    def _update_text_destination_label(self):
+        """Refresh the where-text-goes line in the status bar."""
+        label = getattr(self, 'text_destination_label', None)
+        if label is None:
+            return
+        try:
+            sentence = self._where_text_goes()
+        except Exception as e:
+            print(f"[where text goes] {type(e).__name__}: {e}")
+            return
+        stays = sentence.startswith("Text stays")
+        # An icon as well as the words, so the meaning never depends on colour.
+        label.setText(("🔒 " if stays else "↗ ") + sentence)
+        label.setToolTip(
+            "No segment text leaves this computer: no AI provider is set up, or the AI model runs "
+            "on this computer (Ollama)." if stays else
+            "When you use AI translation, the AI Assistant or QuickTrans, segment text and the "
+            "glossary terms and TM matches that go with it are sent to this provider under your "
+            "own API key. Nothing is sent until you start one of those.")
+
     def _update_llm_indicator(self):
         """Update the LLM provider/model indicator in the status bar"""
+        self._update_text_destination_label()
         try:
             settings = self.load_llm_settings()
             provider = settings.get('provider', 'openai')
@@ -10618,13 +10663,11 @@ class SupervertalerQt(QMainWindow):
                     return
                 
                 model = settings.get('ollama_model', 'translategemma:12b')
-                endpoint = os.environ.get('OLLAMA_ENDPOINT', 'http://localhost:11434').rstrip('/')
-                for _sfx in ('/api', '/v1'):
-                    if endpoint.endswith(_sfx):
-                        endpoint = endpoint[:-len(_sfx)]
+                from localizelarge.security import net as _net
+                endpoint = _net.ollama_endpoint()
 
                 # Send minimal request to keep model warm
-                response = requests.post(
+                response = _net.session("ollama").post(
                     f"{endpoint}/api/generate",
                     json={
                         "model": model,
@@ -11411,7 +11454,7 @@ class SupervertalerQt(QMainWindow):
         languagetool_action = QAction(self.tr("📝 Check with &LanguageTool..."), self)
         languagetool_action.setToolTip(self.tr(
             "Check the target text for grammar, spelling and style with LanguageTool "
-            "(the free public API or your own LanguageTool server)"))
+            "on your own LanguageTool server (off until you enter its address)"))
         languagetool_action.triggered.connect(self.show_languagetool_dialog)
         self.qa_menu.addAction(languagetool_action)
 
@@ -22492,6 +22535,24 @@ class SupervertalerQt(QMainWindow):
         provider_button_group.addButton(custom_radio)
         provider_layout.addWidget(custom_radio)
 
+        # Where text goes, for the provider selected above
+        ai_destination_label = QLabel("")
+        ai_destination_label.setObjectName("aiSettingsTextDestination")
+        ai_destination_label.setStyleSheet("font-weight: bold; padding-top: 6px;")
+        ai_destination_label.setWordWrap(True)
+        provider_layout.addWidget(ai_destination_label)
+
+        def _refresh_ai_destination(*_):
+            chosen = next((name for name, radio in (
+                ("openai", openai_radio), ("claude", claude_radio),
+                ("gemini", gemini_radio), ("ollama", ollama_radio)) if radio.isChecked()), None)
+            sentence = self._where_text_goes(chosen)
+            ai_destination_label.setText(("🔒 " if sentence.startswith("Text stays") else "↗ ") + sentence)
+
+        for _radio in (openai_radio, claude_radio, gemini_radio, ollama_radio):
+            _radio.toggled.connect(_refresh_ai_destination)
+        _refresh_ai_destination()
+
         provider_group.setLayout(provider_layout)
         layout.addWidget(provider_group)
         
@@ -22922,6 +22983,13 @@ class SupervertalerQt(QMainWindow):
         _update_provider_label(mistral_radio, "Mistral AI", mistral_combo)
         _update_provider_label(deepseek_radio, "DeepSeek", deepseek_combo)
         _update_provider_label(openrouter_radio, "🌐 OpenRouter (200+ models)", openrouter_combo)
+
+        # Any model ID can be typed: the lists above are suggestions, and the
+        # app never fetches a model list by itself.
+        for _combo in (openai_combo, claude_combo, gemini_combo):
+            _combo.setEditable(True)
+            _combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+            _combo.setToolTip(self.tr("Pick a model, or type any model ID your provider offers."))
 
         # Connect radio buttons to enable/disable combos
         def update_combo_states():
@@ -26447,9 +26515,9 @@ class SupervertalerQt(QMainWindow):
         
         new_settings = {
             'provider': provider,
-            'openai_model': openai_combo.currentText().split()[0],
-            'claude_model': claude_combo.currentText().split()[0],
-            'gemini_model': gemini_combo.currentText().split()[0],
+            'openai_model': (openai_combo.currentText().split() or [_ll_default_model('openai')])[0],
+            'claude_model': (claude_combo.currentText().split() or [_ll_default_model('claude')])[0],
+            'gemini_model': (gemini_combo.currentText().split() or [_ll_default_model('gemini')])[0],
             'ollama_model': ollama_model
         }
         self.save_llm_settings(new_settings)
@@ -26570,9 +26638,9 @@ class SupervertalerQt(QMainWindow):
         new_settings = dict(existing_settings)
         new_settings.update({
             'provider': provider,
-            'openai_model': openai_combo.currentText().split()[0],
-            'claude_model': claude_combo.currentText().split()[0],
-            'gemini_model': gemini_combo.currentText().split()[0],
+            'openai_model': (openai_combo.currentText().split() or [_ll_default_model('openai')])[0],
+            'claude_model': (claude_combo.currentText().split() or [_ll_default_model('claude')])[0],
+            'gemini_model': (gemini_combo.currentText().split() or [_ll_default_model('gemini')])[0],
             'mistral_model': mistral_combo.currentText().split()[0] if mistral_combo else 'mistral-large-latest',
             'deepseek_model': deepseek_combo.currentText().split()[0] if deepseek_combo else 'deepseek-v4-pro',
             'openrouter_model': openrouter_combo.currentText().split()[0] if openrouter_combo else 'anthropic/claude-sonnet-5.5',
@@ -59377,6 +59445,13 @@ class SupervertalerQt(QMainWindow):
             provider_group = QGroupBox(self.tr("Translation Provider"))
             provider_layout = QVBoxLayout()
 
+            # Where text goes, shown before the user starts
+            batch_destination_label = QLabel("")
+            batch_destination_label.setObjectName("batchTextDestination")
+            batch_destination_label.setStyleSheet("font-weight: bold; padding-bottom: 6px;")
+            batch_destination_label.setWordWrap(True)
+            provider_layout.addWidget(batch_destination_label)
+
             # Translation Memory option
             tm_checkbox = CheckmarkCheckBox(self.tr("📖 TM (Translation Memory) - Pre-translate from activated TMs (exact + fuzzy ≥75%)"))
             tm_checkbox.setChecked(False)
@@ -59421,6 +59496,17 @@ class SupervertalerQt(QMainWindow):
 
             tm_checkbox.toggled.connect(on_tm_toggled)
             llm_checkbox.toggled.connect(on_llm_toggled)
+
+            def _refresh_batch_destination(*_):
+                # Pre-translating from the TM sends nothing anywhere.
+                sentence = (self._where_text_goes(llm_provider) if llm_checkbox.isChecked()
+                            else self._where_text_goes(""))
+                batch_destination_label.setText(
+                    ("🔒 " if sentence.startswith("Text stays") else "↗ ") + sentence)
+
+            tm_checkbox.toggled.connect(_refresh_batch_destination)
+            llm_checkbox.toggled.connect(_refresh_batch_destination)
+            _refresh_batch_destination()
 
             provider_group.setLayout(provider_layout)
             dialog_layout.addWidget(provider_group)
