@@ -73,10 +73,18 @@ if (Test-Path (Join-Path $Root "docs\user")) {
 
 # 5. Checks on the build
 Write-Host "== 5. Checks =="
-$Forbidden = @("QtWebEngine", "Qt6WebEngine", "fitz", "pymupdf", "vosk", "sounddevice", "boto3", "botocore", "deepl", "pynput", "generativeai")
-$Found = Get-ChildItem -Recurse $Dist | Where-Object { $name = $_.Name; $Forbidden | Where-Object { $name -like "*$_*" } }
-if ($Found) {
-    $Found | Select-Object -First 20 | ForEach-Object { Write-Host "  forbidden: $($_.FullName)" }
+# Packages removed from v1 must not be in the build: look for their package
+# folders and for the WebEngine libraries.
+$Internal = Join-Path $Dist "_internal"
+$ForbiddenFolders = @("fitz", "pymupdf", "vosk", "sounddevice", "boto3", "botocore", "deepl", "pynput", "ahk", "google\generativeai", "PyQt6\Qt6\resources")
+$Found = @()
+foreach ($folder in $ForbiddenFolders) {
+    $path = Join-Path $Internal $folder
+    if (Test-Path $path) { $Found += $path }
+}
+$Found += (Get-ChildItem -Recurse $Dist -File | Where-Object { $_.Name -like "*WebEngine*" } | ForEach-Object { $_.FullName })
+if ($Found.Count -gt 0) {
+    $Found | Select-Object -First 20 | ForEach-Object { Write-Host "  forbidden: $_" }
     throw "The build contains files of packages that were removed from v1"
 }
 if (Get-ChildItem -Recurse $Dist -Filter "upx*") { throw "UPX files found in the build" }
