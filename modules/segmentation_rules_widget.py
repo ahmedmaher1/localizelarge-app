@@ -50,8 +50,10 @@ class SegmentationRulesWidget(QWidget):
             "These rules decide where Localize Large splits text into segments when it does "
             "the splitting itself: plain-text and Markdown imports with “Split lines into "
             "sentences” ticked, text pasted into New Project, and Add Segments. DOCX and the "
-            "other document formats are split by the Okapi engine with its own rules and are "
-            "not affected.\n\nChanges apply immediately – there's no Save button on this tab. "
+            "other document formats are split by the file-format engine with its default rules "
+            "for each language; your rules, extra abbreviations and “split at line breaks” are "
+            "applied before those. The test box below shows the app's own splitting only."
+            "\n\nChanges apply immediately – there's no Save button on this tab. "
             "Text that is already segmented stays as it is.")
         info.setWordWrap(True)
         info.setStyleSheet("color: #666; font-size: 9pt; padding: 5px;")

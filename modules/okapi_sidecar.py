@@ -472,20 +472,26 @@ class OkapiSidecar:
     #  SRX Segmentation
     # ═══════════════════════════════════════════════════════════════
 
-    def segment(self, text: str, language: str = "en") -> List[str]:
+    def segment(self, text: str, language: str = "en",
+                segmentation: Optional[Dict[str, Any]] = None) -> List[str]:
         """
         Segment text using Okapi's SRX engine.
 
         Args:
-            text:     The text to segment.
-            language: Language code for segmentation rules.
+            text:         The text to segment.
+            language:     Language code for segmentation rules.
+            segmentation: The user's own rules, as made by
+                          localizelarge.segmentation.sidecar_spec (optional).
 
         Returns:
             List of sentence-level segments.
         """
+        body = {'text': text, 'language': language}
+        if segmentation:
+            body['segmentation'] = segmentation
         resp = self._http.post(
             f"{self.base_url}/segment",
-            json={'text': text, 'language': language},
+            json=body,
             timeout=30,
         )
         data = self._handle_response(resp)

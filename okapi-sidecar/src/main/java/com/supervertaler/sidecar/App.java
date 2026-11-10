@@ -402,7 +402,7 @@ public class App {
         }
         if (req.language == null) req.language = "en";
 
-        List<String> segments = filterService.segment(req.text, req.language);
+        List<String> segments = filterService.segment(req.text, req.language, req.segmentation);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("language", req.language);
         result.put("segment_count", segments.size());
@@ -430,5 +430,7 @@ public class App {
     public static class SegmentRequest {
         public String text;
         public String language;
+        /** Optional user rules: {"rules": [{break, before, after}], "useDefault": true}. */
+        public Map<String, Object> segmentation;
     }
 }

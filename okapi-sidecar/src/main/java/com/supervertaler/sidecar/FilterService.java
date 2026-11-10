@@ -9,6 +9,8 @@ import net.sf.okapi.common.filterwriter.IFilterWriter;
 import net.sf.okapi.common.resource.*;
 import net.sf.okapi.common.LocaleId;
 import net.sf.okapi.filters.openxml.ConditionalParameters;
+import net.sf.okapi.lib.segmentation.LanguageMap;
+import net.sf.okapi.lib.segmentation.Rule;
 import net.sf.okapi.lib.segmentation.SRXDocument;
 
 import org.slf4j.Logger;
@@ -34,6 +36,12 @@ public class FilterService {
 
     /** Default SRX document for segmentation. */
     private SRXDocument defaultSrx;
+
+    /** The text of the default SRX document. */
+    private String defaultSrxText;
+
+    /** SRX documents that carry the user's own rules, by the rules' JSON. */
+    private final Map<String, SRXDocument> userSrxCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Extension → Okapi configuration, from formats.json. */
     private final FormatTable formatTable = FormatTable.load();
@@ -227,7 +235,7 @@ public class FilterService {
                         // Segment the source content using SRX rules
                         // Returns [plainText, taggedText] pairs
                         List<String[]> segs = segmentTextContentWithTags(
-                                tu.getSource(), srcLang);
+                                tu.getSource(), srcLang, segmentationSpec(options));
                         for (int i = 0; i < segs.size(); i++) {
                             String[] pair = segs.get(i);
                             segments.add(new ExtractedSegment(
@@ -329,7 +337,8 @@ public class FilterService {
                         // here, where the source shows what stood between
                         // them (a space, a line break, or nothing).
                         segs = Collections.singletonList(joinSegments(
-                                tu.getSource(), segs, srcLang, trgLang));
+                                tu.getSource(), segs, srcLang, trgLang,
+                                segmentationSpec(options)));
                     }
                     if (segs != null && !segs.isEmpty()) {
                         // ── Per-segment target population ─────────────
@@ -561,12 +570,16 @@ public class FilterService {
     // ═══════════════════════════════════════════════════════════════
 
     public List<String> segment(String text, String language) {
+        return segment(text, language, null);
+    }
+
+    public List<String> segment(String text, String language, Object spec) {
         if (defaultSrx == null) {
             // Fallback: return as single segment
             return List.of(text);
         }
 
-        ISegmenter segmenter = defaultSrx.compileLanguageRules(
+        ISegmenter segmenter = srxFor(spec).compileLanguageRules(
                 LocaleId.fromString(language), null);
 
         TextContainer tc = new TextContainer(text);
@@ -590,7 +603,7 @@ public class FilterService {
      * Returns a list of [plainText, taggedText] pairs.
      * taggedText includes HTML-like formatting tags; null if no formatting.
      */
-    private List<String[]> segmentTextContentWithTags(TextContainer source, String lang) {
+    private List<String[]> segmentTextContentWithTags(TextContainer source, String lang, Object spec) {
         if (defaultSrx == null || source == null) {
             String text = source != null
                     ? TextFragment.getText(source.getCodedText())
@@ -605,7 +618,7 @@ public class FilterService {
             return fallback;
         }
 
-        ISegmenter segmenter = defaultSrx.compileLanguageRules(
+        ISegmenter segmenter = srxFor(spec).compileLanguageRules(
                 LocaleId.fromString(lang), null);
         segmenter.computeSegments(source);
         source.getSegments().create(segmenter.getRanges());
@@ -636,9 +649,11 @@ public class FilterService {
                 is = SRXDocument.class.getResourceAsStream("defaultSegmentation.srx");
             }
             if (is != null) {
-                defaultSrx = new SRXDocument();
-                defaultSrx.loadRules(is);
+                defaultSrxText = new String(is.readAllBytes(),
+                        java.nio.charset.StandardCharsets.UTF_8);
                 is.close();
+                defaultSrx = new SRXDocument();
+                defaultSrx.loadRules((CharSequence) defaultSrxText);
                 log.info("Default SRX segmentation rules loaded");
             } else {
                 log.warn("Default SRX rules not found — segmentation disabled");
@@ -1016,6 +1031,65 @@ public class FilterService {
         return n == 1 ? id : id + "@" + n;
     }
 
+    /**
+     * The SRX document to segment with. Without user rules this is Okapi's
+     * default document (ICU sentence breaks plus exception rules for every
+     * language). With user rules, those are put in front of the default
+     * rules, so at each position a user rule decides first.
+     *
+     * @param spec the "segmentation" entry of the options: a map with
+     *             "rules" (a list of {break, before, after}) and
+     *             "useDefault" (false = the user's rules alone). May be null.
+     */
+    @SuppressWarnings("unchecked")
+    SRXDocument srxFor(Object spec) {
+        if (!(spec instanceof Map) || defaultSrxText == null) return defaultSrx;
+        Map<String, Object> map = (Map<String, Object>) spec;
+        Object rawRules = map.get("rules");
+        boolean useDefault = !Boolean.FALSE.equals(map.get("useDefault"));
+        List<Rule> rules = new ArrayList<>();
+        if (rawRules instanceof List) {
+            for (Object o : (List<Object>) rawRules) {
+                if (!(o instanceof Map)) continue;
+                Map<String, Object> r = (Map<String, Object>) o;
+                String before = r.get("before") == null ? "" : String.valueOf(r.get("before"));
+                String after = r.get("after") == null ? "" : String.valueOf(r.get("after"));
+                if (before.isEmpty() && after.isEmpty()) continue;
+                try {
+                    Pattern.compile(before);
+                    Pattern.compile(after);
+                } catch (PatternSyntaxException e) {
+                    log.warn("Skipping a segmentation rule that is not a valid expression");
+                    continue;
+                }
+                rules.add(new Rule(before, after, !Boolean.FALSE.equals(r.get("break"))));
+            }
+        }
+        if (rules.isEmpty() && useDefault) return defaultSrx;
+
+        String key = useDefault + "|" + rules.stream()
+                .map(r -> (r.isBreak() ? "B" : "X") + r.getBefore() + "\u0001" + r.getAfter())
+                .collect(Collectors.joining("\u0002"));
+        return userSrxCache.computeIfAbsent(key, k -> {
+            SRXDocument doc = new SRXDocument();
+            if (useDefault) {
+                doc.loadRules((CharSequence) defaultSrxText);
+            } else {
+                doc.setCascade(true);
+                doc.setTrimLeadingWhitespaces(true);
+                doc.setTrimTrailingWhitespaces(true);
+            }
+            doc.addLanguageRule("ll-user", new ArrayList<>(rules));
+            // First in the list: with cascading, earlier rules win.
+            doc.getAllLanguagesMaps().add(0, new LanguageMap(".*", "ll-user"));
+            return doc;
+        });
+    }
+
+    private static Object segmentationSpec(Map<String, Object> options) {
+        return options == null ? null : options.get("segmentation");
+    }
+
     /** Languages written without spaces between sentences. */
     private static final Set<String> NO_SPACE_LANGUAGES =
             Set.of("zh", "ja", "th", "lo", "km", "my");
@@ -1025,11 +1099,11 @@ public class FilterService {
      * the sentences the extract path reports (it skips blank ones).
      * Entry i is the text between sentence i and sentence i + 1.
      */
-    List<String> sentenceGaps(TextContainer source, String srcLang) {
+    List<String> sentenceGaps(TextContainer source, String srcLang, Object spec) {
         List<String> gaps = new ArrayList<>();
         if (defaultSrx == null) return gaps;
         TextContainer copy = source.clone();
-        ISegmenter segmenter = defaultSrx.compileLanguageRules(
+        ISegmenter segmenter = srxFor(spec).compileLanguageRules(
                 LocaleId.fromString(srcLang), null);
         segmenter.computeSegments(copy);
         copy.getSegments().create(segmenter.getRanges());
@@ -1068,10 +1142,14 @@ public class FilterService {
 
     /** Join the translated sentences of one text unit into one entry. */
     private MergeSegment joinSegments(TextContainer source, List<MergeSegment> segs,
-                                      String srcLang, String trgLang) {
+                                      String srcLang, String trgLang, Object spec) {
         List<MergeSegment> ordered = new ArrayList<>(segs);
         ordered.sort(Comparator.comparingInt(m -> m.segmentIndex));
-        List<String> gaps = sentenceGaps(source, srcLang);
+        List<String> gaps = sentenceGaps(source, srcLang, spec);
+        // If the rules changed since the import, the sentences found now are
+        // not the ones that were translated: fall back to a plain space.
+        int highest = ordered.get(ordered.size() - 1).segmentIndex;
+        if (highest > gaps.size()) gaps = Collections.emptyList();
         StringBuilder joined = new StringBuilder();
         MergeSegment previous = null;
         for (MergeSegment seg : ordered) {

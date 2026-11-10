@@ -12929,7 +12929,7 @@ class SupervertalerQt(QMainWindow):
                 raise RuntimeError("The Okapi sidecar is not available.")
             result = self.okapi_sidecar.extract(
                 file_path, source_lang=src_lang, target_lang=tgt_lang, segment=True,
-                options=okapi_sidecar_options(self.get_effective_import_options()),
+                options=self._ll_sidecar_options(self.get_effective_import_options()),
             )
             return [s.get('source', '').strip()
                     for s in result.get('segments', [])
@@ -15851,7 +15851,7 @@ class SupervertalerQt(QMainWindow):
                 source_lang=self.current_project.source_lang,
                 target_lang=self.current_project.target_lang,
                 output_path=output_path,
-                options=okapi_sidecar_options(getattr(self.current_project, 'import_options', None)),
+                options=self._ll_sidecar_options(getattr(self.current_project, 'import_options', None)),
             )
 
             self.log(f"Okapi merge complete: {os.path.basename(result_path)}")
@@ -16847,6 +16847,13 @@ class SupervertalerQt(QMainWindow):
                     highlighter = getattr(widget, 'highlighter', None)
                     if highlighter is not None:
                         highlighter.rehighlight()
+
+    def _ll_sidecar_options(self, import_options):
+        """The options sent to the Okapi sidecar with an import or an export:
+        the file-type options plus the user's own segmentation rules."""
+        from localizelarge.segmentation import with_segmentation
+        return with_segmentation(okapi_sidecar_options(import_options),
+                                 self._load_segmentation_rules())
 
     def _make_sentence_segmenter(self, markdown: bool = False):
         """The sentence segmenter for text Localize Large splits itself, with
@@ -33042,7 +33049,7 @@ class SupervertalerQt(QMainWindow):
                             source_lang=src_lang,
                             target_lang=trg_lang,
                             segment=True,
-                            options=okapi_sidecar_options(_import_opts),
+                            options=self._ll_sidecar_options(_import_opts),
                         )
                     except Exception as _e:
                         _exc_holder['e'] = _e
@@ -34570,7 +34577,7 @@ class SupervertalerQt(QMainWindow):
                         source_lang=source_lang,
                         target_lang=target_lang,
                         segment=True,
-                        options=okapi_sidecar_options(_import_opts),
+                        options=self._ll_sidecar_options(_import_opts),
                     )
 
                     tu_id_to_para = {}
@@ -35304,7 +35311,7 @@ class SupervertalerQt(QMainWindow):
                         source_lang=src_lang,
                         target_lang=trg_lang,
                         output_path=output_path,
-                        options=okapi_sidecar_options(getattr(self.current_project, 'import_options', None)),
+                        options=self._ll_sidecar_options(getattr(self.current_project, 'import_options', None)),
                     )
                     if skipped:
                         self.log(f"      ⚠️ {skipped} segments without Okapi metadata "

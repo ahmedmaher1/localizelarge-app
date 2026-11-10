@@ -29,6 +29,9 @@ License). The history of that project is in its own repository.
 - Export keeps what stood between the sentences of a paragraph: a line break inside a PO or
   JSON string is kept, and Chinese, Japanese and Thai targets get no space between
   sentences.
+- Documents are split into sentences with Okapi's default rules for every language. Your
+  own rules, extra abbreviations and "split at line breaks" from Settings → Segmentation
+  Rules now apply to document imports too, before the default rules.
 - Tags written as text in a file (`<b>` inside a JSON or YAML string) are kept on export.
 - XLIFF 1.2 export keeps `<g>` formatting tags in the target.
 

@@ -5,8 +5,9 @@ Segmentation rules
 User-definable rules for the segmenter Localize Large runs itself (issue #191):
 plain-text and Markdown imports with "Split lines into sentences" ticked, text
 pasted into New Project, and Add Segments from pasted text. DOCX and the other
-document formats are split by the Okapi engine with its own SRX rules and are
-not affected.
+document formats are split by the Okapi engine with its default SRX rules; the
+custom rules, extra abbreviations and "split at line breaks" are sent to it and
+decide first (see localizelarge/segmentation.py).
 
 The model is the one SRX uses (the exchange format of OmegaT, Okapi and other
 CAT tools): a rule is either a *break* or an *exception* (no break), with one
