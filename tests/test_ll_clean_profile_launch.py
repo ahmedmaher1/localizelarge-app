@@ -42,9 +42,14 @@ def launch(tmp_path_factory):
         (profile / name).mkdir()
     # Report, at exit, which removed packages ended up imported.
     probe = (
-        "import atexit, runpy, sys\n"
+        "import os, runpy, sys\n"
         f"removed = {REMOVED_PACKAGES!r}\n"
-        "atexit.register(lambda: print('IMPORTED_REMOVED=' + ','.join(m for m in removed if m in sys.modules)))\n"
+        # The app ends with os._exit, so report just before that happens.
+        "_real_exit = os._exit\n"
+        "def _report_then_exit(code):\n"
+        "    print('IMPORTED_REMOVED=' + ','.join(m for m in removed if m in sys.modules), flush=True)\n"
+        "    _real_exit(code)\n"
+        "os._exit = _report_then_exit\n"
         f"sys.argv = [{str(ROOT / 'Supervertaler.py')!r}]\n"
         f"runpy.run_path({str(ROOT / 'Supervertaler.py')!r}, run_name='__main__')\n"
     )

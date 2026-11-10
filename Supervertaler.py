@@ -64272,20 +64272,28 @@ def _ll_leave(exit_code) -> None:
     Letting Python tear the interpreter down after a Qt application has run
     destroys Qt objects in no particular order, which now and then crashes
     the process on its way out (seen on Windows as an access violation and on
-    Linux as a segmentation fault). Nothing useful happens in that teardown,
-    so: run the registered exit handlers (this stops the sidecar if it is
-    still up), flush the logs, and leave.
+    Linux as a segmentation fault). The same happens when the registered exit
+    handlers run, because Qt registers one of its own. Nothing useful happens
+    in either, so this function does the two things that matter itself and
+    then leaves: it makes sure the file-format service is stopped (closing
+    the window already did; the service also stops by itself when this
+    process ends) and it flushes the logs.
     """
-    import atexit
     import logging
+    print(f"[exit] leaving with code {int(exit_code or 0)}")
     try:
-        atexit._run_exitfuncs()
-    except Exception:
-        pass
+        app = QApplication.instance()
+        for widget in (app.topLevelWidgets() if app else []):
+            sidecar = getattr(widget, "okapi_sidecar", None)
+            if sidecar is not None:
+                sidecar.stop()
+    except Exception as e:
+        print(f"[exit] sidecar stop skipped: {type(e).__name__}: {e}")
     try:
         logging.shutdown()
     except Exception:
         pass
+    print("[exit] done")
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.flush()
