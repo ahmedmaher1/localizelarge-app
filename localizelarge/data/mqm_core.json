@@ -1,0 +1,249 @@
+{
+  "name": "MQM Core",
+  "source": "https://themqm.org/the-mqm-typology/",
+  "retrieved": "2026-11-10",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "MQM Core typology © The MQM Council (themqm.org), licensed under CC BY 4.0. Names and definitions are unchanged; the identifiers were added by Localize Large.",
+  "dimensions": [
+    {
+      "id": "terminology",
+      "name": "Terminology",
+      "definition": "Errors arising when a term does not conform to normative subject field or organizational terminology standards or when a term in the target content is not the correct, normative equivalent of the corresponding term in the source content.",
+      "subtypes": [
+        {
+          "id": "inconsistent-with-terminology-resource",
+          "name": "Inconsistent with terminology resource",
+          "definition": "Use of a term that differs from term usage required by a specified termbase or other resource."
+        },
+        {
+          "id": "inconsistent-use-of-terminology",
+          "name": "inconsistent use of terminology",
+          "definition": "Use of multiple terms for the same concept in cases where consistency is desirable."
+        },
+        {
+          "id": "wrong-term",
+          "name": "wrong term",
+          "definition": "Use of term that it is not the term a domain expert would use or because it gives rise to a conceptual mismatch."
+        }
+      ]
+    },
+    {
+      "id": "accuracy",
+      "name": "Accuracy",
+      "definition": "Errors occurring when the target content does not accurately correspond to the propositional content of the source text because of distortion, omission, or addition to the message.",
+      "subtypes": [
+        {
+          "id": "mistranslation",
+          "name": "Mistranslation",
+          "definition": "Error occuring when the target content that does not accurately represent the source content."
+        },
+        {
+          "id": "overtranslation",
+          "name": "Overtranslation",
+          "definition": "Error occuring in the target content that is inappropriately more specific than the source content."
+        },
+        {
+          "id": "undertranslation",
+          "name": "Undertranslation",
+          "definition": "Error occuring in the target content that is inappropriately less specific than the source content."
+        },
+        {
+          "id": "addition",
+          "name": "Addition",
+          "definition": "Error occuring in the target content that includes content not present in the source."
+        },
+        {
+          "id": "omission",
+          "name": "Omission",
+          "definition": "Error where content present in the source is missing in the target."
+        },
+        {
+          "id": "do-not-translate",
+          "name": "Do not translate",
+          "definition": "Error occuring when a text segment marked \"Do not transalate!\" is translated in the target text."
+        },
+        {
+          "id": "untranslated",
+          "name": "Untranslated",
+          "definition": "Error occuring when a text segment that was intended for translation is omitted in the target content."
+        }
+      ]
+    },
+    {
+      "id": "linguistic-conventions",
+      "name": "Linguistic conventions",
+      "definition": "Errors related to the linguistic well-formedness of the text, including problems with grammaticality, idiomaticity, and mechanical correctness.",
+      "subtypes": [
+        {
+          "id": "grammar",
+          "name": "Grammar",
+          "definition": "Error that occurs when a text string (sentence, phrase, other) in the translation violates the grammatical rules of the target language."
+        },
+        {
+          "id": "punctuation",
+          "name": "Punctuation",
+          "definition": "Punctuation incorrect according to target language conventions."
+        },
+        {
+          "id": "spelling",
+          "name": "Spelling",
+          "definition": "Error occurring when a word is misspelled."
+        },
+        {
+          "id": "unintelligible",
+          "name": "Unintelligible",
+          "definition": "Text garbled or incomprehensible."
+        },
+        {
+          "id": "character-encoding",
+          "name": "Character encoding",
+          "definition": "Error occuring when characters garbled due to incorrect application of an encoding."
+        },
+        {
+          "id": "textual-conventions",
+          "name": "Textual conventions",
+          "definition": "Error that occurs when a text string (word, phrase, sentence, phrase, other) violates the text-building (discourse)norms of the target language."
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "name": "Style",
+      "definition": "Errors occurring in a text that are grammatically acceptable but are inappropriate because they deviate from organizational style guides or exhibit inappropriate language style.",
+      "subtypes": [
+        {
+          "id": "organization-style",
+          "name": "Organization style",
+          "definition": "Errors occuring where text violates third-party style guidelines."
+        },
+        {
+          "id": "third-party-style",
+          "name": "Third-party style",
+          "definition": "Errors occuring where text violates third-party style guidelines."
+        },
+        {
+          "id": "inconsistent-with-external-reference",
+          "name": "Inconsistent with external reference",
+          "definition": "Errors occuring when text fails to conform wth a declared external style reference."
+        },
+        {
+          "id": "language-register",
+          "name": "Language register",
+          "definition": "Characteristic of text that uses a level of formality higher or lower than required by the specifications or general language conventions."
+        },
+        {
+          "id": "awkward-style",
+          "name": "Awkward style",
+          "definition": "Style involving excessive wordiness or overly embedded clauses, often due to inappropriate retention of source text style in the target text."
+        },
+        {
+          "id": "unidiomatic-style",
+          "name": "Unidiomatic style",
+          "definition": "Style that is grammatical, but unnatural."
+        },
+        {
+          "id": "inconsistent-style",
+          "name": "Inconsistent style",
+          "definition": "Style that varies inconsistently throught the text."
+        }
+      ]
+    },
+    {
+      "id": "locale-conventions",
+      "name": "Locale conventions",
+      "definition": "Errors occurring when the translation product violates locale-specific content or formatting requirements for data elements.",
+      "subtypes": [
+        {
+          "id": "number-format",
+          "name": "Number format",
+          "definition": "inappropriate number format for its locale."
+        },
+        {
+          "id": "currency-format",
+          "name": "Currency format",
+          "definition": "Incorrect currency format for its locale."
+        },
+        {
+          "id": "measurement-format",
+          "name": "Measurement format",
+          "definition": "Inappropriate measurement format for its locale."
+        },
+        {
+          "id": "time-format",
+          "name": "Time format",
+          "definition": "Error involving incorrrect time format for its locale."
+        },
+        {
+          "id": "date-format",
+          "name": "Date format",
+          "definition": "Error involving inappropriate date format for its locale."
+        },
+        {
+          "id": "address-format",
+          "name": "Address format",
+          "definition": "Error involving inappropriate address format for locale."
+        },
+        {
+          "id": "telephone-format",
+          "name": "Telephone format",
+          "definition": "Error involving inappropriate telephone number form for locale."
+        },
+        {
+          "id": "shortcut-key",
+          "name": "Shortcut key",
+          "definition": "Shortcuts in translated software product non-compliant with locale expectations or meaningless for locale."
+        }
+      ]
+    },
+    {
+      "id": "audience-appropriateness",
+      "name": "Audience appropriateness",
+      "definition": "Error where content Inappropriately uses a culture-specific reference that will not be understandable to the intended audience.",
+      "subtypes": [
+        {
+          "id": "culture-specific-reference",
+          "name": "Culture-specific reference",
+          "definition": "Error where content Inappropriately uses a culture-specific reference that will not be understandable to the intended audience."
+        },
+        {
+          "id": "offensive",
+          "name": "Offensive",
+          "definition": "Content that breaches commonly accepted standards of decent and proper speech, and is hence likely to offend the intended audience or other likely readers."
+        }
+      ]
+    },
+    {
+      "id": "design-and-markup",
+      "name": "Design and markup",
+      "definition": "Errors related to the physical design or presentation of a translation product, including character, paragraph, and UI element formatting and markup, integration of text with graphical elements, and overall page or window layout.",
+      "subtypes": [
+        {
+          "id": "layout",
+          "name": "Layout",
+          "definition": "Inappropriate presentation format of paragraphs, headings, graphical elements, and user interface elements and their arrangement on a form, page, website, or application screen."
+        },
+        {
+          "id": "markup-tag",
+          "name": "Markup tag",
+          "definition": "Incorrect markup tag or tag component."
+        },
+        {
+          "id": "truncation-text-expansion",
+          "name": "Truncation/text expansion",
+          "definition": "Target content that is longer or shorter than allowed or where there is a significant and inappropriate discrepancy between the source and the target content lengths."
+        },
+        {
+          "id": "missing-text",
+          "name": "Missing text",
+          "definition": "Existing text missing in the final laid-out version"
+        },
+        {
+          "id": "link-cross-reference",
+          "name": "Link/cross-reference",
+          "definition": "Incorrect or invalid (no longer active) link or URI."
+        }
+      ]
+    }
+  ]
+}

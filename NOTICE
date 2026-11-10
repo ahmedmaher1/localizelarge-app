@@ -43,3 +43,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+MQM Core typology
+-----------------
+localizelarge/data/mqm_core.json holds the MQM Core error typology: the names and
+definitions of its seven dimensions and their error types, as published by The MQM
+Council at https://themqm.org/the-mqm-typology/ (retrieved 2026-11-10).
+© The MQM Council. Licensed under the Creative Commons Attribution 4.0 International
+License (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/
+Changes: the identifiers (for example "accuracy/mistranslation") were added by
+Localize Large; names and definitions are unchanged. The scoring in
+localizelarge/mqm/scoring.py follows the MQM Council's scoring models
+(https://themqm.org/error-types-2/the-mqm-scoring-models/ and arXiv:2405.16969).
+The MQM Council does not endorse Localize Large.

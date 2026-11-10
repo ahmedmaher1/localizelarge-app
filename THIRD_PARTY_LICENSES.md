@@ -78,6 +78,7 @@ these depend on (Jetty and others) are in the release SBOM.
 
 | Item | License |
 |---|---|
+| MQM Core typology (`localizelarge/data/mqm_core.json`), © The MQM Council, themqm.org | CC BY 4.0 |
 | Supervertaler Workbench 1.10.376 (the base of this app) | MIT, © 2025 Michael Beijer |
 
 ## Removed in Phase 2
