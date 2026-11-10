@@ -2488,6 +2488,9 @@ class UnifiedPromptManagerQt:
         ))
 
         image_group.setLayout(image_layout)
+        # Localize Large v1 has no Image Context viewer (see docs/REMOVED.md):
+        # the section stays in the layout but is never shown.
+        image_group.setVisible(False)
         outer.addWidget(image_group)
 
         return container

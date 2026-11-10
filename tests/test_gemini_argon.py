@@ -66,8 +66,6 @@ GEMINI_LISTS = [
      r'\("gemini", "Gemini \(Google AI\)", "gemini", \[(.*?)\]\),'),
     ("AI Assistant model menu", os.path.join("modules", "chat_view_widget.py"),
      r'\("gemini", "Google", \{(.*?)\}\),'),
-    ("PDF Rescue", os.path.join("modules", "pdf_rescue_Qt.py"),
-     r'--- Gemini \(Google\) ---"\)\s*self\.model_combo\.addItems\(\[(.*?)\]\)'),
 ]
 
 

@@ -72,3 +72,15 @@ Also removed because nothing imported them: `modules/feature_manager.py`,
 
 Effect measured in the Linux test container: the app now exits cleanly (the base crashed on
 exit in QtWebEngine), and time to the first window fell from 8.7 s to about 5.5 s.
+
+### 4. PDF tools and image tools
+
+| Removed | Why |
+|---|---|
+| PDF Rescue (`modules/pdf_rescue_Qt.py`) and the PyMuPDF dependency | PyMuPDF is AGPL and must not ship. PDF is not a v1 format |
+| Image Extractor / "Superimage" (`modules/image_extractor.py`) and the Image Context viewer it lived in | Out of v1 scope |
+
+**Disabled, not deleted:** `modules/figure_context_manager.py` and the code that attaches
+images to an AI request when a segment mentions a figure. With the viewer gone there is no
+way to load images, so that code never runs. The "4. Image Context" section of the Prompt
+Manager is hidden. It should be deleted or brought back as a whole in a later version.
