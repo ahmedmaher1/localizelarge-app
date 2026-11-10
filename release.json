@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "date": "2026-11-10",
+  "platform": "windows-x64",
+  "fileName": "LocalizeLarge-1.0.0-preview-win-x64.zip",
+  "sizeBytes": 173588065,
+  "sha256": "74d7778fc9544eeaff2349ae9a5b88671ae1a45d4971e3cb78495e994052554f",
+  "installerType": "zip",
+  "signed": false,
+  "publisher": null,
+  "certificateType": "none",
+  "minWindows": "Windows 10 (64-bit) version 1809 or later, and Windows 11",
+  "basedOnUpstream": "Supervertaler Workbench 1.10.376 (f83e520)"
+}
